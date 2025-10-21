@@ -18,22 +18,27 @@ jobs:
       - name: Set up R
         uses: r-lib/actions/setup-r@v2
         with:
-          r-version: 'latest' # Installs the latest version of R
+          r-version: 'latest'
 
       - name: Set up Quarto
         uses: quarto-dev/quarto-actions/setup@v2
-        # This step installs Quarto and adds it to the PATH
 
-      - name: Render Quarto Document (and install R packages)
+      # --- THIS IS THE NEW, FIXED STEP ---
+      - name: Install R Dependencies
+        run: |
+          install.packages(c('rmarkdown', 'knitr', 'pacman', 'httr', 'jsonlite', 'rvest', 'dplyr', 'tidyr', 'kableExtra', 'tibble'))
+        shell: Rscript {0}
+      # --- END OF NEW STEP ---
+
+      - name: Render Quarto Document
         run: |
           quarto render index.qmd
-        # When this runs, your pacman code inside index.qmd
-        # will execute and install all the R packages.
+        # Now, when this runs, all packages are already installed.
+        # Your pacman chunk will just load them.
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: .
-          # This finds the 'index.html' that was just rendered
-          # and pushes it to the 'gh-pages' branch.
+          # This finds 'index.html' and pushes it.
