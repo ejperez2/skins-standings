@@ -1,0 +1,38 @@
+name: Render and Publish NBA Stats
+
+# This controls when the script runs
+on:
+  # 1. A button on the "Actions" tab to run it manually
+  workflow_dispatch:
+  
+  # 2. On a schedule (uses cron syntax)
+  schedule:
+    # 11:00 AM UTC is 6:00 AM CDT (during Daylight Time)
+    - cron: '0 11 * * *'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # This is needed to push the HTML to the website branch
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Install R Dependencies
+        # This step installs all the packages your .qmd file needs to run
+        run: |
+          install.packages(c('pacman', 'httr', 'jsonlite', 'rvest', 'dplyr', 'tidyr', 'knitr', 'kableExtra', 'tibble'))
+        shell: Rscript {0}
+
+      - name: Publish to GitHub Pages
+        # This single action does all the work:
+        # 1. Installs R
+        # 2. Installs Quarto
+        # 3. Renders index.qmd into index.html
+        # 4. Pushes the final index.html to a special branch
+        uses: quarto-dev/quarto-actions/publish@v2
+        with:
+          target: gh-pages # This publishes to a branch named 'gh-pages'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
