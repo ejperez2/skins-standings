@@ -1,0 +1,223 @@
+---
+title: "Fantasy Draft - Skins Game"
+format: 
+  html:
+    self-contained: true
+    grid:
+      body-width: 1200px
+editor: visual
+---
+
+```{r timestamp, echo=FALSE, results='asis'}
+ts <- format(Sys.time(), "%A, %B %d, %Y at %I:%M %p %Z", tz = "America/Chicago")
+
+cat(sprintf(
+  "<p style='font-size:14px; color:#555; margin-top:8px;'>
+   <strong>Last updated:</strong> %s</p>", ts)
+)
+```
+
+
+
+```{r main-processing, echo=FALSE, message=FALSE, warning=FALSE, cache=FALSE}
+# This single code chunk handles EVERYTHING: package installation, scraping, processing, and table creation.
+# cache=FALSE ensures the data is re-scraped every single time the document is rendered.
+
+# --- Step 1: Install and Load All Necessary Libraries ---
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(httr, jsonlite, rvest, dplyr, tidyr, knitr, kableExtra, tibble)
+
+# --- Step 2: Scrape and Process All Data Sources ---
+
+# A: Scrape Rotowire (Vegas Odds)
+url_vegas <- "https://www.rotowire.com/betting/nba/tables/team-futures.php?future=Win%20Totals"
+resp_vegas <- GET(url_vegas, add_headers(`User-Agent` = "Mozilla/5.0"))
+raw_json <- content(resp_vegas, as = "text", encoding = "UTF-8")
+df_vegas <- fromJSON(raw_json, flatten = TRUE) %>% as_tibble()
+
+df_skins <- df_vegas %>%
+  select(
+    team = name, abbr,
+    mgm_total = mgm_line, mgm_under = mgm_odds_under, mgm_over = mgm_odds,
+    draftkings_total = draftkings_line, draftkings_under = draftkings_odds_under, draftkings_over = draftkings_odds,
+    caesars_total = caesars_line, caesars_under = caesars_odds_under, caesars_over = caesars_odds,
+    betrivers_total = betrivers_line, betrivers_under = betrivers_odds_under, betrivers_over = betrivers_odds,
+    hardrock_total = hardrock_line, hardrock_under = hardrock_odds_under, hardrock_over = hardrock_odds,
+    fanduel_total = fanduel_line, fanduel_under = fanduel_odds_under, fanduel_over = fanduel_odds,
+    espnbet_total = espnbet_line, espnbet_under = espnbet_odds_under, espnbet_over = espnbet_odds
+  ) %>%
+  mutate(across(ends_with(c("_total", "_under", "_over")), as.numeric)) %>%
+  rowwise() %>%
+  mutate(
+    # Adjust each total based on over/under odds
+    mgm_adj = mgm_total + if_else(mgm_total > 41, 0.5 * (mgm_over > mgm_under), -0.5 * (mgm_under > mgm_over)),
+    draftkings_adj = draftkings_total + if_else(draftkings_total > 41, 0.5 * (draftkings_over > draftkings_under), -0.5 * (draftkings_under > draftkings_over)),
+    caesars_adj = caesars_total + if_else(caesars_total > 41, 0.5 * (caesars_over > caesars_under), -0.5 * (caesars_under > caesars_over)),
+    betrivers_adj = betrivers_total + if_else(betrivers_total > 41, 0.5 * (betrivers_over > betrivers_under), -0.5 * (betrivers_under > betrivers_over)),
+    hardrock_adj = hardrock_total + if_else(hardrock_total > 41, 0.5 * (hardrock_over > hardrock_under), -0.5 * (hardrock_under > hardrock_over)),
+    fanduel_adj = fanduel_total + if_else(fanduel_total > 41, 0.5 * (fanduel_over > fanduel_under), -0.5 * (fanduel_under > fanduel_over)),
+    espnbet_adj = espnbet_total + if_else(espnbet_total > 41, 0.5 * (espnbet_over > espnbet_under), -0.5 * (espnbet_under > espnbet_over)),
+    # Calculate composite projection as mean of adjusted totals
+    composite_projection = mean(c(mgm_adj, draftkings_adj, caesars_adj, betrivers_adj, hardrock_adj, fanduel_adj, espnbet_adj), na.rm = TRUE)
+  ) %>%
+  ungroup() %>%
+  mutate(
+    vegas_consensus = if_else(composite_projection >= 41, composite_projection, 82 - composite_projection),
+    skins_pick = if_else(composite_projection >= 41, "W", "L")
+  )
+# B: Scrape TeamRankings
+url_tr <- "https://www.teamrankings.com/nba/projections/standings/"
+webpage_tr <- read_html(url_tr)
+combined_proj <- bind_rows(webpage_tr %>% html_table() %>% .[[1]], webpage_tr %>% html_table() %>% .[[2]])
+tr_cleaned <- combined_proj %>%
+  select(team_tr = 1, filter_col = 2, tr_proj_w = 4, tr_proj_l = 5) %>%
+  filter(!grepl("overall", filter_col, ignore.case = TRUE)) %>%
+  mutate(tr_proj_w = as.numeric(tr_proj_w), tr_proj_l = as.numeric(tr_proj_l),
+         tr_skins = if_else(tr_proj_w > 41, tr_proj_w, tr_proj_l))
+
+# C: Scrape ESPN BPI
+url_espn <- "https://www.espn.com/nba/bpi/_/view/projections"
+webpage_espn <- read_html(url_espn)
+espn_proj <- bind_cols(webpage_espn %>% html_table() %>% .[[1]], webpage_espn %>% html_table() %>% .[[2]])
+espn_cleaned <- espn_proj %>%
+  select(team = Team, ovr_wl = `OVR W-L`) %>%
+  separate(ovr_wl, into = c("espn_proj_w", "espn_proj_l"), sep = "-", convert = TRUE) %>%
+  mutate(team = case_when(team == "LA Clippers" ~ "Los Angeles Clippers", TRUE ~ team),
+         espn_skins = if_else(espn_proj_w > 41, espn_proj_w, espn_proj_l))
+
+# --- Step 3: Combine All Projections ---
+tr_crosswalk <- tr_cleaned %>%
+  mutate(team = case_when(
+    team_tr == "Okla City" ~ "Oklahoma City Thunder", team_tr == "Boston" ~ "Boston Celtics",
+    team_tr == "Cleveland" ~ "Cleveland Cavaliers", team_tr == "Denver" ~ "Denver Nuggets",
+    team_tr == "Houston" ~ "Houston Rockets", team_tr == "New York" ~ "New York Knicks",
+    team_tr == "Orlando" ~ "Orlando Magic", team_tr == "Minnesota" ~ "Minnesota Timberwolves",
+    team_tr == "LA Clippers" ~ "Los Angeles Clippers", team_tr == "LA Lakers" ~ "Los Angeles Lakers",
+    team_tr == "Atlanta" ~ "Atlanta Hawks", team_tr == "Golden State" ~ "Golden State Warriors",
+    team_tr == "Detroit" ~ "Detroit Pistons", team_tr == "Milwaukee" ~ "Milwaukee Bucks",
+    team_tr == "San Antonio" ~ "San Antonio Spurs", team_tr == "Philadelphia" ~ "Philadelphia 76ers",
+    team_tr == "Memphis" ~ "Memphis Grizzlies", team_tr == "Dallas" ~ "Dallas Mavericks",
+    team_tr == "Toronto" ~ "Toronto Raptors", team_tr == "Indiana" ~ "Indiana Pacers",
+    team_tr == "Miami" ~ "Miami Heat", team_tr == "Sacramento" ~ "Sacramento Kings",
+    team_tr == "Portland" ~ "Portland Trail Blazers", team_tr == "Phoenix" ~ "Phoenix Suns",
+    team_tr == "Chicago" ~ "Chicago Bulls", team_tr == "New Orleans" ~ "New Orleans Pelicans",
+    team_tr == "Charlotte" ~ "Charlotte Hornets", team_tr == "Washington" ~ "Washington Wizards",
+    team_tr == "Brooklyn" ~ "Brooklyn Nets", team_tr == "Utah" ~ "Utah Jazz",
+    TRUE ~ team_tr
+  )) %>% select(team, tr_skins)
+
+df_final_projections <- df_skins %>%
+  left_join(tr_crosswalk, by = "team") %>%
+  left_join(espn_cleaned %>% select(team, espn_skins), by = "team") %>%
+  mutate(
+    llm_weighted_consensus = (vegas_consensus * 0.31) + (tr_skins * 0.10) + (espn_skins * 0.59)
+  )
+
+# --- Step 4: Create Draft Data Frame ---
+draft_data <- tribble(
+  ~team, ~player,
+  "Utah Jazz", "Eristeo", "Oklahoma City Thunder", "Matt", "Washington Wizards", "Brian",
+  "Brooklyn Nets", "Adam", "Cleveland Cavaliers", "Thomas", "Charlotte Hornets", "Brian",
+  "Denver Nuggets", "Thomas", "New York Knicks", "Adam", "Houston Rockets", "Kenneth",
+  "Phoenix Suns", "Eristeo", "New Orleans Pelicans", "Matt", "Orlando Magic", "Kenneth",
+  "Chicago Bulls", "Thomas", "Los Angeles Clippers", "Eristeo", "Minnesota Timberwolves", "Matt",
+  "Portland Trail Blazers", "Kenneth", "Atlanta Hawks", "Adam", "Los Angeles Lakers", "Adam",
+  "Golden State Warriors", "Kenneth", "Sacramento Kings", "Thomas", "Detroit Pistons", "Brian",
+  "Indiana Pacers", "Eristeo", "Miami Heat", "Matt", "Philadelphia 76ers", "Matt",
+  "Toronto Raptors", "Brian", "Milwaukee Bucks", "Brian", "San Antonio Spurs", "Eristeo",
+  "Memphis Grizzlies", "Kenneth", "Boston Celtics", "Adam", "Dallas Mavericks", "Thomas"
+)
+
+# --- Step 5: Join Projections with Draft Data to Score Players ---
+player_scores <- draft_data %>%
+  left_join(df_final_projections, by = "team") %>%
+  group_by(player) %>%
+  summarise(
+    `LLM Consensus` = sum(llm_weighted_consensus, na.rm = TRUE),
+    `Vegas Consensus` = sum(vegas_consensus, na.rm = TRUE),
+    `TeamRankings` = sum(tr_skins, na.rm = TRUE),
+    `ESPN BPI` = sum(espn_skins, na.rm = TRUE)
+  ) %>%
+  mutate(Average_Score = rowMeans(select(., -player))) %>%
+  arrange(desc(Average_Score))
+
+# --- Step 6: Define the data for the draft results table ---
+draft_table_data <- df_final_projections %>% 
+  select(team, abbr, skins_pick) %>%
+  right_join(draft_data, by="team") %>%
+  arrange(match(player, c("Eristeo", "Matt", "Brian", "Adam", "Thomas", "Kenneth")))
+```
+
+## Team Projections (Live Data)
+
+This table shows the freshly scraped and calculated projection scores for every team.
+
+```{r team-projections, echo=FALSE}
+# Select and format the final projections for display
+team_projections_table <- df_final_projections %>%
+  select(
+    Team = team,
+    `Pick Type` = skins_pick,
+    `LLM Consensus` = llm_weighted_consensus,
+    `Vegas Consensus` = vegas_consensus,
+    `TeamRankings` = tr_skins,
+    `ESPN BPI` = espn_skins
+  ) %>%
+  arrange(desc(`LLM Consensus`))
+
+kable(team_projections_table, digits = 1, caption = "Live Skins Projections by Team") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, position = "center") %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#444444") %>%
+  column_spec(1, bold = TRUE) %>%
+  column_spec(3, bold = TRUE, background = "#DFF0D8") # Highlight the final consensus
+```
+
+## Player Scores (Based on Live Projections)
+
+This table shows the total projected "skins" score for each player, calculated from the live data above.
+
+```{r player-scores, echo=FALSE}
+kable(player_scores, digits = 1, caption = "Total Projected Player Scores") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, position = "center") %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#444444") %>%
+  column_spec(1, bold = TRUE) %>%
+  column_spec(6, bold = TRUE, background = "#DFF0D8")
+```
+
+## Standings
+
+
+with this:
+
+
+```{r draft-results, echo=FALSE}
+standings_table <- draft_data %>%
+  left_join(df_final_projections %>% 
+              select(team, abbr, skins_pick,
+                     `LLM Consensus` = llm_weighted_consensus,
+                     `Vegas Consensus` = vegas_consensus,
+                     `TeamRankings` = tr_skins,
+                     `ESPN BPI` = espn_skins),
+            by = "team") %>%
+  arrange(match(player, c("Eristeo", "Matt", "Brian", "Adam", "Thomas", "Kenneth")),
+          desc(`LLM Consensus`))
+
+kable(
+  standings_table,
+  col.names = c("Team", "Player", "Abbr", "Skins Pick", 
+                "LLM Consensus", "Vegas Consensus", "TeamRankings", "ESPN BPI"),
+  digits = 1,
+  align = c("l", "l", "c", "c", "r", "r", "r", "r"),
+  caption = "Standings by Team with All Projections"
+) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"),
+    full_width = FALSE,
+    position = "center"
+  ) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#0073C2") %>%
+  column_spec(5, bold = TRUE, background = "#DFF0D8") %>%
+  pack_rows(index = table(factor(standings_table$player,
+                                 levels = c("Eristeo", "Matt", "Brian", "Adam", "Thomas", "Kenneth"))))
+
+```
