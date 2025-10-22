@@ -60,8 +60,12 @@ df_skins <- df_vegas %>%
   ) %>%
   ungroup() %>%
   mutate(
-    vegas_consensus = if_else(composite_projection >= 41, composite_projection, 82 - composite_projection),
-    skins_pick = if_else(composite_projection >= 41, "W", "L")
+      temp_vegas_consensus = if_else(composite_projection >= 41, composite_projection, 82 - composite_projection),
+    temp_skins_pick = if_else(composite_projection >= 41, "W", "L"),
+    # Override for Memphis Grizzlies
+    vegas_consensus = if_else(team == "Memphis Grizzlies", composite_projection, temp_vegas_consensus),
+    skins_pick = if_else(team == "Memphis Grizzlies", "W", temp_skins_pick)
+    # --- END OF EDITED SECTION ---
   )
 # B: Scrape TeamRankings
 url_tr <- "https://www.teamrankings.com/nba/projections/standings/"
