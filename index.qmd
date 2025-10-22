@@ -1,5 +1,5 @@
 ---
-title: "Fantasy Draft - Skins Game"
+title: "Skins Game"
 format: 
   html:
     self-contained: true
@@ -16,8 +16,6 @@ cat(sprintf(
    <strong>Last updated:</strong> %s</p>", ts)
 )
 ```
-
-
 
 ```{r main-processing, echo=FALSE, message=FALSE, warning=FALSE, cache=FALSE}
 # This single code chunk handles EVERYTHING: package installation, scraping, processing, and table creation.
@@ -110,7 +108,7 @@ df_final_projections <- df_skins %>%
   left_join(tr_crosswalk, by = "team") %>%
   left_join(espn_cleaned %>% select(team, espn_skins), by = "team") %>%
   mutate(
-    llm_weighted_consensus = (vegas_consensus * 0.31) + (tr_skins * 0.10) + (espn_skins * 0.59)
+    weighted_average  = (vegas_consensus * 0.31) + (tr_skins * 0.10) + (espn_skins * 0.59)
   )
 
 # --- Step 4: Create Draft Data Frame ---
@@ -133,7 +131,7 @@ player_scores <- draft_data %>%
   left_join(df_final_projections, by = "team") %>%
   group_by(player) %>%
   summarise(
-    `LLM Consensus` = sum(llm_weighted_consensus, na.rm = TRUE),
+    `LLM Consensus` = sum(weighted_average , na.rm = TRUE),
     `Vegas Consensus` = sum(vegas_consensus, na.rm = TRUE),
     `TeamRankings` = sum(tr_skins, na.rm = TRUE),
     `ESPN BPI` = sum(espn_skins, na.rm = TRUE)
@@ -158,7 +156,7 @@ team_projections_table <- df_final_projections %>%
   select(
     Team = team,
     `Pick Type` = skins_pick,
-    `LLM Consensus` = llm_weighted_consensus,
+    `LLM Consensus` = weighted_average ,
     `Vegas Consensus` = vegas_consensus,
     `TeamRankings` = tr_skins,
     `ESPN BPI` = espn_skins
@@ -186,15 +184,11 @@ kable(player_scores, digits = 1, caption = "Total Projected Player Scores") %>%
 
 ## Standings
 
-
-with this:
-
-
 ```{r draft-results, echo=FALSE}
 standings_table <- draft_data %>%
   left_join(df_final_projections %>% 
               select(team, abbr, skins_pick,
-                     `LLM Consensus` = llm_weighted_consensus,
+                     `LLM Consensus` = weighted_average ,
                      `Vegas Consensus` = vegas_consensus,
                      `TeamRankings` = tr_skins,
                      `ESPN BPI` = espn_skins),
