@@ -1,5 +1,5 @@
 ---
-title: "Skins Game"
+title: "Fantasy Draft - Skins Game"
 format: 
   html:
     self-contained: true
@@ -131,7 +131,7 @@ player_scores <- draft_data %>%
   left_join(df_final_projections, by = "team") %>%
   group_by(player) %>%
   summarise(
-    `LLM Consensus` = sum(weighted_average , na.rm = TRUE),
+    `Weighted Average` = sum(weighted_average , na.rm = TRUE),
     `Vegas Consensus` = sum(vegas_consensus, na.rm = TRUE),
     `TeamRankings` = sum(tr_skins, na.rm = TRUE),
     `ESPN BPI` = sum(espn_skins, na.rm = TRUE)
@@ -156,12 +156,12 @@ team_projections_table <- df_final_projections %>%
   select(
     Team = team,
     `Pick Type` = skins_pick,
-    `LLM Consensus` = weighted_average ,
+    `Weighted Average` = weighted_average ,
     `Vegas Consensus` = vegas_consensus,
     `TeamRankings` = tr_skins,
     `ESPN BPI` = espn_skins
   ) %>%
-  arrange(desc(`LLM Consensus`))
+  arrange(desc(`Weighted Average`))
 
 kable(team_projections_table, digits = 1, caption = "Live Skins Projections by Team") %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, position = "center") %>%
@@ -188,18 +188,18 @@ kable(player_scores, digits = 1, caption = "Total Projected Player Scores") %>%
 standings_table <- draft_data %>%
   left_join(df_final_projections %>% 
               select(team, abbr, skins_pick,
-                     `LLM Consensus` = weighted_average ,
+                     `Weighted Average` = weighted_average ,
                      `Vegas Consensus` = vegas_consensus,
                      `TeamRankings` = tr_skins,
                      `ESPN BPI` = espn_skins),
             by = "team") %>%
   arrange(match(player, c("Eristeo", "Matt", "Brian", "Adam", "Thomas", "Kenneth")),
-          desc(`LLM Consensus`))
+          desc(`Weighted Average`))
 
 kable(
   standings_table,
   col.names = c("Team", "Player", "Abbr", "Skins Pick", 
-                "LLM Consensus", "Vegas Consensus", "TeamRankings", "ESPN BPI"),
+                "Weighted Average", "Vegas Consensus", "TeamRankings", "ESPN BPI"),
   digits = 1,
   align = c("l", "l", "c", "c", "r", "r", "r", "r"),
   caption = "Standings by Team with All Projections"
