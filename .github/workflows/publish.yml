@@ -23,14 +23,11 @@ jobs:
       - name: Set up Quarto
         uses: quarto-dev/quarto-actions/setup@v2
 
-      # --- THIS IS THE NEW FIX ---
-      # Install the system libraries that R packages need
+      # --- THIS STEP IS NOW MORE COMPLETE ---
       - name: Install Linux System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libcurl4-openssl-dev libfontconfig1-dev
-
-      # --- END OF FIX ---
+          sudo apt-get install -y libcurl4-openssl-dev libfontconfig1-dev libfreetype6-dev libharfbuzz-dev libfribidi-dev
 
       - name: Install R Dependencies
         run: |
@@ -40,8 +37,6 @@ jobs:
       - name: Render Quarto Document
         run: |
           quarto render index.qmd
-        # Now, your 'pacman::p_load' in the .qmd will just LOAD the packages,
-        # not install them, so it will be very fast.
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
