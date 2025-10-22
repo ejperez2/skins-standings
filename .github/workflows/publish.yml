@@ -1,9 +1,12 @@
 name: Render and Publish NBA Stats
 
 on:
-  workflow_dispatch:
-  schedule:
-  # Runs at 02:00, 05:00, 12:00, 15:00 UTC 
+  push:
+    branches:
+      - main # Triggers on push to the 'main' branch
+  workflow_dispatch: # Allows manual trigger via button
+  schedule:         # Triggers on a schedule
+    # Runs at 02:00, 05:00, 12:00, 15:00 UTC 
     # (9pm, Midnight, 7am, 10am Central Time)
     - cron: '0 2,5,12,15 * * *'
 jobs:
