@@ -1,115 +1,50 @@
-name: Render and Deploy Quarto Documents
+name: Render and Publish NBA Stats
 
 on:
-  schedule:
-    # Runs at 6 AM, 12 PM, 6 PM, and 12 AM Central Time (UTC-6)
-    # Adjusted for UTC: 12 PM, 6 PM, 12 AM, 6 AM UTC
-    - cron: '0 0,6,12,18 * * *'
-  workflow_dispatch: # Allows manual triggering
   push:
     branches:
-      - main
-    paths:
-      - '**.qmd'
-      - '.github/workflows/render-quarto.yml'
-
+      - main # Triggers on push to the 'main' branch
+  workflow_dispatch: # Allows manual trigger via button
+  schedule:         # Triggers on a schedule
+    # Runs at 02:00, 05:00, 12:00, 15:00 UTC 
+    # (9pm, Midnight, 7am, 10am Central Time)
+    - cron: '0 2,5,12,15 * * *'
 jobs:
-  render-and-deploy:
+  publish:
     runs-on: ubuntu-latest
-    
     permissions:
-      contents: write
-      pages: write
-      id-token: write
-    
+      contents: write # Allows it to push to the gh-pages branch
+
     steps:
-      - name: Checkout repository
+      - name: Check out repo
         uses: actions/checkout@v4
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libcurl4-openssl-dev \
-            libssl-dev \
-            libxml2-dev \
-            libfontconfig1-dev \
-            libharfbuzz-dev \
-            libfribidi-dev \
-            libfreetype6-dev \
-            libpng-dev \
-            libtiff5-dev \
-            libjpeg-dev \
-            tzdata
-
-      - name: Set up Quarto
-        uses: quarto-dev/quarto-actions/setup@v2
-        with:
-          version: 1.4.553
 
       - name: Set up R
         uses: r-lib/actions/setup-r@v2
         with:
-          r-version: '4.3.2'
-          use-public-rspm: true
+          r-version: 'latest'
 
-      - name: Setup R package cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.R_LIBS_USER }}
-          key: ${{ runner.os }}-r-4.3.2-${{ hashFiles('**/DESCRIPTION') }}
-          restore-keys: |
-            ${{ runner.os }}-r-4.3.2-
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
 
-      - name: Install R packages
+      # --- THIS STEP IS NOW MORE COMPLETE ---
+      - name: Install Linux System Dependencies
         run: |
-          install.packages(c("remotes", "rmarkdown", "knitr"))
-          remotes::install_cran(c(
-            "httr",
-            "jsonlite", 
-            "rvest",
-            "dplyr",
-            "tidyr",
-            "kableExtra",
-            "tibble",
-            "hoopR",
-            "lubridate",
-            "stringr"
-          ), upgrade = "never")
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev libfontconfig1-dev libfreetype6-dev libharfbuzz-dev libfribidi-dev
+
+      - name: Install R Dependencies
+        run: |
+          install.packages(c('rmarkdown', 'knitr', 'pacman', 'httr', 'jsonlite', 'rvest', 'dplyr', 'tidyr', 'kableExtra', 'tibble'))
         shell: Rscript {0}
 
-      - name: Configure timezone
+      - name: Render Quarto Document
         run: |
-          sudo ln -sf /usr/share/zoneinfo/America/Chicago /etc/localtime
-          echo "America/Chicago" | sudo tee /etc/timezone
-          sudo dpkg-reconfigure -f noninteractive tzdata
+          quarto render index.qmd
 
-      - name: Render Quarto documents
-        run: |
-          quarto render skins_season_long.qmd
-          quarto render skins_today.qmd
-        env:
-          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create or update output directory
-        run: |
-          mkdir -p docs
-          cp skins_season_long.html docs/index.html
-          cp skins_today.html docs/skins_today.html
-          
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs
-          publish_branch: gh-pages
-          force_orphan: true
-
-      - name: Upload render logs (on failure)
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: render-logs
-          path: |
-            **/*.log
-            **/*.Rout
+          publish_dir: .
+          # This finds 'index.html' and pushes it.
