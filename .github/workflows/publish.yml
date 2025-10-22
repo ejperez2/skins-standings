@@ -3,8 +3,9 @@ name: Render and Publish NBA Stats
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 10 * * *' # 10:00 AM UTC
-
+  # Runs at 02:00, 05:00, 12:00, 15:00 UTC 
+    # (9pm, Midnight, 7am, 10am Central Time)
+    - cron: '0 2,5,12,15 * * *'
 jobs:
   publish:
     runs-on: ubuntu-latest
