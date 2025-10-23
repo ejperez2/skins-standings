@@ -23,87 +23,92 @@ cat(sprintf(
 
 # --- Step 1: Install and Load All Necessary Libraries ---
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(httr, jsonlite, rvest, dplyr, tidyr, knitr, kableExtra, tibble, hoopR)
+pacman::p_load(httr, jsonlite, rvest, dplyr, tidyr, knitr, kableExtra, tibble, stringr)
 
 # --- Step 2: Scrape and Process All Data Sources ---
 
-# A: Get current NBA standings using hoopR with better error handling for CI/CD
+# A: Get current NBA standings using ESPN HTML scraping
 nba_standings <- tryCatch({
-  # Attempt to use hoopR's standings function
-  standings_raw <- hoopR::nba_leaguestandingsv3()
+  espn_url <- "https://www.espn.com/nba/standings"
+  espn_page <- read_html(espn_url)
+  all_tables <- espn_page %>% html_table(fill = TRUE)
   
-  # The function returns a list, and the first element contains the standings data
-  standings_raw[[1]] %>%
-    as_tibble() %>%
-    mutate(
-      team = paste(TeamCity, TeamName),
-      team = case_when(
-        team == "LA Clippers" ~ "Los Angeles Clippers",
-        team == "LA Lakers" ~ "Los Angeles Lakers",
-        TRUE ~ team
-      ),
-      actual_wins = as.numeric(WINS),
-      actual_losses = as.numeric(LOSSES)
-    ) %>%
-    select(team, actual_wins, actual_losses)
-}, error = function(e) {
-  # Fallback: Call the API directly if hoopR function fails
-  message("hoopR function failed, using direct API call")
-  
-  tryCatch({
-    resp <- GET(
-      "https://stats.nba.com/stats/leaguestandingsv3",
-      query = list(
-        LeagueID = "00",
-        Season = "2024-25",
-        SeasonType = "Regular Season"
-      ),
-      add_headers(
-        `User-Agent` = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        `Referer` = "https://www.nba.com/",
-        `Accept` = "application/json",
-        `x-nba-stats-origin` = "stats",
-        `x-nba-stats-token` = "true"
-      ),
-      timeout(30)
+  # ESPN has 4 tables: 1=East teams, 2=East stats, 3=West teams, 4=West stats
+  if(length(all_tables) >= 4) {
+    # East Conference
+    east_standings <- tibble(
+      team_raw = all_tables[[1]][[1]],
+      W = all_tables[[2]]$W,
+      L = all_tables[[2]]$L
     )
     
-    content_text <- content(resp, as = "text", encoding = "UTF-8")
-    json_data <- fromJSON(content_text, flatten = TRUE)
+    # West Conference
+    west_standings <- tibble(
+      team_raw = all_tables[[3]][[1]],
+      W = all_tables[[4]]$W,
+      L = all_tables[[4]]$L
+    )
     
-    # Parse the nested structure
-    standings_df <- as.data.frame(json_data$resultSets$rowSet[[1]], stringsAsFactors = FALSE)
-    colnames(standings_df) <- json_data$resultSets$headers[[1]]
-    
-    standings_df %>%
-      as_tibble() %>%
+    # Combine and clean
+    bind_rows(east_standings, west_standings) %>%
       mutate(
-        team = paste(TeamCity, TeamName),
+        team_clean = str_replace(team_raw, "^[A-Z]{2,4}(?=[A-Z][a-z])", ""),
+        team_clean = trimws(team_clean),
         team = case_when(
-          team == "LA Clippers" ~ "Los Angeles Clippers",
-          team == "LA Lakers" ~ "Los Angeles Lakers",
-          TRUE ~ team
+          grepl("LACLA Clippers", team_raw) ~ "Los Angeles Clippers",
+          grepl("Clippers", team_clean) ~ "Los Angeles Clippers",
+          grepl("Lakers", team_clean) ~ "Los Angeles Lakers",
+          grepl("Atlanta", team_clean) ~ "Atlanta Hawks",
+          grepl("Boston", team_clean) ~ "Boston Celtics",
+          grepl("Brooklyn", team_clean) ~ "Brooklyn Nets",
+          grepl("Charlotte", team_clean) ~ "Charlotte Hornets",
+          grepl("Chicago", team_clean) ~ "Chicago Bulls",
+          grepl("Cleveland", team_clean) ~ "Cleveland Cavaliers",
+          grepl("Dallas", team_clean) ~ "Dallas Mavericks",
+          grepl("Denver", team_clean) ~ "Denver Nuggets",
+          grepl("Detroit", team_clean) ~ "Detroit Pistons",
+          grepl("Golden State", team_clean) ~ "Golden State Warriors",
+          grepl("Houston", team_clean) ~ "Houston Rockets",
+          grepl("Indiana", team_clean) ~ "Indiana Pacers",
+          grepl("Memphis", team_clean) ~ "Memphis Grizzlies",
+          grepl("Miami", team_clean) ~ "Miami Heat",
+          grepl("Milwaukee", team_clean) ~ "Milwaukee Bucks",
+          grepl("Minnesota", team_clean) ~ "Minnesota Timberwolves",
+          grepl("New Orleans", team_clean) ~ "New Orleans Pelicans",
+          grepl("New York", team_clean) ~ "New York Knicks",
+          grepl("Oklahoma City", team_clean) ~ "Oklahoma City Thunder",
+          grepl("Orlando", team_clean) ~ "Orlando Magic",
+          grepl("Philadelphia", team_clean) ~ "Philadelphia 76ers",
+          grepl("Phoenix", team_clean) ~ "Phoenix Suns",
+          grepl("Portland", team_clean) ~ "Portland Trail Blazers",
+          grepl("Sacramento", team_clean) ~ "Sacramento Kings",
+          grepl("San Antonio", team_clean) ~ "San Antonio Spurs",
+          grepl("Toronto", team_clean) ~ "Toronto Raptors",
+          grepl("Utah", team_clean) ~ "Utah Jazz",
+          grepl("Washington", team_clean) ~ "Washington Wizards",
+          TRUE ~ team_clean
         ),
-        actual_wins = as.numeric(WINS),
-        actual_losses = as.numeric(LOSSES)
+        actual_wins = as.numeric(W),
+        actual_losses = as.numeric(L)
       ) %>%
       select(team, actual_wins, actual_losses)
-  }, error = function(e2) {
-    # Final fallback: return 0-0 for all teams if everything fails
-    message("All attempts failed, using 0-0 records")
-    tibble(
-      team = c("Atlanta Hawks", "Boston Celtics", "Brooklyn Nets", "Charlotte Hornets",
-               "Chicago Bulls", "Cleveland Cavaliers", "Dallas Mavericks", "Denver Nuggets",
-               "Detroit Pistons", "Golden State Warriors", "Houston Rockets", "Indiana Pacers",
-               "Los Angeles Clippers", "Los Angeles Lakers", "Memphis Grizzlies", "Miami Heat",
-               "Milwaukee Bucks", "Minnesota Timberwolves", "New Orleans Pelicans", "New York Knicks",
-               "Oklahoma City Thunder", "Orlando Magic", "Philadelphia 76ers", "Phoenix Suns",
-               "Portland Trail Blazers", "Sacramento Kings", "San Antonio Spurs", "Toronto Raptors",
-               "Utah Jazz", "Washington Wizards"),
-      actual_wins = 0,
-      actual_losses = 0
-    )
-  })
+  } else {
+    stop("Not enough tables found on ESPN standings page")
+  }
+}, error = function(e) {
+  message("ESPN scraping failed: ", e$message)
+  tibble(
+    team = c("Atlanta Hawks", "Boston Celtics", "Brooklyn Nets", "Charlotte Hornets",
+             "Chicago Bulls", "Cleveland Cavaliers", "Dallas Mavericks", "Denver Nuggets",
+             "Detroit Pistons", "Golden State Warriors", "Houston Rockets", "Indiana Pacers",
+             "Los Angeles Clippers", "Los Angeles Lakers", "Memphis Grizzlies", "Miami Heat",
+             "Milwaukee Bucks", "Minnesota Timberwolves", "New Orleans Pelicans", "New York Knicks",
+             "Oklahoma City Thunder", "Orlando Magic", "Philadelphia 76ers", "Phoenix Suns",
+             "Portland Trail Blazers", "Sacramento Kings", "San Antonio Spurs", "Toronto Raptors",
+             "Utah Jazz", "Washington Wizards"),
+    actual_wins = 0,
+    actual_losses = 0
+  )
 })
 
 # B: Scrape Rotowire (Vegas Odds)
@@ -167,32 +172,92 @@ espn_cleaned <- espn_proj %>%
          espn_skins = if_else(espn_proj_w > 41, espn_proj_w, espn_proj_l))
 
 # --- Step 3: Combine All Projections ---
-tr_crosswalk <- tr_cleaned %>%
-  mutate(team = case_when(
-    team_tr == "Okla City" ~ "Oklahoma City Thunder", team_tr == "Boston" ~ "Boston Celtics",
-    team_tr == "Cleveland" ~ "Cleveland Cavaliers", team_tr == "Denver" ~ "Denver Nuggets",
-    team_tr == "Houston" ~ "Houston Rockets", team_tr == "New York" ~ "New York Knicks",
-    team_tr == "Orlando" ~ "Orlando Magic", team_tr == "Minnesota" ~ "Minnesota Timberwolves",
-    team_tr == "LA Clippers" ~ "Los Angeles Clippers", team_tr == "LA Lakers" ~ "Los Angeles Lakers",
-    team_tr == "Atlanta" ~ "Atlanta Hawks", team_tr == "Golden State" ~ "Golden State Warriors",
-    team_tr == "Detroit" ~ "Detroit Pistons", team_tr == "Milwaukee" ~ "Milwaukee Bucks",
-    team_tr == "San Antonio" ~ "San Antonio Spurs", team_tr == "Philadelphia" ~ "Philadelphia 76ers",
-    team_tr == "Memphis" ~ "Memphis Grizzlies", team_tr == "Dallas" ~ "Dallas Mavericks",
-    team_tr == "Toronto" ~ "Toronto Raptors", team_tr == "Indiana" ~ "Indiana Pacers",
-    team_tr == "Miami" ~ "Miami Heat", team_tr == "Sacramento" ~ "Sacramento Kings",
-    team_tr == "Portland" ~ "Portland Trail Blazers", team_tr == "Phoenix" ~ "Phoenix Suns",
-    team_tr == "Chicago" ~ "Chicago Bulls", team_tr == "New Orleans" ~ "New Orleans Pelicans",
-    team_tr == "Charlotte" ~ "Charlotte Hornets", team_tr == "Washington" ~ "Washington Wizards",
-    team_tr == "Brooklyn" ~ "Brooklyn Nets", team_tr == "Utah" ~ "Utah Jazz",
-    TRUE ~ team_tr
-  )) %>% select(team, tr_skins)
 
-df_final_projections <- df_skins %>%
-  left_join(tr_crosswalk, by = "team") %>%
+# Create a master team name crosswalk function to standardize ALL sources
+standardize_team_names <- function(df, team_col) {
+  df %>%
+    mutate(
+      !!sym(team_col) := case_when(
+        grepl("Okla City|Oklahoma City", !!sym(team_col), ignore.case = TRUE) ~ "Oklahoma City Thunder",
+        grepl("Boston", !!sym(team_col), ignore.case = TRUE) ~ "Boston Celtics",
+        grepl("Cleveland|Cavaliers", !!sym(team_col), ignore.case = TRUE) ~ "Cleveland Cavaliers",
+        grepl("Denver|Nuggets", !!sym(team_col), ignore.case = TRUE) ~ "Denver Nuggets",
+        grepl("Houston|Rockets", !!sym(team_col), ignore.case = TRUE) ~ "Houston Rockets",
+        grepl("New York|Knicks", !!sym(team_col), ignore.case = TRUE) ~ "New York Knicks",
+        grepl("Orlando|Magic", !!sym(team_col), ignore.case = TRUE) ~ "Orlando Magic",
+        grepl("Minnesota|Timberwolves", !!sym(team_col), ignore.case = TRUE) ~ "Minnesota Timberwolves",
+        grepl("LA Clippers|Clippers", !!sym(team_col), ignore.case = TRUE) ~ "Los Angeles Clippers",
+        grepl("LA Lakers|Lakers", !!sym(team_col), ignore.case = TRUE) ~ "Los Angeles Lakers",
+        grepl("Atlanta|Hawks", !!sym(team_col), ignore.case = TRUE) ~ "Atlanta Hawks",
+        grepl("Golden State|Warriors", !!sym(team_col), ignore.case = TRUE) ~ "Golden State Warriors",
+        grepl("Detroit|Pistons", !!sym(team_col), ignore.case = TRUE) ~ "Detroit Pistons",
+        grepl("Milwaukee|Bucks", !!sym(team_col), ignore.case = TRUE) ~ "Milwaukee Bucks",
+        grepl("San Antonio|Spurs", !!sym(team_col), ignore.case = TRUE) ~ "San Antonio Spurs",
+        grepl("Philadelphia|76ers|Sixers", !!sym(team_col), ignore.case = TRUE) ~ "Philadelphia 76ers",
+        grepl("Memphis|Grizzlies", !!sym(team_col), ignore.case = TRUE) ~ "Memphis Grizzlies",
+        grepl("Dallas|Mavericks", !!sym(team_col), ignore.case = TRUE) ~ "Dallas Mavericks",
+        grepl("Toronto|Raptors", !!sym(team_col), ignore.case = TRUE) ~ "Toronto Raptors",
+        grepl("Indiana|Pacers", !!sym(team_col), ignore.case = TRUE) ~ "Indiana Pacers",
+        grepl("Miami|Heat", !!sym(team_col), ignore.case = TRUE) ~ "Miami Heat",
+        grepl("Sacramento|Kings", !!sym(team_col), ignore.case = TRUE) ~ "Sacramento Kings",
+        grepl("Portland|Trail Blazers|Blazers", !!sym(team_col), ignore.case = TRUE) ~ "Portland Trail Blazers",
+        grepl("Phoenix|Suns", !!sym(team_col), ignore.case = TRUE) ~ "Phoenix Suns",
+        grepl("Chicago|Bulls", !!sym(team_col), ignore.case = TRUE) ~ "Chicago Bulls",
+        grepl("New Orleans|Pelicans", !!sym(team_col), ignore.case = TRUE) ~ "New Orleans Pelicans",
+        grepl("Charlotte|Hornets", !!sym(team_col), ignore.case = TRUE) ~ "Charlotte Hornets",
+        grepl("Washington|Wizards", !!sym(team_col), ignore.case = TRUE) ~ "Washington Wizards",
+        grepl("Brooklyn|Nets", !!sym(team_col), ignore.case = TRUE) ~ "Brooklyn Nets",
+        grepl("Utah|Jazz", !!sym(team_col), ignore.case = TRUE) ~ "Utah Jazz",
+        TRUE ~ !!sym(team_col)
+      )
+    )
+}
+
+# Apply standardization to all data sources
+df_skins <- df_skins %>% standardize_team_names("team")
+nba_standings <- nba_standings %>% standardize_team_names("team")
+
+# TeamRankings crosswalk
+tr_cleaned <- tr_cleaned %>%
+  rename(team = team_tr) %>%
+  standardize_team_names("team") %>%
+  select(team, tr_skins)
+
+# ESPN BPI already has team column, just standardize it
+espn_cleaned <- espn_cleaned %>% standardize_team_names("team")
+
+# Now combine with consistent team names
+# Start with a complete list of all 30 teams to ensure no teams are missing
+all_teams <- tibble(
+  team = c("Atlanta Hawks", "Boston Celtics", "Brooklyn Nets", "Charlotte Hornets",
+           "Chicago Bulls", "Cleveland Cavaliers", "Dallas Mavericks", "Denver Nuggets",
+           "Detroit Pistons", "Golden State Warriors", "Houston Rockets", "Indiana Pacers",
+           "Los Angeles Clippers", "Los Angeles Lakers", "Memphis Grizzlies", "Miami Heat",
+           "Milwaukee Bucks", "Minnesota Timberwolves", "New Orleans Pelicans", "New York Knicks",
+           "Oklahoma City Thunder", "Orlando Magic", "Philadelphia 76ers", "Phoenix Suns",
+           "Portland Trail Blazers", "Sacramento Kings", "San Antonio Spurs", "Toronto Raptors",
+           "Utah Jazz", "Washington Wizards")
+)
+
+# Join all data sources to the complete team list
+df_final_projections <- all_teams %>%
+  left_join(df_skins, by = "team") %>%
+  left_join(tr_cleaned, by = "team") %>%
   left_join(espn_cleaned %>% select(team, espn_skins), by = "team") %>%
   left_join(nba_standings, by = "team") %>%
   mutate(
-    weighted_average = (vegas_consensus * 0.31) + (tr_skins * 0.10) + (espn_skins * 0.59),
+    # For teams without Vegas data, use average of other projections for skins_pick
+    skins_pick = if_else(
+      is.na(skins_pick),
+      if_else(coalesce(tr_skins, espn_skins, 41) > 41, "W", "L"),
+      skins_pick
+    ),
+    # Calculate weighted average only where Vegas data exists
+    weighted_average = if_else(
+      !is.na(vegas_consensus),
+      (vegas_consensus * 0.31) + (tr_skins * 0.10) + (espn_skins * 0.59),
+      (tr_skins * 0.25) + (espn_skins * 0.75)  # Fallback formula without Vegas
+    ),
     # Calculate actual skins based on pick type
     actual_skins = if_else(skins_pick == "W", actual_wins, actual_losses)
   )
