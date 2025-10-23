@@ -27,7 +27,42 @@ pacman::p_load(httr, jsonlite, rvest, dplyr, tidyr, knitr, kableExtra, tibble, s
 
 # --- Step 2: Scrape and Process All Data Sources ---
 
-# A: Get current NBA standings using ESPN HTML scraping
+# A: Create Draft Data Frame FIRST (needed for W/L picks)
+draft_data <- tribble(
+  ~team, ~player, ~abbr, ~skins_pick, ~draft_pick,
+  "Utah Jazz", "Eristeo", "UTA", "L", 1,
+  "Oklahoma City Thunder", "Matt", "OKC", "W", 2,
+  "Washington Wizards", "Brian", "WAS", "L", 4,
+  "Brooklyn Nets", "Adam", "BKN", "L", 3,
+  "Cleveland Cavaliers", "Thomas", "CLE", "W", 5,
+  "Charlotte Hornets", "Brian", "CHA", "L", 9,
+  "Denver Nuggets", "Thomas", "DEN", "W", 8,
+  "New York Knicks", "Adam", "NYK", "W", 10,
+  "Houston Rockets", "Kenneth", "HOU", "W", 6,
+  "Phoenix Suns", "Eristeo", "PHX", "L", 12,
+  "New Orleans Pelicans", "Matt", "NOP", "L", 11,
+  "Orlando Magic", "Kenneth", "ORL", "W", 7,
+  "Chicago Bulls", "Thomas", "CHI", "L", 17,
+  "Los Angeles Clippers", "Eristeo", "LAC", "W", 13,
+  "Minnesota Timberwolves", "Matt", "MIN", "W", 14,
+  "Portland Trail Blazers", "Kenneth", "POR", "L", 18,
+  "Atlanta Hawks", "Adam", "ATL", "W", 15,
+  "Los Angeles Lakers", "Adam", "LAL", "W", 22,
+  "Golden State Warriors", "Kenneth", "GSW", "W", 19,
+  "Sacramento Kings", "Thomas", "SAC", "L", 20,
+  "Detroit Pistons", "Brian", "DET", "W", 21,
+  "Indiana Pacers", "Eristeo", "IND", "L", 24,
+  "Miami Heat", "Matt", "MIA", "L", 23,
+  "Philadelphia 76ers", "Matt", "PHI", "W", 26,
+  "Toronto Raptors", "Brian", "TOR", "L", 28,
+  "Milwaukee Bucks", "Brian", "MIL", "W", 16,
+  "San Antonio Spurs", "Eristeo", "SAS", "W", 25,
+  "Memphis Grizzlies", "Kenneth", "MEM", "W", 30,
+  "Boston Celtics", "Adam", "BOS", "W", 27,
+  "Dallas Mavericks", "Thomas", "DAL", "W", 29
+)
+
+# B: Get current NBA standings using ESPN HTML scraping
 nba_standings <- tryCatch({
   espn_url <- "https://www.espn.com/nba/standings"
   espn_page <- read_html(espn_url)
@@ -119,7 +154,7 @@ df_vegas <- fromJSON(raw_json, flatten = TRUE) %>% as_tibble()
 
 df_skins <- df_vegas %>%
   select(
-    team = name, abbr,
+    team = name,
     mgm_total = mgm_line, mgm_under = mgm_odds_under, mgm_over = mgm_odds,
     draftkings_total = draftkings_line, draftkings_under = draftkings_odds_under, draftkings_over = draftkings_odds,
     caesars_total = caesars_line, caesars_under = caesars_odds_under, caesars_over = caesars_odds,
@@ -144,11 +179,7 @@ df_skins <- df_vegas %>%
   ) %>%
   ungroup() %>%
   mutate(
-    temp_vegas_consensus = if_else(composite_projection >= 41, composite_projection, 82 - composite_projection),
-    temp_skins_pick = if_else(composite_projection >= 41, "W", "L"),
-    # Override for Memphis Grizzlies
-    vegas_consensus = if_else(team == "Memphis Grizzlies", composite_projection, temp_vegas_consensus),
-    skins_pick = if_else(team == "Memphis Grizzlies", "W", temp_skins_pick)
+    vegas_consensus = if_else(composite_projection >= 41, composite_projection, 82 - composite_projection)
   )
 
 # C: Scrape TeamRankings
@@ -240,44 +271,25 @@ all_teams <- tibble(
 )
 
 # Join all data sources to the complete team list
+# First get skins_pick and abbr from draft_data
 df_final_projections <- all_teams %>%
+  left_join(draft_data %>% select(team, abbr, skins_pick), by = "team") %>%
   left_join(df_skins, by = "team") %>%
   left_join(tr_cleaned, by = "team") %>%
   left_join(espn_cleaned %>% select(team, espn_skins), by = "team") %>%
   left_join(nba_standings, by = "team") %>%
   mutate(
-    # For teams without Vegas data, use average of other projections for skins_pick
-    skins_pick = if_else(
-      is.na(skins_pick),
-      if_else(coalesce(tr_skins, espn_skins, 41) > 41, "W", "L"),
-      skins_pick
-    ),
     # Calculate weighted average only where Vegas data exists
     weighted_average = if_else(
       !is.na(vegas_consensus),
       (vegas_consensus * 0.31) + (tr_skins * 0.10) + (espn_skins * 0.59),
       (tr_skins * 0.25) + (espn_skins * 0.75)  # Fallback formula without Vegas
     ),
-    # Calculate actual skins based on pick type
+    # Calculate actual skins based on pick type from draft
     actual_skins = if_else(skins_pick == "W", actual_wins, actual_losses)
   )
 
-# --- Step 4: Create Draft Data Frame ---
-draft_data <- tribble(
-  ~team, ~player,
-  "Utah Jazz", "Eristeo", "Oklahoma City Thunder", "Matt", "Washington Wizards", "Brian",
-  "Brooklyn Nets", "Adam", "Cleveland Cavaliers", "Thomas", "Charlotte Hornets", "Brian",
-  "Denver Nuggets", "Thomas", "New York Knicks", "Adam", "Houston Rockets", "Kenneth",
-  "Phoenix Suns", "Eristeo", "New Orleans Pelicans", "Matt", "Orlando Magic", "Kenneth",
-  "Chicago Bulls", "Thomas", "Los Angeles Clippers", "Eristeo", "Minnesota Timberwolves", "Matt",
-  "Portland Trail Blazers", "Kenneth", "Atlanta Hawks", "Adam", "Los Angeles Lakers", "Adam",
-  "Golden State Warriors", "Kenneth", "Sacramento Kings", "Thomas", "Detroit Pistons", "Brian",
-  "Indiana Pacers", "Eristeo", "Miami Heat", "Matt", "Philadelphia 76ers", "Matt",
-  "Toronto Raptors", "Brian", "Milwaukee Bucks", "Brian", "San Antonio Spurs", "Eristeo",
-  "Memphis Grizzlies", "Kenneth", "Boston Celtics", "Adam", "Dallas Mavericks", "Thomas"
-)
-
-# --- Step 5: Join Projections with Draft Data to Score Players ---
+# --- Step 5: Calculate Player Scores ---
 player_scores <- draft_data %>%
   left_join(df_final_projections, by = "team") %>%
   group_by(player) %>%
@@ -291,16 +303,86 @@ player_scores <- draft_data %>%
   mutate(Projection_Average = rowMeans(select(., `Weighted Average`, `Vegas Consensus`, `TeamRankings`, `ESPN BPI`))) %>%
   arrange(desc(`Actual Skins`))
 
-# --- Step 6: Define the data for the draft results table ---
+# --- Step 6: Prepare Standings Table Data ---
 draft_table_data <- df_final_projections %>% 
   select(team, abbr, skins_pick) %>%
   right_join(draft_data, by="team") %>%
   arrange(match(player, c("Eristeo", "Matt", "Brian", "Adam", "Thomas", "Kenneth")))
 ```
+## Skins Standings (Based on Live Projections and Actual Standings)
 
-## Team Projections (Live Data)
 
-This table shows the freshly scraped and calculated projection scores for every team, along with actual current standings.
+```{r player-scores, echo=FALSE}
+kable(player_scores, digits = 1, caption = "Total Player Scores: Actual and Projected") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, position = "center") %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#444444") %>%
+  column_spec(1, bold = TRUE) %>%
+  column_spec(2, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
+  column_spec(7, bold = TRUE, background = "#DFF0D8")  # Highlight projection average
+```
+
+
+## ## Standings and Projections by player
+
+```{r draft-results, echo=FALSE}
+# 1. CORRECTED standings_table DEFINITION
+# We use select() at the end to explicitly choose and rename
+# the 9 columns we want to display. This solves the mismatch.
+standings_table <- draft_data %>%
+  left_join(
+    df_final_projections %>% 
+      select(
+        team, # The join key
+        `Actual Skins` = actual_skins,
+        `Weighted Average` = weighted_average,
+        `Vegas Consensus` = vegas_consensus,
+        `TeamRankings` = tr_skins,
+        `ESPN BPI` = espn_skins
+      ),
+    by = "team"
+  ) %>%
+  # This select() call is the key fix:
+  select(
+    Team = team,
+    Player = player,
+    Abbr = abbr,
+    `Skins Pick` = skins_pick,
+    `Actual Skins`,
+    `Weighted Average`,
+    `Vegas Consensus`,
+    `TeamRankings`,
+    `ESPN BPI`
+  ) %>%
+  arrange(
+    match(Player, c("Eristeo", "Matt", "Brian", "Adam", "Thomas", "Kenneth")),
+    desc(`Actual Skins`)
+  )
+
+# 2. CORRECTED kable() CALL
+# The 'col.names' argument is removed because the data frame
+# now has the correct column names from the select() above.
+kable(
+  standings_table,
+  # col.names = ... <--- THIS LINE IS REMOVED
+  digits = 1,
+  align = c("l", "l", "c", "c", "r", "r", "r", "r", "r"),
+  caption = "Standings by Team with Actual Results and All Projections"
+) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"),
+    full_width = FALSE,
+    position = "center"
+  ) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#0073C2") %>%
+  column_spec(5, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
+  column_spec(6, bold =TRUE, background = "#DFF0D8") %>%  # Highlight weighted average
+  pack_rows(index = table(factor(standings_table$Player, # Note: Must use 'Player' (capital P)
+                                 levels = c("Eristeo", "Matt", "Brian", "Adam", "Thomas", "Kenneth"))))
+
+```
+
+## Standings and Projections by Team
+
 
 ```{r team-projections, echo=FALSE}
 # Select and format the final projections for display
@@ -322,53 +404,4 @@ kable(team_projections_table, digits = 1, caption = "Live Skins Projections by T
   column_spec(1, bold = TRUE) %>%
   column_spec(3, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
   column_spec(4, bold = TRUE, background = "#DFF0D8")  # Highlight weighted average
-```
-
-## Player Scores (Based on Live Projections and Actual Standings)
-
-This table shows both actual current skins totals and projected skins for each player.
-
-```{r player-scores, echo=FALSE}
-kable(player_scores, digits = 1, caption = "Total Player Scores: Actual and Projected") %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, position = "center") %>%
-  row_spec(0, bold = TRUE, color = "white", background = "#444444") %>%
-  column_spec(1, bold = TRUE) %>%
-  column_spec(2, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
-  column_spec(7, bold = TRUE, background = "#DFF0D8")  # Highlight projection average
-```
-
-## Standings
-
-```{r draft-results, echo=FALSE}
-standings_table <- draft_data %>%
-  left_join(df_final_projections %>% 
-              select(team, abbr, skins_pick,
-                     `Actual Skins` = actual_skins,
-                     `Weighted Average` = weighted_average,
-                     `Vegas Consensus` = vegas_consensus,
-                     `TeamRankings` = tr_skins,
-                     `ESPN BPI` = espn_skins),
-            by = "team") %>%
-  arrange(match(player, c("Eristeo", "Matt", "Brian", "Adam", "Thomas", "Kenneth")),
-          desc(`Actual Skins`))
-
-kable(
-  standings_table,
-  col.names = c("Team", "Player", "Abbr", "Skins Pick", 
-                "Actual Skins", "Weighted Average", "Vegas Consensus", "TeamRankings", "ESPN BPI"),
-  digits = 1,
-  align = c("l", "l", "c", "c", "r", "r", "r", "r", "r"),
-  caption = "Standings by Team with Actual Results and All Projections"
-) %>%
-  kable_styling(
-    bootstrap_options = c("striped", "hover", "condensed"),
-    full_width = FALSE,
-    position = "center"
-  ) %>%
-  row_spec(0, bold = TRUE, color = "white", background = "#0073C2") %>%
-  column_spec(5, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
-  column_spec(6, bold = TRUE, background = "#DFF0D8") %>%  # Highlight weighted average
-  pack_rows(index = table(factor(standings_table$player,
-                                 levels = c("Eristeo", "Matt", "Brian", "Adam", "Thomas", "Kenneth"))))
-
 ```
