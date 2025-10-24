@@ -23,8 +23,8 @@ cat(sprintf(
 
 # --- Step 1: Install and Load All Necessary Libraries ---
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(httr, jsonlite, rvest, dplyr, tidyr, knitr, kableExtra, tibble, stringr)
-
+# ADDED ggplot2 and scales for charting
+pacman::p_load(httr, jsonlite, rvest, dplyr, tidyr, knitr, kableExtra, tibble, stringr, ggplot2, scales)
 # --- Step 2: Scrape and Process All Data Sources ---
 
 # A: Create Draft Data Frame FIRST (needed for W/L picks)
@@ -308,9 +308,90 @@ draft_table_data <- df_final_projections %>%
   select(team, abbr, skins_pick) %>%
   right_join(draft_data, by="team") %>%
   arrange(match(player, c("Eristeo", "Matt", "Brian", "Adam", "Thomas", "Kenneth")))
-```
-## Skins Standings (Based on Live Projections and Actual Standings)
 
+# --- Step 7: Historical Data Tracking ---
+# File to store historical standings
+history_file <- "standings_history.csv"
+
+# Get today's date
+today <- Sys.Date()
+
+# Calculate current standings for each player (including all projections)
+current_standings <- player_scores %>%
+  select(
+    player, 
+    actual_skins = `Actual Skins`,
+    weighted_average = `Weighted Average`,
+    vegas_consensus = `Vegas Consensus`,
+    team_rankings = `TeamRankings`,
+    espn_bpi = `ESPN BPI`,
+    projection_average = Projection_Average  # Corrected column name
+  ) %>%
+  mutate(date = today)
+
+# Load existing history if it exists
+if(file.exists(history_file)) {
+  history <- read.csv(history_file, stringsAsFactors = FALSE) %>%
+    mutate(date = as.Date(date)) %>%
+    # *** FIX 1: CLEAN OLD PROJECTION DATA ***
+    # Set all projection values before today to NA
+    # This makes "today" the first day on projection charts
+    # but preserves the `actual_skins` history.
+    mutate(
+      across(
+        c(weighted_average, vegas_consensus, team_rankings, espn_bpi, projection_average),
+        ~ if_else(date < today, NA_real_, .x)
+      )
+    ) %>%
+    # *** FIX 2: DE-DUPLICATION ***
+    # Keep only the last render for any given day
+    group_by(date, player) %>%
+    slice_tail(n = 1) %>%
+    ungroup() %>%
+    # Remove today's old data, it will be replaced
+    filter(date != today) %>%
+    # Add today's new data
+    bind_rows(current_standings)
+  
+} else {
+  # Create new history file
+  history <- current_standings
+}
+
+# *** FIX 3: ZERO-START ROW ***
+# Add starting point at zero for all players IF it doesn't exist
+min_date <- min(history$date)
+start_date <- min_date - 1
+
+if(!start_date %in% history$date) {
+  # Add day-before-first-game with actual_skins = 0 and projections = NA
+  zero_start <- tibble(
+    player = unique(history$player),
+    actual_skins = 0,       # Correctly set to 0 for the skins chart
+    weighted_average = NA_real_,  # Set to NA so it doesn't plot
+    vegas_consensus = NA_real_,   # Set to NA
+    team_rankings = NA_real_,     # Set to NA
+    espn_bpi = NA_real_,          # Set to NA
+    projection_average = NA_real_, # Set to NA
+    date = start_date
+  )
+  history <- bind_rows(zero_start, history)
+}
+
+# Save updated history (this overwrites the file with the cleaned data)
+write.csv(history, history_file, row.names = FALSE)
+
+
+# *** ADD THIS NEW CODE: ***
+# Create a new, clean data frame for PROJECTION charts
+# This filters out the "zero-start" row AND all old NA'd dates,
+# so the projection charts' x-axis will start on the first day of data.
+projection_history <- history %>%
+  filter(!is.na(weighted_average))
+
+```
+
+## Skins Standings (Based on Live Projections and Actual Standings)
 
 ```{r player-scores, echo=FALSE}
 kable(player_scores, digits = 1, caption = "Total Player Scores: Actual and Projected") %>%
@@ -321,11 +402,10 @@ kable(player_scores, digits = 1, caption = "Total Player Scores: Actual and Proj
   column_spec(7, bold = TRUE, background = "#DFF0D8")  # Highlight projection average
 ```
 
-
-## ## Standings and Projections by player
+## Standings and Projections by player
 
 ```{r draft-results, echo=FALSE}
-# 1. CORRECTED standings_table DEFINITION
+# CORRECTED standings_table DEFINITION
 # We use select() at the end to explicitly choose and rename
 # the 9 columns we want to display. This solves the mismatch.
 standings_table <- draft_data %>%
@@ -358,12 +438,11 @@ standings_table <- draft_data %>%
     desc(`Actual Skins`)
   )
 
-# 2. CORRECTED kable() CALL
+# CORRECTED kable() CALL
 # The 'col.names' argument is removed because the data frame
 # now has the correct column names from the select() above.
 kable(
   standings_table,
-  # col.names = ... <--- THIS LINE IS REMOVED
   digits = 1,
   align = c("l", "l", "c", "c", "r", "r", "r", "r", "r"),
   caption = "Standings by Team with Actual Results and All Projections"
@@ -375,14 +454,12 @@ kable(
   ) %>%
   row_spec(0, bold = TRUE, color = "white", background = "#0073C2") %>%
   column_spec(5, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
-  column_spec(6, bold =TRUE, background = "#DFF0D8") %>%  # Highlight weighted average
-  pack_rows(index = table(factor(standings_table$Player, # Note: Must use 'Player' (capital P)
+  column_spec(6, bold = TRUE, background = "#DFF0D8") %>%  # Highlight weighted average
+  pack_rows(index = table(factor(standings_table$Player,
                                  levels = c("Eristeo", "Matt", "Brian", "Adam", "Thomas", "Kenneth"))))
-
 ```
 
 ## Standings and Projections by Team
-
 
 ```{r team-projections, echo=FALSE}
 # Select and format the final projections for display
@@ -404,4 +481,198 @@ kable(team_projections_table, digits = 1, caption = "Live Skins Projections by T
   column_spec(1, bold = TRUE) %>%
   column_spec(3, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
   column_spec(4, bold = TRUE, background = "#DFF0D8")  # Highlight weighted average
+```
+
+## Skins Over Time
+
+```{r skins-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
+library(ggplot2)
+
+# Colorblind-friendly palette (Paul Tol's vibrant scheme)
+colorblind_colors <- c(
+  "Eristeo" = "#0077BB",   # Blue
+  "Brian" = "#CC3311",     # Red
+  "Adam" = "#33BBEE",      # Cyan
+  "Thomas" = "#009988",    # Teal
+  "Kenneth" = "#EE7733",   # Orange
+  "Matt" = "#EE3377"       # Magenta
+)
+
+# Create time series chart for Actual Skins
+ggplot(projection_history, aes(x = date, y = actual_skins, color = player, group = player)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2.5) +
+  scale_color_manual(values = colorblind_colors) +
+  scale_y_continuous(
+    limits = c(0, NA),
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  labs(
+    title = "Skins over time",
+    x = NULL,
+    y = "Skins",
+    color = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.text = element_text(size = 11),
+    axis.title = element_text(size = 12),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "gray90"),
+    legend.text = element_text(size = 11)
+  )
+```
+
+## Weighted Average Projection Over Time
+
+```{r weighted-avg-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
+  ggplot(projection_history, aes(x = date, y = weighted_average, color = player, group = player)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2.5) +
+  scale_color_manual(values = colorblind_colors) +
+ # *** FIX 3: Y-AXIS LIMIT ***
+  # Set y-axis limit to 220 and use scales::squish for out-of-bounds values
+  scale_y_continuous(
+    limits = c(220, NA),
+    oob = scales::squish,
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  labs(
+    title = "Weighted Average Projection over time",
+    x = NULL,
+    y = "Projected Skins",
+    color = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.text = element_text(size = 11),
+    axis.title = element_text(size = 12),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "gray90"),
+    legend.text = element_text(size = 11)
+  )
+```
+
+## Vegas Consensus Projection Over Time
+
+```{r vegas-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
+ggplot(projection_history, aes(x = date, y = vegas_consensus, color = player, group = player)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2.5) +
+  scale_color_manual(values = colorblind_colors) +
+   scale_y_continuous(
+    limits = c(220, NA),
+    oob = scales::squish,
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  labs(
+    title = "Vegas Consensus Projection over time",
+    x = NULL,
+    y = "Projected Skins",
+    color = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.text = element_text(size = 11),
+    axis.title = element_text(size = 12),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "gray90"),
+    legend.text = element_text(size = 11)
+  )
+```
+
+## TeamRankings Projection Over Time
+
+```{r teamrankings-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
+ggplot(projection_history, aes(x = date, y = team_rankings, color = player, group = player)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2.5) +
+  scale_color_manual(values = colorblind_colors) +
+  scale_y_continuous(
+    limits = c(220, NA),
+    oob = scales::squish,
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  labs(
+    title = "TeamRankings Projection over time",
+    x = NULL,
+    y = "Projected Skins",
+    color = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.text = element_text(size = 11),
+    axis.title = element_text(size = 12),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "gray90"),
+    legend.text = element_text(size = 11)
+  )
+```
+
+## ESPN BPI Projection Over Time
+
+```{r espn-bpi-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
+ggplot(projection_history, aes(x = date, y = espn_bpi, color = player, group = player)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2.5) +
+  scale_color_manual(values = colorblind_colors) +
+  scale_y_continuous(
+    limits = c(220, NA),
+    oob = scales::squish,
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  labs(
+    title = "ESPN BPI Projection over time",
+    x = NULL,
+    y = "Projected Skins",
+    color = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.text = element_text(size = 11),
+    axis.title = element_text(size = 12),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "gray90"),
+    legend.text = element_text(size = 11)
+  )
+```
+
+## Projection Average Over Time
+
+```{r projection-avg-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
+ggplot(projection_history, aes(x = date, y = projection_average, color = player, group = player)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2.5) +
+  scale_color_manual(values = colorblind_colors) +
+  scale_y_continuous(
+    limits = c(220, NA),
+    oob = scales::squish,
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  labs(
+    title = "Projection Average over time",
+    x = NULL,
+    y = "Projected Skins",
+    color = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.text = element_text(size = 11),
+    axis.title = element_text(size = 12),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "gray90"),
+    legend.text = element_text(size = 11)
+  )
 ```
