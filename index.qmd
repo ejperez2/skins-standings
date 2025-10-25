@@ -23,8 +23,7 @@ cat(sprintf(
 
 # --- Step 1: Install and Load All Necessary Libraries ---
 if (!require("pacman")) install.packages("pacman")
-# ADDED ggplot2 and scales for charting
-pacman::p_load(httr, jsonlite, rvest, dplyr, tidyr, knitr, kableExtra, tibble, stringr, ggplot2, scales)
+pacman::p_load(httr, jsonlite, rvest, dplyr, tidyr, knitr, kableExtra, tibble, stringr, ggplot2, scales) 
 # --- Step 2: Scrape and Process All Data Sources ---
 
 # A: Create Draft Data Frame FIRST (needed for W/L picks)
@@ -325,70 +324,45 @@ current_standings <- player_scores %>%
     vegas_consensus = `Vegas Consensus`,
     team_rankings = `TeamRankings`,
     espn_bpi = `ESPN BPI`,
-    projection_average = Projection_Average  # Corrected column name
+    projection_average = `Projection_Average`
   ) %>%
   mutate(date = today)
 
 # Load existing history if it exists
 if(file.exists(history_file)) {
   history <- read.csv(history_file, stringsAsFactors = FALSE) %>%
-    mutate(date = as.Date(date)) %>%
-    # *** FIX 1: CLEAN OLD PROJECTION DATA ***
-    # Set all projection values before today to NA
-    # This makes "today" the first day on projection charts
-    # but preserves the `actual_skins` history.
-    mutate(
-      across(
-        c(weighted_average, vegas_consensus, team_rankings, espn_bpi, projection_average),
-        ~ if_else(date < today, NA_real_, .x)
-      )
-    ) %>%
-    # *** FIX 2: DE-DUPLICATION ***
-    # Keep only the last render for any given day
-    group_by(date, player) %>%
-    slice_tail(n = 1) %>%
-    ungroup() %>%
-    # Remove today's old data, it will be replaced
-    filter(date != today) %>%
-    # Add today's new data
-    bind_rows(current_standings)
+    mutate(date = as.Date(date))
   
+  # Remove today's data if it exists (keep only last render per day)
+  history <- history %>%
+    filter(date != today) %>%
+    bind_rows(current_standings)
 } else {
   # Create new history file
   history <- current_standings
 }
 
-# *** FIX 3: ZERO-START ROW ***
-# Add starting point at zero for all players IF it doesn't exist
+# Add ONE zero starting point for actual skins chart (day before first real data)
 min_date <- min(history$date)
-start_date <- min_date - 1
+needs_zero_start <- !any(history$actual_skins == 0)
 
-if(!start_date %in% history$date) {
-  # Add day-before-first-game with actual_skins = 0 and projections = NA
+if(needs_zero_start) {
   zero_start <- tibble(
     player = unique(history$player),
-    actual_skins = 0,       # Correctly set to 0 for the skins chart
-    weighted_average = NA_real_,  # Set to NA so it doesn't plot
-    vegas_consensus = NA_real_,   # Set to NA
-    team_rankings = NA_real_,     # Set to NA
-    espn_bpi = NA_real_,          # Set to NA
-    projection_average = NA_real_, # Set to NA
-    date = start_date
+    actual_skins = 0,
+    weighted_average = NA,
+    vegas_consensus = NA,
+    team_rankings = NA,
+    espn_bpi = NA,
+    projection_average = NA,
+    date = min_date - 1
   )
-  history <- bind_rows(zero_start, history)
+  history <- bind_rows(zero_start, history) %>%
+    arrange(date)
 }
 
-# Save updated history (this overwrites the file with the cleaned data)
+# Save updated history
 write.csv(history, history_file, row.names = FALSE)
-
-
-# *** ADD THIS NEW CODE: ***
-# Create a new, clean data frame for PROJECTION charts
-# This filters out the "zero-start" row AND all old NA'd dates,
-# so the projection charts' x-axis will start on the first day of data.
-projection_history <- history %>%
-  filter(!is.na(weighted_average))
-
 ```
 
 ## Skins Standings (Based on Live Projections and Actual Standings)
@@ -484,7 +458,6 @@ kable(team_projections_table, digits = 1, caption = "Live Skins Projections by T
 ```
 
 ## Skins Over Time
-
 ```{r skins-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
 library(ggplot2)
 
@@ -498,8 +471,18 @@ colorblind_colors <- c(
   "Matt" = "#EE3377"       # Magenta
 )
 
+# Find the first date with actual games (non-zero skins)
+first_game_date <- history %>%
+  filter(actual_skins > 0) %>%
+  pull(date) %>%
+  min()
+
+# Create dataset for actual skins chart starting one day before first game
+history_actual <- history %>%
+  filter(date >= first_game_date - 1)
+
 # Create time series chart for Actual Skins
-ggplot(projection_history, aes(x = date, y = actual_skins, color = player, group = player)) +
+ggplot(history_actual, aes(x = date, y = actual_skins, color = player, group = player)) +
   geom_line(linewidth = 1.2) +
   geom_point(size = 2.5) +
   scale_color_manual(values = colorblind_colors) +
@@ -528,15 +511,15 @@ ggplot(projection_history, aes(x = date, y = actual_skins, color = player, group
 ## Weighted Average Projection Over Time
 
 ```{r weighted-avg-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
-  ggplot(projection_history, aes(x = date, y = weighted_average, color = player, group = player)) +
+# Filter out NA values for projection charts
+history_projections <- history %>% filter(!is.na(weighted_average))
+
+ggplot(history_projections, aes(x = date, y = weighted_average, color = player, group = player)) +
   geom_line(linewidth = 1.2) +
   geom_point(size = 2.5) +
   scale_color_manual(values = colorblind_colors) +
- # *** FIX 3: Y-AXIS LIMIT ***
-  # Set y-axis limit to 220 and use scales::squish for out-of-bounds values
   scale_y_continuous(
     limits = c(220, NA),
-    oob = scales::squish,
     expand = expansion(mult = c(0, 0.05))
   ) +
   labs(
@@ -560,13 +543,12 @@ ggplot(projection_history, aes(x = date, y = actual_skins, color = player, group
 ## Vegas Consensus Projection Over Time
 
 ```{r vegas-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
-ggplot(projection_history, aes(x = date, y = vegas_consensus, color = player, group = player)) +
+ggplot(history_projections, aes(x = date, y = vegas_consensus, color = player, group = player)) +
   geom_line(linewidth = 1.2) +
   geom_point(size = 2.5) +
   scale_color_manual(values = colorblind_colors) +
-   scale_y_continuous(
+  scale_y_continuous(
     limits = c(220, NA),
-    oob = scales::squish,
     expand = expansion(mult = c(0, 0.05))
   ) +
   labs(
@@ -590,13 +572,12 @@ ggplot(projection_history, aes(x = date, y = vegas_consensus, color = player, gr
 ## TeamRankings Projection Over Time
 
 ```{r teamrankings-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
-ggplot(projection_history, aes(x = date, y = team_rankings, color = player, group = player)) +
+ggplot(history_projections, aes(x = date, y = team_rankings, color = player, group = player)) +
   geom_line(linewidth = 1.2) +
   geom_point(size = 2.5) +
   scale_color_manual(values = colorblind_colors) +
   scale_y_continuous(
     limits = c(220, NA),
-    oob = scales::squish,
     expand = expansion(mult = c(0, 0.05))
   ) +
   labs(
@@ -620,13 +601,12 @@ ggplot(projection_history, aes(x = date, y = team_rankings, color = player, grou
 ## ESPN BPI Projection Over Time
 
 ```{r espn-bpi-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
-ggplot(projection_history, aes(x = date, y = espn_bpi, color = player, group = player)) +
+ggplot(history_projections, aes(x = date, y = espn_bpi, color = player, group = player)) +
   geom_line(linewidth = 1.2) +
   geom_point(size = 2.5) +
   scale_color_manual(values = colorblind_colors) +
   scale_y_continuous(
     limits = c(220, NA),
-    oob = scales::squish,
     expand = expansion(mult = c(0, 0.05))
   ) +
   labs(
@@ -650,13 +630,12 @@ ggplot(projection_history, aes(x = date, y = espn_bpi, color = player, group = p
 ## Projection Average Over Time
 
 ```{r projection-avg-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
-ggplot(projection_history, aes(x = date, y = projection_average, color = player, group = player)) +
+ggplot(history_projections, aes(x = date, y = projection_average, color = player, group = player)) +
   geom_line(linewidth = 1.2) +
   geom_point(size = 2.5) +
   scale_color_manual(values = colorblind_colors) +
   scale_y_continuous(
     limits = c(220, NA),
-    oob = scales::squish,
     expand = expansion(mult = c(0, 0.05))
   ) +
   labs(
