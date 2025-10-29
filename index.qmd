@@ -834,3 +834,4 @@ ggplot(history_projections, aes(x = date, y = projection_average, color = player
     legend.text = element_text(size = 11)
   )
 ```
+   
