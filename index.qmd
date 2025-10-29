@@ -285,8 +285,76 @@ df_final_projections <- all_teams %>%
       (tr_skins * 0.25) + (espn_skins * 0.75)  # Fallback formula without Vegas
     ),
     # Calculate actual skins based on pick type from draft
-    actual_skins = if_else(skins_pick == "W", actual_wins, actual_losses)
+    actual_skins = if_else(skins_pick == "W", actual_wins, actual_losses),
+    # Calculate games played and skins percentage
+    games_played = actual_wins + actual_losses,
+    skins_pct = if_else(games_played > 0, actual_skins / games_played, 0),
+    pct_projected = skins_pct * 82
   )
+
+# Get today's date for historical tracking
+today <- Sys.Date()
+
+# --- Step 4.5: Handle Missing Vegas Data with Historical Values ---
+# File to store team-level historical vegas consensus
+team_vegas_history_file <- "team_vegas_history.csv"
+
+# Prepare current team vegas data
+current_team_vegas <- df_final_projections %>%
+  select(team, vegas_consensus) %>%
+  mutate(date = today)
+
+# Load existing team vegas history if it exists
+if(file.exists(team_vegas_history_file)) {
+  team_vegas_history <- read.csv(team_vegas_history_file, stringsAsFactors = FALSE) %>%
+    mutate(date = as.Date(date))
+  
+  # Remove today's data if it exists
+  team_vegas_history <- team_vegas_history %>%
+    filter(date != today)
+  
+  # Add current data
+  team_vegas_history <- bind_rows(team_vegas_history, current_team_vegas) %>%
+    arrange(team, date)
+} else {
+  # Create new history file
+  team_vegas_history <- current_team_vegas
+}
+
+# For teams with NA vegas_consensus, find the last non-NA value
+df_final_projections <- df_final_projections %>%
+  rowwise() %>%
+  mutate(
+    vegas_consensus = if_else(
+      is.na(vegas_consensus),
+      {
+        # Find last non-NA value for this team from history
+        current_team <- team
+        last_valid <- team_vegas_history %>%
+          filter(team == current_team, !is.na(vegas_consensus), date < today) %>%
+          arrange(desc(date)) %>%
+          slice(1) %>%
+          pull(vegas_consensus)
+        
+        if(length(last_valid) > 0) last_valid else NA_real_
+      },
+      vegas_consensus
+    )
+  ) %>%
+  ungroup()
+
+# Recalculate weighted average with updated vegas_consensus
+df_final_projections <- df_final_projections %>%
+  mutate(
+    weighted_average = if_else(
+      !is.na(vegas_consensus),
+      (vegas_consensus * 0.31) + (tr_skins * 0.10) + (espn_skins * 0.59),
+      (tr_skins * 0.25) + (espn_skins * 0.75)
+    )
+  )
+
+# Save updated team vegas history
+write.csv(team_vegas_history, team_vegas_history_file, row.names = FALSE)
 
 # --- Step 5: Calculate Player Scores ---
 player_scores <- draft_data %>%
@@ -294,6 +362,8 @@ player_scores <- draft_data %>%
   group_by(player) %>%
   summarise(
     `Actual Skins` = sum(actual_skins, na.rm = TRUE),
+    `Skins %` = sum(actual_skins, na.rm = TRUE) / sum(games_played, na.rm = TRUE),
+    `% Projected` = sum(pct_projected, na.rm = TRUE),  # Sum of team projections
     `Weighted Average` = sum(weighted_average, na.rm = TRUE),
     `Vegas Consensus` = sum(vegas_consensus, na.rm = TRUE),
     `TeamRankings` = sum(tr_skins, na.rm = TRUE),
@@ -312,14 +382,13 @@ draft_table_data <- df_final_projections %>%
 # File to store historical standings
 history_file <- "standings_history.csv"
 
-# Get today's date
-today <- Sys.Date()
-
 # Calculate current standings for each player (including all projections)
 current_standings <- player_scores %>%
   select(
     player, 
     actual_skins = `Actual Skins`,
+    skins_pct = `Skins %`,
+    pct_projected = `% Projected`,
     weighted_average = `Weighted Average`,
     vegas_consensus = `Vegas Consensus`,
     team_rankings = `TeamRankings`,
@@ -350,6 +419,8 @@ if(needs_zero_start) {
   zero_start <- tibble(
     player = unique(history$player),
     actual_skins = 0,
+    skins_pct = 0,
+    pct_projected = 0,
     weighted_average = NA,
     vegas_consensus = NA,
     team_rankings = NA,
@@ -368,12 +439,26 @@ write.csv(history, history_file, row.names = FALSE)
 ## Skins Standings (Based on Live Projections and Actual Standings)
 
 ```{r player-scores, echo=FALSE}
-kable(player_scores, digits = 1, caption = "Total Player Scores: Actual and Projected") %>%
+# Format the player scores for display
+player_scores_display <- player_scores %>%
+  mutate(
+    `Actual Skins` = as.integer(`Actual Skins`),
+    `Skins %` = sprintf("%.1f%%", `Skins %` * 100),
+    `% Projected` = sprintf("%.1f", `% Projected`),
+    `Weighted Average` = sprintf("%.1f", `Weighted Average`),
+    `Vegas Consensus` = sprintf("%.1f", `Vegas Consensus`),
+    `TeamRankings` = sprintf("%.1f", `TeamRankings`),
+    `ESPN BPI` = sprintf("%.1f", `ESPN BPI`),
+    `Projection_Average` = sprintf("%.1f", `Projection_Average`)
+  )
+
+kable(player_scores_display, caption = "Total Player Scores: Actual and Projected", align = c("l", "r", "r", "r", "r", "r", "r", "r", "r")) %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, position = "center") %>%
   row_spec(0, bold = TRUE, color = "white", background = "#444444") %>%
   column_spec(1, bold = TRUE) %>%
   column_spec(2, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
-  column_spec(7, bold = TRUE, background = "#DFF0D8")  # Highlight projection average
+  column_spec(3, bold = TRUE, background = "#FFF9C4") %>%  # Highlight skins %
+  column_spec(5, bold = TRUE, background = "#DFF0D8")  # Highlight weighted average
 ```
 
 ## Standings and Projections by player
@@ -381,13 +466,15 @@ kable(player_scores, digits = 1, caption = "Total Player Scores: Actual and Proj
 ```{r draft-results, echo=FALSE}
 # CORRECTED standings_table DEFINITION
 # We use select() at the end to explicitly choose and rename
-# the 9 columns we want to display. This solves the mismatch.
+# the columns we want to display.
 standings_table <- draft_data %>%
   left_join(
     df_final_projections %>% 
       select(
         team, # The join key
         `Actual Skins` = actual_skins,
+        `Skins %` = skins_pct,
+        `% Projected` = pct_projected,
         `Weighted Average` = weighted_average,
         `Vegas Consensus` = vegas_consensus,
         `TeamRankings` = tr_skins,
@@ -402,6 +489,8 @@ standings_table <- draft_data %>%
     Abbr = abbr,
     `Skins Pick` = skins_pick,
     `Actual Skins`,
+    `Skins %`,
+    `% Projected`,
     `Weighted Average`,
     `Vegas Consensus`,
     `TeamRankings`,
@@ -410,15 +499,21 @@ standings_table <- draft_data %>%
   arrange(
     match(Player, c("Eristeo", "Matt", "Brian", "Adam", "Thomas", "Kenneth")),
     desc(`Actual Skins`)
+  ) %>%
+  mutate(
+    `Actual Skins` = as.integer(`Actual Skins`),
+    `Skins %` = sprintf("%.1f%%", `Skins %` * 100),
+    `% Projected` = sprintf("%.1f", `% Projected`),
+    `Weighted Average` = sprintf("%.1f", `Weighted Average`),
+    `Vegas Consensus` = sprintf("%.1f", `Vegas Consensus`),
+    `TeamRankings` = sprintf("%.1f", `TeamRankings`),
+    `ESPN BPI` = sprintf("%.1f", `ESPN BPI`)
   )
 
 # CORRECTED kable() CALL
-# The 'col.names' argument is removed because the data frame
-# now has the correct column names from the select() above.
 kable(
   standings_table,
-  digits = 1,
-  align = c("l", "l", "c", "c", "r", "r", "r", "r", "r"),
+  align = c("l", "l", "c", "c", "r", "r", "r", "r", "r", "r", "r"),
   caption = "Standings by Team with Actual Results and All Projections"
 ) %>%
   kable_styling(
@@ -428,7 +523,8 @@ kable(
   ) %>%
   row_spec(0, bold = TRUE, color = "white", background = "#0073C2") %>%
   column_spec(5, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
-  column_spec(6, bold = TRUE, background = "#DFF0D8") %>%  # Highlight weighted average
+  column_spec(6, bold = TRUE, background = "#FFF9C4") %>%  # Highlight skins %
+  column_spec(8, bold = TRUE, background = "#DFF0D8") %>%  # Highlight weighted average
   pack_rows(index = table(factor(standings_table$Player,
                                  levels = c("Eristeo", "Matt", "Brian", "Adam", "Thomas", "Kenneth"))))
 ```
@@ -442,19 +538,31 @@ team_projections_table <- df_final_projections %>%
     Team = team,
     `Pick Type` = skins_pick,
     `Actual Skins` = actual_skins,
+    `Skins %` = skins_pct,
+    `% Projected` = pct_projected,
     `Weighted Average` = weighted_average,
     `Vegas Consensus` = vegas_consensus,
     `TeamRankings` = tr_skins,
     `ESPN BPI` = espn_skins
   ) %>%
-  arrange(desc(`Actual Skins`))
+  arrange(desc(`Actual Skins`)) %>%
+  mutate(
+    `Actual Skins` = as.integer(`Actual Skins`),
+    `Skins %` = sprintf("%.1f%%", `Skins %` * 100),
+    `% Projected` = sprintf("%.1f", `% Projected`),
+    `Weighted Average` = sprintf("%.1f", `Weighted Average`),
+    `Vegas Consensus` = sprintf("%.1f", `Vegas Consensus`),
+    `TeamRankings` = sprintf("%.1f", `TeamRankings`),
+    `ESPN BPI` = sprintf("%.1f", `ESPN BPI`)
+  )
 
-kable(team_projections_table, digits = 1, caption = "Live Skins Projections by Team") %>%
+kable(team_projections_table, caption = "Live Skins Projections by Team", align = c("l", "c", "r", "r", "r", "r", "r", "r", "r")) %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, position = "center") %>%
   row_spec(0, bold = TRUE, color = "white", background = "#444444") %>%
   column_spec(1, bold = TRUE) %>%
   column_spec(3, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
-  column_spec(4, bold = TRUE, background = "#DFF0D8")  # Highlight weighted average
+  column_spec(4, bold = TRUE, background = "#FFF9C4") %>%  # Highlight skins %
+  column_spec(6, bold = TRUE, background = "#DFF0D8")  # Highlight weighted average
 ```
 
 ## Skins Over Time
@@ -508,6 +616,72 @@ ggplot(history_actual, aes(x = date, y = actual_skins, color = player, group = p
   )
 ```
 
+## Skins % Over Time
+
+```{r skins-pct-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
+# Filter out zero values for skins percentage chart
+history_skins_pct <- history %>% filter(skins_pct > 0)
+
+ggplot(history_skins_pct, aes(x = date, y = skins_pct, color = player, group = player)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2.5) +
+  scale_color_manual(values = colorblind_colors) +
+  scale_y_continuous(
+    labels = function(x) sprintf("%.1f%%", x * 100),
+    limits = c(0, NA),
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  labs(
+    title = "Skins % over time",
+    x = NULL,
+    y = "Skins %",
+    color = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.text = element_text(size = 11),
+    axis.title = element_text(size = 12),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "gray90"),
+    legend.text = element_text(size = 11)
+  )
+```
+
+## % Projected Over Time
+
+```{r pct-projected-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
+# Filter out zero values for % projected chart
+history_pct_projected <- history %>% filter(pct_projected > 0)
+
+ggplot(history_pct_projected, aes(x = date, y = pct_projected, color = player, group = player)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2.5) +
+  scale_color_manual(values = colorblind_colors) +
+  scale_y_continuous(
+    labels = function(x) sprintf("%.1f", x),
+    limits = c(0, NA),
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  labs(
+    title = "% Projected (Skins % × 82) over time",
+    x = NULL,
+    y = "Projected Skins",
+    color = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.text = element_text(size = 11),
+    axis.title = element_text(size = 12),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "gray90"),
+    legend.text = element_text(size = 11)
+  )
+```
+
 ## Weighted Average Projection Over Time
 
 ```{r weighted-avg-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
@@ -519,6 +693,7 @@ ggplot(history_projections, aes(x = date, y = weighted_average, color = player, 
   geom_point(size = 2.5) +
   scale_color_manual(values = colorblind_colors) +
   scale_y_continuous(
+    labels = function(x) sprintf("%.1f", x),
     limits = c(220, NA),
     expand = expansion(mult = c(0, 0.05))
   ) +
@@ -548,6 +723,7 @@ ggplot(history_projections, aes(x = date, y = vegas_consensus, color = player, g
   geom_point(size = 2.5) +
   scale_color_manual(values = colorblind_colors) +
   scale_y_continuous(
+    labels = function(x) sprintf("%.1f", x),
     limits = c(220, NA),
     expand = expansion(mult = c(0, 0.05))
   ) +
@@ -577,6 +753,7 @@ ggplot(history_projections, aes(x = date, y = team_rankings, color = player, gro
   geom_point(size = 2.5) +
   scale_color_manual(values = colorblind_colors) +
   scale_y_continuous(
+    labels = function(x) sprintf("%.1f", x),
     limits = c(220, NA),
     expand = expansion(mult = c(0, 0.05))
   ) +
@@ -606,6 +783,7 @@ ggplot(history_projections, aes(x = date, y = espn_bpi, color = player, group = 
   geom_point(size = 2.5) +
   scale_color_manual(values = colorblind_colors) +
   scale_y_continuous(
+    labels = function(x) sprintf("%.1f", x),
     limits = c(220, NA),
     expand = expansion(mult = c(0, 0.05))
   ) +
@@ -635,6 +813,7 @@ ggplot(history_projections, aes(x = date, y = projection_average, color = player
   geom_point(size = 2.5) +
   scale_color_manual(values = colorblind_colors) +
   scale_y_continuous(
+    labels = function(x) sprintf("%.1f", x),
     limits = c(220, NA),
     expand = expansion(mult = c(0, 0.05))
   ) +
