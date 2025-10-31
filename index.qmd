@@ -452,7 +452,7 @@ player_scores_display <- player_scores %>%
     `Projection_Average` = sprintf("%.1f", `Projection_Average`)
   )
 
-kable(player_scores_display, caption = "Total Player Scores: Actual and Projected", align = c("l", "r", "r", "r", "r", "r", "r", "r", "r")) %>%
+kable(player_scores_display, align = c("l", "r", "r", "r", "r", "r", "r", "r", "r")) %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, position = "center") %>%
   row_spec(0, bold = TRUE, color = "white", background = "#444444") %>%
   column_spec(1, bold = TRUE) %>%
@@ -463,10 +463,8 @@ kable(player_scores_display, caption = "Total Player Scores: Actual and Projecte
 
 ## Standings and Projections by player
 
-```{r draft-results, echo=FALSE}
-# CORRECTED standings_table DEFINITION
-# We use select() at the end to explicitly choose and rename
-# the columns we want to display.
+```{r draft-results, echo=FALSE, results='asis'}
+# Create standings table grouped by player
 standings_table <- draft_data %>%
   left_join(
     df_final_projections %>% 
@@ -482,9 +480,8 @@ standings_table <- draft_data %>%
       ),
     by = "team"
   ) %>%
-  # This select() call is the key fix:
   select(
-    Team = team,
+    team,
     Player = player,
     Abbr = abbr,
     `Skins Pick` = skins_pick,
@@ -510,23 +507,37 @@ standings_table <- draft_data %>%
     `ESPN BPI` = sprintf("%.1f", `ESPN BPI`)
   )
 
-# CORRECTED kable() CALL
-kable(
-  standings_table,
-  align = c("l", "l", "c", "c", "r", "r", "r", "r", "r", "r", "r"),
-  caption = "Standings by Team with Actual Results and All Projections"
-) %>%
-  kable_styling(
-    bootstrap_options = c("striped", "hover", "condensed"),
-    full_width = FALSE,
-    position = "center"
+# Generate 6 separate tables (one for each player) with no spacing
+player_order <- c("Eristeo", "Matt", "Brian", "Adam", "Thomas", "Kenneth")
+
+for(i in seq_along(player_order)) {
+  player_name <- player_order[i]
+  player_data <- standings_table %>% 
+    filter(Player == player_name) %>% 
+    select(-team, -Player)
+  
+  # Add div wrapper with player name above table
+  cat('<div style="margin-bottom: 0px; margin-top: ', ifelse(i == 1, '0px', '-1px'), ';">\n')
+  cat('<div style="background-color: #666; color: #fff; font-weight: bold; padding: 8px; text-align: center;">', player_name, '</div>\n')
+  
+  table_html <- kable(
+    player_data,
+    align = c("c", "c", "r", "r", "r", "r", "r", "r", "r"),
+    escape = FALSE
   ) %>%
-  row_spec(0, bold = TRUE, color = "white", background = "#0073C2") %>%
-  column_spec(5, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
-  column_spec(6, bold = TRUE, background = "#FFF9C4") %>%  # Highlight skins %
-  column_spec(8, bold = TRUE, background = "#DFF0D8") %>%  # Highlight weighted average
-  pack_rows(index = table(factor(standings_table$Player,
-                                 levels = c("Eristeo", "Matt", "Brian", "Adam", "Thomas", "Kenneth"))))
+    kable_styling(
+      bootstrap_options = c("striped", "hover", "condensed"),
+      full_width = FALSE,
+      position = "center"
+    ) %>%
+    row_spec(0, bold = TRUE, color = "white", background = "#0073C2") %>%
+    column_spec(3, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
+    column_spec(4, bold = TRUE, background = "#FFF9C4") %>%  # Highlight skins %
+    column_spec(6, bold = TRUE, background = "#DFF0D8")  # Highlight weighted average
+  
+  cat(as.character(table_html))
+  cat('\n</div>\n')
+}
 ```
 
 ## Standings and Projections by Team
@@ -534,8 +545,10 @@ kable(
 ```{r team-projections, echo=FALSE}
 # Select and format the final projections for display
 team_projections_table <- df_final_projections %>%
+  left_join(draft_data %>% select(team, player), by = "team") %>%
   select(
     Team = team,
+    Player = player,
     `Pick Type` = skins_pick,
     `Actual Skins` = actual_skins,
     `Skins %` = skins_pct,
@@ -556,13 +569,13 @@ team_projections_table <- df_final_projections %>%
     `ESPN BPI` = sprintf("%.1f", `ESPN BPI`)
   )
 
-kable(team_projections_table, caption = "Live Skins Projections by Team", align = c("l", "c", "r", "r", "r", "r", "r", "r", "r")) %>%
+kable(team_projections_table, align = c("l", "l", "c", "r", "r", "r", "r", "r", "r", "r")) %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, position = "center") %>%
   row_spec(0, bold = TRUE, color = "white", background = "#444444") %>%
   column_spec(1, bold = TRUE) %>%
-  column_spec(3, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
-  column_spec(4, bold = TRUE, background = "#FFF9C4") %>%  # Highlight skins %
-  column_spec(6, bold = TRUE, background = "#DFF0D8")  # Highlight weighted average
+  column_spec(4, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
+  column_spec(5, bold = TRUE, background = "#FFF9C4") %>%  # Highlight skins %
+  column_spec(7, bold = TRUE, background = "#DFF0D8")  # Highlight weighted average
 ```
 
 ## Skins Over Time
@@ -628,7 +641,7 @@ ggplot(history_skins_pct, aes(x = date, y = skins_pct, color = player, group = p
   scale_color_manual(values = colorblind_colors) +
   scale_y_continuous(
     labels = function(x) sprintf("%.1f%%", x * 100),
-    limits = c(0, NA),
+    limits = c(0.45, NA),
     expand = expansion(mult = c(0, 0.05))
   ) +
   labs(
@@ -661,7 +674,7 @@ ggplot(history_pct_projected, aes(x = date, y = pct_projected, color = player, g
   scale_color_manual(values = colorblind_colors) +
   scale_y_continuous(
     labels = function(x) sprintf("%.1f", x),
-    limits = c(0, NA),
+    limits = c(180, NA),
     expand = expansion(mult = c(0, 0.05))
   ) +
   labs(
@@ -834,4 +847,3 @@ ggplot(history_projections, aes(x = date, y = projection_average, color = player
     legend.text = element_text(size = 11)
   )
 ```
-   
