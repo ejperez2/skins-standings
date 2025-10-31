@@ -4,7 +4,7 @@
 "Atlanta Hawks",42.5,2025-10-31
 "Boston Celtics",42.125,2025-10-29
 "Boston Celtics",42.125,2025-10-30
-"Boston Celtics",42.1666666666667,2025-10-31
+"Boston Celtics",39.8333333333333,2025-10-31
 "Brooklyn Nets",64.5,2025-10-29
 "Brooklyn Nets",64.5,2025-10-30
 "Brooklyn Nets",64.5,2025-10-31
@@ -19,7 +19,7 @@
 "Cleveland Cavaliers",56.5,2025-10-31
 "Dallas Mavericks",42.625,2025-10-29
 "Dallas Mavericks",43.3333333333333,2025-10-30
-"Dallas Mavericks",43.25,2025-10-31
+"Dallas Mavericks",38.75,2025-10-31
 "Denver Nuggets",53.5,2025-10-29
 "Denver Nuggets",54.8333333333333,2025-10-30
 "Denver Nuggets",54.75,2025-10-31
@@ -43,10 +43,10 @@
 "Los Angeles Lakers",46.75,2025-10-31
 "Memphis Grizzlies",43.375,2025-10-29
 "Memphis Grizzlies",42.625,2025-10-30
-"Memphis Grizzlies",42.6666666666667,2025-10-31
+"Memphis Grizzlies",39.3333333333333,2025-10-31
 "Miami Heat",41.6666666666667,2025-10-29
 "Miami Heat",41.6666666666667,2025-10-30
-"Miami Heat",41.6666666666667,2025-10-31
+"Miami Heat",NA,2025-10-31
 "Milwaukee Bucks",44.1666666666667,2025-10-29
 "Milwaukee Bucks",44.5,2025-10-30
 "Milwaukee Bucks",44.5,2025-10-31
@@ -61,7 +61,7 @@
 "New York Knicks",51.5,2025-10-31
 "Oklahoma City Thunder",64,2025-10-29
 "Oklahoma City Thunder",64,2025-10-30
-"Oklahoma City Thunder",64.25,2025-10-31
+"Oklahoma City Thunder",NA,2025-10-31
 "Orlando Magic",48,2025-10-29
 "Orlando Magic",47,2025-10-30
 "Orlando Magic",NA,2025-10-31
@@ -79,13 +79,13 @@
 "Sacramento Kings",50.5,2025-10-31
 "San Antonio Spurs",46.5,2025-10-29
 "San Antonio Spurs",46.5,2025-10-30
-"San Antonio Spurs",46.5,2025-10-31
+"San Antonio Spurs",NA,2025-10-31
 "Toronto Raptors",42.5,2025-10-29
 "Toronto Raptors",44.125,2025-10-30
-"Toronto Raptors",44.1666666666667,2025-10-31
+"Toronto Raptors",44,2025-10-31
 "Utah Jazz",59.1666666666667,2025-10-29
 "Utah Jazz",58.8333333333333,2025-10-30
 "Utah Jazz",58.5,2025-10-31
 "Washington Wizards",63,2025-10-29
 "Washington Wizards",63,2025-10-30
-"Washington Wizards",63,2025-10-31
+"Washington Wizards",NA,2025-10-31

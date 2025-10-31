@@ -177,29 +177,33 @@ df_skins <- df_vegas %>%
     composite_projection = mean(c(mgm_adj, draftkings_adj, caesars_adj, betrivers_adj, hardrock_adj, fanduel_adj, espnbet_adj), na.rm = TRUE)
   ) %>%
   ungroup() %>%
-  mutate(
-    vegas_consensus = if_else(composite_projection >= 41, composite_projection, 82 - composite_projection)
-  )
+  select(team, composite_projection) # **MODIFIED**: Only select the raw projection
 
 # C: Scrape TeamRankings
 url_tr <- "https://www.teamrankings.com/nba/projections/standings/"
 webpage_tr <- read_html(url_tr)
 combined_proj <- bind_rows(webpage_tr %>% html_table() %>% .[[1]], webpage_tr %>% html_table() %>% .[[2]])
+# **MODIFIED**: Only select raw W/L projections
 tr_cleaned <- combined_proj %>%
   select(team_tr = 1, filter_col = 2, tr_proj_w = 4, tr_proj_l = 5) %>%
   filter(!grepl("overall", filter_col, ignore.case = TRUE)) %>%
-  mutate(tr_proj_w = as.numeric(tr_proj_w), tr_proj_l = as.numeric(tr_proj_l),
-         tr_skins = if_else(tr_proj_w > 41, tr_proj_w, tr_proj_l))
+  mutate(
+    tr_proj_w = as.numeric(tr_proj_w), 
+    tr_proj_l = as.numeric(tr_proj_l)
+  ) %>%
+  rename(team = team_tr) %>%
+  select(team, tr_proj_w, tr_proj_l)
 
 # D: Scrape ESPN BPI
 url_espn <- "https://www.espn.com/nba/bpi/_/view/projections"
 webpage_espn <- read_html(url_espn)
 espn_proj <- bind_cols(webpage_espn %>% html_table() %>% .[[1]], webpage_espn %>% html_table() %>% .[[2]])
+# **MODIFIED**: Only select raw W/L projections
 espn_cleaned <- espn_proj %>%
   select(team = Team, ovr_wl = `OVR W-L`) %>%
   separate(ovr_wl, into = c("espn_proj_w", "espn_proj_l"), sep = "-", convert = TRUE) %>%
-  mutate(team = case_when(team == "LA Clippers" ~ "Los Angeles Clippers", TRUE ~ team),
-         espn_skins = if_else(espn_proj_w > 41, espn_proj_w, espn_proj_l))
+  mutate(team = case_when(team == "LA Clippers" ~ "Los Angeles Clippers", TRUE ~ team)) %>%
+  select(team, espn_proj_w, espn_proj_l)
 
 # --- Step 3: Combine All Projections ---
 
@@ -247,14 +251,12 @@ standardize_team_names <- function(df, team_col) {
 df_skins <- df_skins %>% standardize_team_names("team")
 nba_standings <- nba_standings %>% standardize_team_names("team")
 
-# TeamRankings crosswalk
+# **MODIFIED**: Apply standardization to the cleaned tables
 tr_cleaned <- tr_cleaned %>%
-  rename(team = team_tr) %>%
-  standardize_team_names("team") %>%
-  select(team, tr_skins)
+  standardize_team_names("team")
 
-# ESPN BPI already has team column, just standardize it
-espn_cleaned <- espn_cleaned %>% standardize_team_names("team")
+espn_cleaned <- espn_cleaned %>% 
+  standardize_team_names("team")
 
 # Now combine with consistent team names
 # Start with a complete list of all 30 teams to ensure no teams are missing
@@ -270,14 +272,20 @@ all_teams <- tibble(
 )
 
 # Join all data sources to the complete team list
-# First get skins_pick and abbr from draft_data
+# **MODIFIED**: Join raw projection columns, THEN calculate skins values
 df_final_projections <- all_teams %>%
   left_join(draft_data %>% select(team, abbr, skins_pick), by = "team") %>%
-  left_join(df_skins, by = "team") %>%
-  left_join(tr_cleaned, by = "team") %>%
-  left_join(espn_cleaned %>% select(team, espn_skins), by = "team") %>%
+  left_join(df_skins, by = "team") %>% # Brings in composite_projection
+  left_join(tr_cleaned, by = "team") %>% # Brings in tr_proj_w, tr_proj_l
+  left_join(espn_cleaned, by = "team") %>% # Brings in espn_proj_w, espn_proj_l
   left_join(nba_standings, by = "team") %>%
   mutate(
+    # --- NEW: Calculate skins values based on hardcoded skins_pick ---
+    vegas_consensus = if_else(skins_pick == "W", composite_projection, 82 - composite_projection),
+    tr_skins = if_else(skins_pick == "W", tr_proj_w, tr_proj_l),
+    espn_skins = if_else(skins_pick == "W", espn_proj_w, espn_proj_l),
+    # --- END NEW ---
+    
     # Calculate weighted average only where Vegas data exists
     weighted_average = if_else(
       !is.na(vegas_consensus),
