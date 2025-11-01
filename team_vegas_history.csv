@@ -14,15 +14,15 @@
 "Charlotte Hornets",51.3333333333333,2025-10-29,NA
 "Charlotte Hornets",51,2025-10-30,NA
 "Charlotte Hornets",51,2025-10-31,NA
-"Charlotte Hornets",NA,2025-11-01,31
+"Charlotte Hornets",NA,2025-11-01,31.25
 "Chicago Bulls",44.8333333333333,2025-10-29,NA
 "Chicago Bulls",43.6666666666667,2025-10-30,NA
 "Chicago Bulls",43.3333333333333,2025-10-31,NA
-"Chicago Bulls",NA,2025-11-01,41.5
+"Chicago Bulls",NA,2025-11-01,41.75
 "Cleveland Cavaliers",57.5,2025-10-29,NA
 "Cleveland Cavaliers",56.5,2025-10-30,NA
 "Cleveland Cavaliers",56.5,2025-10-31,NA
-"Cleveland Cavaliers",NA,2025-11-01,56
+"Cleveland Cavaliers",NA,2025-11-01,55.5
 "Dallas Mavericks",42.625,2025-10-29,NA
 "Dallas Mavericks",43.3333333333333,2025-10-30,NA
 "Dallas Mavericks",38.5,2025-10-31,NA
@@ -58,7 +58,7 @@
 "Memphis Grizzlies",43.375,2025-10-29,NA
 "Memphis Grizzlies",42.625,2025-10-30,NA
 "Memphis Grizzlies",39.3333333333333,2025-10-31,NA
-"Memphis Grizzlies",NA,2025-11-01,36.25
+"Memphis Grizzlies",NA,2025-11-01,36.5
 "Miami Heat",41.6666666666667,2025-10-29,NA
 "Miami Heat",41.6666666666667,2025-10-30,NA
 "Miami Heat",39.5,2025-10-31,NA
@@ -66,7 +66,7 @@
 "Milwaukee Bucks",44.1666666666667,2025-10-29,NA
 "Milwaukee Bucks",44.5,2025-10-30,NA
 "Milwaukee Bucks",46.25,2025-10-31,NA
-"Milwaukee Bucks",NA,2025-11-01,47.25
+"Milwaukee Bucks",NA,2025-11-01,NA
 "Minnesota Timberwolves",48.5,2025-10-29,NA
 "Minnesota Timberwolves",47.8333333333333,2025-10-30,NA
 "Minnesota Timberwolves",47.8333333333333,2025-10-31,NA
@@ -86,7 +86,7 @@
 "Orlando Magic",48,2025-10-29,NA
 "Orlando Magic",47,2025-10-30,NA
 "Orlando Magic",47,2025-10-31,NA
-"Orlando Magic",NA,2025-11-01,46.75
+"Orlando Magic",NA,2025-11-01,47
 "Philadelphia 76ers",44.5,2025-10-29,NA
 "Philadelphia 76ers",44.5,2025-10-30,NA
 "Philadelphia 76ers",44.5,2025-10-31,NA
@@ -94,7 +94,7 @@
 "Phoenix Suns",52.125,2025-10-29,NA
 "Phoenix Suns",52.25,2025-10-30,NA
 "Phoenix Suns",52.625,2025-10-31,NA
-"Phoenix Suns",NA,2025-11-01,29
+"Phoenix Suns",NA,2025-11-01,29.3333333333333
 "Portland Trail Blazers",46.875,2025-10-29,NA
 "Portland Trail Blazers",47,2025-10-30,NA
 "Portland Trail Blazers",46.625,2025-10-31,NA
@@ -102,7 +102,7 @@
 "Sacramento Kings",50.6666666666667,2025-10-29,NA
 "Sacramento Kings",50.5,2025-10-30,NA
 "Sacramento Kings",50.5,2025-10-31,NA
-"Sacramento Kings",NA,2025-11-01,31.5
+"Sacramento Kings",NA,2025-11-01,NA
 "San Antonio Spurs",46.5,2025-10-29,NA
 "San Antonio Spurs",46.5,2025-10-30,NA
 "San Antonio Spurs",46.5,2025-10-31,NA
@@ -118,4 +118,4 @@
 "Washington Wizards",63,2025-10-29,NA
 "Washington Wizards",63,2025-10-30,NA
 "Washington Wizards",62.75,2025-10-31,NA
-"Washington Wizards",NA,2025-11-01,19.5
+"Washington Wizards",NA,2025-11-01,19.25
