@@ -61,6 +61,12 @@ draft_data <- tribble(
   "Dallas Mavericks", "Thomas", "DAL", "W", 29
 )
 
+# CRITICAL: Create immutable reference table for W/L picks that can NEVER be overwritten
+# This prevents any vestigial code from inferring picks based on projections
+HARDCODED_PICKS <- draft_data %>% 
+  select(team, skins_pick_hardcoded = skins_pick) %>%
+  mutate(source = "DRAFT - DO NOT MODIFY")
+
 # Store season completion for later display
 season_total_games <- 0
 season_completion_pct <- 0
@@ -181,12 +187,13 @@ df_skins <- df_vegas %>%
     hardrock_adj = hardrock_total + if_else(hardrock_total > 41, 0.5 * (hardrock_over > hardrock_under), -0.5 * (hardrock_under > hardrock_over)),
     fanduel_adj = fanduel_total + if_else(fanduel_total > 41, 0.5 * (fanduel_over > fanduel_under), -0.5 * (fanduel_under > fanduel_over)),
     espnbet_adj = espnbet_total + if_else(espnbet_total > 41, 0.5 * (espnbet_over > espnbet_under), -0.5 * (espnbet_under > espnbet_over)),
-    # Calculate composite projection as mean of adjusted totals
+    # Calculate composite projection as mean of adjusted totals (PROJECTED WINS, not skins)
     composite_projection = mean(c(mgm_adj, draftkings_adj, caesars_adj, betrivers_adj, hardrock_adj, fanduel_adj, espnbet_adj), na.rm = TRUE)
   ) %>%
   ungroup() %>%
+  # Store as projected WINS - we'll apply draft picks later
   mutate(
-    vegas_consensus = if_else(composite_projection >= 41, composite_projection, 82 - composite_projection)
+    vegas_proj_wins = composite_projection
   )
 
 # C: Scrape TeamRankings
@@ -196,8 +203,10 @@ combined_proj <- bind_rows(webpage_tr %>% html_table() %>% .[[1]], webpage_tr %>
 tr_cleaned <- combined_proj %>%
   select(team_tr = 1, filter_col = 2, tr_proj_w = 4, tr_proj_l = 5) %>%
   filter(!grepl("overall", filter_col, ignore.case = TRUE)) %>%
-  mutate(tr_proj_w = as.numeric(tr_proj_w), tr_proj_l = as.numeric(tr_proj_l),
-         tr_skins = if_else(tr_proj_w > 41, tr_proj_w, tr_proj_l))
+  mutate(
+    tr_proj_w = as.numeric(tr_proj_w),
+    tr_proj_l = as.numeric(tr_proj_l)
+  )
 
 # D: Scrape ESPN BPI
 url_espn <- "https://www.espn.com/nba/bpi/_/view/projections"
@@ -206,8 +215,7 @@ espn_proj <- bind_cols(webpage_espn %>% html_table() %>% .[[1]], webpage_espn %>
 espn_cleaned <- espn_proj %>%
   select(team = Team, ovr_wl = `OVR W-L`) %>%
   separate(ovr_wl, into = c("espn_proj_w", "espn_proj_l"), sep = "-", convert = TRUE) %>%
-  mutate(team = case_when(team == "LA Clippers" ~ "Los Angeles Clippers", TRUE ~ team),
-         espn_skins = if_else(espn_proj_w > 41, espn_proj_w, espn_proj_l))
+  mutate(team = case_when(team == "LA Clippers" ~ "Los Angeles Clippers", TRUE ~ team))
 
 # E: Scrape CBS Sports
 url_cbs <- "https://www.cbssports.com/nba/standings/"
@@ -222,10 +230,7 @@ western_conf <- tables_cbs[[2]]
 cbs_proj <- bind_rows(eastern_conf, western_conf) %>%
   select(team_cbs = 2, cbs_proj_w = 16) %>%
   filter(team_cbs != "Team") %>%  # Remove header rows
-  mutate(
-    cbs_proj_w = as.numeric(cbs_proj_w),
-    cbs_skins = if_else(cbs_proj_w > 41, cbs_proj_w, 82 - cbs_proj_w)
-  )
+  mutate(cbs_proj_w = as.numeric(cbs_proj_w))
 
 # --- Step 3: Combine All Projections ---
 
@@ -277,7 +282,7 @@ nba_standings <- nba_standings %>% standardize_team_names("team")
 tr_cleaned <- tr_cleaned %>%
   rename(team = team_tr) %>%
   standardize_team_names("team") %>%
-  select(team, tr_skins)
+  select(team, tr_proj_w)
 
 # ESPN BPI already has team column, just standardize it
 espn_cleaned <- espn_cleaned %>% standardize_team_names("team")
@@ -294,7 +299,7 @@ cbs_proj <- cbs_proj %>%
     )
   ) %>%
   standardize_team_names("team") %>%
-  select(team, cbs_skins)
+  select(team, cbs_proj_w)
 
 # Now combine with consistent team names
 # Start with a complete list of all 30 teams to ensure no teams are missing
@@ -310,28 +315,62 @@ all_teams <- tibble(
 )
 
 # Join all data sources to the complete team list
-# First get skins_pick and abbr from draft_data
+# CRITICAL: Join hardcoded W/L picks LAST to overwrite any vestigial inference code
+# NOTE: Do NOT join 'player' here - it causes conflicts when joining with draft_data later
 df_final_projections <- all_teams %>%
-  left_join(draft_data %>% select(team, abbr, skins_pick), by = "team") %>%
+  left_join(draft_data %>% select(team, abbr), by = "team") %>%
   left_join(df_skins, by = "team") %>%
   left_join(tr_cleaned, by = "team") %>%
-  left_join(espn_cleaned %>% select(team, espn_skins), by = "team") %>%
+  left_join(espn_cleaned %>% select(team, espn_proj_w), by = "team") %>%
   left_join(cbs_proj, by = "team") %>%
   left_join(nba_standings, by = "team") %>%
+  # Join hardcoded picks LAST to ensure they are NEVER overwritten
+  left_join(HARDCODED_PICKS, by = "team") %>%
   mutate(
-    # Calculate weighted average including all projection sources
+    # Use ONLY the hardcoded pick - never infer from projections
+    skins_pick = skins_pick_hardcoded,
+    
+    # NOW apply the hardcoded W/L pick to each projection source to get skins
+    # Vegas: use projected wins if W pick, else use projected losses (82 - wins)
+    vegas_consensus = if_else(skins_pick == "W", vegas_proj_wins, 82 - vegas_proj_wins),
+    
+    # TeamRankings: use projected wins if W pick, else use projected losses
+    tr_skins = if_else(skins_pick == "W", tr_proj_w, 82 - tr_proj_w),
+    
+    # ESPN BPI: use projected wins if W pick, else use projected losses
+    espn_skins = if_else(skins_pick == "W", espn_proj_w, 82 - espn_proj_w),
+    
+    # CBS: use projected wins if W pick, else use projected losses
+    cbs_skins = if_else(skins_pick == "W", cbs_proj_w, 82 - cbs_proj_w),
+    
+    # Calculate weighted average using skins (which now correctly apply draft picks)
     weighted_average = if_else(
       !is.na(vegas_consensus),
       (vegas_consensus * 0.25) + (tr_skins * 0.38) + (espn_skins * 0.25) + (cbs_skins * 0.12),
       (tr_skins * 0.50) + (espn_skins * 0.34) + (cbs_skins * 0.16)  # Fallback formula without Vegas
     ),
-    # Calculate actual skins based on pick type from draft
+    
+    # Calculate actual skins based on HARDCODED pick type from draft (never inferred)
     actual_skins = if_else(skins_pick == "W", actual_wins, actual_losses),
+    
     # Calculate games played and skins percentage
     games_played = actual_wins + actual_losses,
     skins_pct = if_else(games_played > 0, actual_skins / games_played, 0),
     pct_projected = skins_pct * 82
-  )
+  ) %>%
+  # Remove the temporary hardcoded column to keep data clean
+  select(-skins_pick_hardcoded, -source)
+
+# VERIFICATION: Ensure all W/L picks match the hardcoded draft values
+verification <- df_final_projections %>%
+  select(team, skins_pick) %>%
+  left_join(HARDCODED_PICKS %>% select(team, expected = skins_pick_hardcoded), by = "team") %>%
+  filter(skins_pick != expected | is.na(skins_pick))
+
+if(nrow(verification) > 0) {
+  warning("W/L PICKS DO NOT MATCH DRAFT! Mismatched teams: ", 
+          paste(verification$team, collapse = ", "))
+}
 
 # Get today's date for historical tracking
 today <- Sys.Date()
@@ -340,9 +379,9 @@ today <- Sys.Date()
 # File to store team-level historical vegas consensus
 team_vegas_history_file <- "team_vegas_history.csv"
 
-# Prepare current team vegas data
+# Prepare current team vegas data (store projected WINS, not skins)
 current_team_vegas <- df_final_projections %>%
-  select(team, vegas_consensus) %>%
+  select(team, vegas_proj_wins) %>%
   mutate(date = today)
 
 # Load existing team vegas history if it exists
@@ -362,35 +401,37 @@ if(file.exists(team_vegas_history_file)) {
   team_vegas_history <- current_team_vegas
 }
 
-# For teams with NA vegas_consensus, find the last non-NA value
+# For teams with NA vegas_proj_wins, find the last non-NA value
 df_final_projections <- df_final_projections %>%
   rowwise() %>%
   mutate(
-    vegas_consensus = if_else(
-      is.na(vegas_consensus),
+    vegas_proj_wins = if_else(
+      is.na(vegas_proj_wins),
       {
         # Find last non-NA value for this team from history
         current_team <- team
         last_valid <- team_vegas_history %>%
-          filter(team == current_team, !is.na(vegas_consensus), date < today) %>%
+          filter(team == current_team, !is.na(vegas_proj_wins), date < today) %>%
           arrange(desc(date)) %>%
           slice(1) %>%
-          pull(vegas_consensus)
+          pull(vegas_proj_wins)
         
         if(length(last_valid) > 0) last_valid else NA_real_
       },
-      vegas_consensus
+      vegas_proj_wins
     )
   ) %>%
   ungroup()
 
-# Recalculate weighted average with updated vegas_consensus
+# Recalculate vegas_consensus by applying hardcoded W/L picks to filled-in projected wins
 df_final_projections <- df_final_projections %>%
   mutate(
+    vegas_consensus = if_else(skins_pick == "W", vegas_proj_wins, 82 - vegas_proj_wins),
+    # Recalculate weighted average with updated vegas values
     weighted_average = if_else(
       !is.na(vegas_consensus),
-      (vegas_consensus * 0.31) + (tr_skins * 0.10) + (espn_skins * 0.59),
-      (tr_skins * 0.25) + (espn_skins * 0.75)
+      (vegas_consensus * 0.25) + (tr_skins * 0.38) + (espn_skins * 0.25) + (cbs_skins * 0.12),
+      (tr_skins * 0.50) + (espn_skins * 0.34) + (cbs_skins * 0.16)
     )
   )
 
