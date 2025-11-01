@@ -6,7 +6,7 @@
 "Boston Celtics",42.125,2025-10-29
 "Boston Celtics",42.125,2025-10-30
 "Boston Celtics",40,2025-10-31
-"Boston Celtics",41.5,2025-11-01
+"Boston Celtics",NA,2025-11-01
 "Brooklyn Nets",64.5,2025-10-29
 "Brooklyn Nets",64.5,2025-10-30
 "Brooklyn Nets",64.5,2025-10-31
@@ -22,11 +22,11 @@
 "Cleveland Cavaliers",57.5,2025-10-29
 "Cleveland Cavaliers",56.5,2025-10-30
 "Cleveland Cavaliers",56.5,2025-10-31
-"Cleveland Cavaliers",56.5,2025-11-01
+"Cleveland Cavaliers",NA,2025-11-01
 "Dallas Mavericks",42.625,2025-10-29
 "Dallas Mavericks",43.3333333333333,2025-10-30
 "Dallas Mavericks",38.5,2025-10-31
-"Dallas Mavericks",43.5,2025-11-01
+"Dallas Mavericks",43.6666666666667,2025-11-01
 "Denver Nuggets",53.5,2025-10-29
 "Denver Nuggets",54.8333333333333,2025-10-30
 "Denver Nuggets",54.8333333333333,2025-10-31
@@ -58,7 +58,7 @@
 "Memphis Grizzlies",43.375,2025-10-29
 "Memphis Grizzlies",42.625,2025-10-30
 "Memphis Grizzlies",39.3333333333333,2025-10-31
-"Memphis Grizzlies",42.5,2025-11-01
+"Memphis Grizzlies",NA,2025-11-01
 "Miami Heat",41.6666666666667,2025-10-29
 "Miami Heat",41.6666666666667,2025-10-30
 "Miami Heat",39.5,2025-10-31
@@ -74,7 +74,7 @@
 "New Orleans Pelicans",52.375,2025-10-29
 "New Orleans Pelicans",52.3333333333333,2025-10-30
 "New Orleans Pelicans",52.5,2025-10-31
-"New Orleans Pelicans",51.5,2025-11-01
+"New Orleans Pelicans",NA,2025-11-01
 "New York Knicks",51.5,2025-10-29
 "New York Knicks",51.5,2025-10-30
 "New York Knicks",51.5,2025-10-31
@@ -94,11 +94,11 @@
 "Phoenix Suns",52.125,2025-10-29
 "Phoenix Suns",52.25,2025-10-30
 "Phoenix Suns",52.625,2025-10-31
-"Phoenix Suns",52,2025-11-01
+"Phoenix Suns",52.5,2025-11-01
 "Portland Trail Blazers",46.875,2025-10-29
 "Portland Trail Blazers",47,2025-10-30
 "Portland Trail Blazers",46.625,2025-10-31
-"Portland Trail Blazers",47,2025-11-01
+"Portland Trail Blazers",NA,2025-11-01
 "Sacramento Kings",50.6666666666667,2025-10-29
 "Sacramento Kings",50.5,2025-10-30
 "Sacramento Kings",50.5,2025-10-31
@@ -110,7 +110,7 @@
 "Toronto Raptors",42.5,2025-10-29
 "Toronto Raptors",44.125,2025-10-30
 "Toronto Raptors",44.25,2025-10-31
-"Toronto Raptors",45,2025-11-01
+"Toronto Raptors",NA,2025-11-01
 "Utah Jazz",59.1666666666667,2025-10-29
 "Utah Jazz",58.8333333333333,2025-10-30
 "Utah Jazz",58.8333333333333,2025-10-31
