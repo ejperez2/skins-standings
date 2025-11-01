@@ -347,6 +347,104 @@ all_teams <- tibble(
            "Utah Jazz", "Washington Wizards")
 )
 
+# Get today's date for historical tracking
+today <- Sys.Date()
+
+# --- Step 4.5: Handle Missing Vegas Data with Historical Values ---
+# IMPORTANT: This must happen BEFORE creating df_final_projections
+# File to store team-level historical vegas consensus
+team_vegas_history_file <- "team_vegas_history.csv"
+
+# Hardcoded fallback values for teams that may be missing from scrape
+# These are reasonable estimates based on recent season performance
+vegas_fallback <- tibble(
+  team = c("Milwaukee Bucks", "Sacramento Kings"),
+  vegas_proj_wins = c(47.25, 31.5)
+)
+
+# Load existing team vegas history if it exists
+if(file.exists(team_vegas_history_file)) {
+  team_vegas_history_raw <- read.csv(team_vegas_history_file, stringsAsFactors = FALSE) %>%
+    mutate(date = as.Date(date))
+  
+  # If the old format has vegas_consensus column, reconstruct vegas_proj_wins
+  if("vegas_consensus" %in% names(team_vegas_history_raw)) {
+    team_vegas_history <- team_vegas_history_raw %>%
+      left_join(HARDCODED_PICKS %>% select(team, skins_pick_hardcoded), by = "team") %>%
+      mutate(
+        # Reconstruct vegas_proj_wins from vegas_consensus using W/L picks
+        vegas_proj_wins = if_else(
+          is.na(vegas_proj_wins) & !is.na(vegas_consensus),
+          if_else(skins_pick_hardcoded == "W", vegas_consensus, 82 - vegas_consensus),
+          vegas_proj_wins
+        )
+      ) %>%
+      select(team, vegas_proj_wins, date)
+  } else {
+    team_vegas_history <- team_vegas_history_raw %>%
+      select(team, vegas_proj_wins, date)
+  }
+  
+  # Remove today's data if it exists
+  team_vegas_history <- team_vegas_history %>%
+    filter(date != today)
+    
+} else {
+  # Create empty history
+  team_vegas_history <- tibble(team = character(), vegas_proj_wins = numeric(), date = as.Date(character()))
+}
+
+# For each team in all_teams, get current value from df_skins or find historical value
+all_teams_with_vegas <- all_teams %>%
+  left_join(df_skins %>% select(team, vegas_proj_wins), by = "team") %>%
+  left_join(vegas_fallback, by = "team", suffix = c("", "_fallback")) %>%
+  rowwise() %>%
+  mutate(
+    vegas_proj_wins = if_else(
+      is.na(vegas_proj_wins) & nrow(team_vegas_history) > 0,
+      {
+        # Find last non-NA value for this team from history
+        current_team <- team
+        last_valid <- team_vegas_history %>%
+          filter(team == current_team, !is.na(vegas_proj_wins)) %>%
+          arrange(desc(date)) %>%
+          slice(1) %>%
+          pull(vegas_proj_wins)
+        
+        if(length(last_valid) > 0) {
+          last_valid
+        } else if(!is.na(vegas_proj_wins_fallback)) {
+          # Use fallback if no historical value found
+          vegas_proj_wins_fallback
+        } else {
+          NA_real_
+        }
+      },
+      vegas_proj_wins
+    )
+  ) %>%
+  ungroup() %>%
+  select(team, vegas_proj_wins)
+
+# Update df_skins with backfilled values (this replaces the scraped df_skins)
+df_skins <- all_teams_with_vegas %>%
+  select(team, vegas_proj_wins)
+
+# Prepare current team vegas data for history (store projected WINS, not skins)
+# CRITICAL: Only save non-NA values to avoid polluting the history
+current_team_vegas <- df_skins %>%
+  filter(!is.na(vegas_proj_wins)) %>%
+  select(team, vegas_proj_wins) %>%
+  mutate(date = today)
+
+# Add current data to history
+team_vegas_history <- bind_rows(team_vegas_history, current_team_vegas) %>%
+  arrange(team, date)
+
+# Save updated team vegas history
+write.csv(team_vegas_history, team_vegas_history_file, row.names = FALSE)
+
+# NOW create df_final_projections with the backfilled Vegas data
 # Join all data sources to the complete team list
 # CRITICAL: Join hardcoded W/L picks LAST to overwrite any vestigial inference code
 # NOTE: Do NOT join 'player' here - it causes conflicts when joining with draft_data later
@@ -409,72 +507,6 @@ if(nrow(verification) > 0) {
   warning("W/L PICKS DO NOT MATCH DRAFT! Mismatched teams: ", 
           paste(verification$team, collapse = ", "))
 }
-
-# Get today's date for historical tracking
-today <- Sys.Date()
-
-# --- Step 4.5: Handle Missing Vegas Data with Historical Values ---
-# File to store team-level historical vegas consensus
-team_vegas_history_file <- "team_vegas_history.csv"
-
-# Prepare current team vegas data (store projected WINS, not skins)
-current_team_vegas <- df_final_projections %>%
-  select(team, vegas_proj_wins) %>%
-  mutate(date = today)
-
-# Load existing team vegas history if it exists
-if(file.exists(team_vegas_history_file)) {
-  team_vegas_history <- read.csv(team_vegas_history_file, stringsAsFactors = FALSE) %>%
-    mutate(date = as.Date(date))
-  
-  # Remove today's data if it exists
-  team_vegas_history <- team_vegas_history %>%
-    filter(date != today)
-  
-  # Add current data
-  team_vegas_history <- bind_rows(team_vegas_history, current_team_vegas) %>%
-    arrange(team, date)
-} else {
-  # Create new history file
-  team_vegas_history <- current_team_vegas
-}
-
-# For teams with NA vegas_proj_wins, find the last non-NA value
-df_final_projections <- df_final_projections %>%
-  rowwise() %>%
-  mutate(
-    vegas_proj_wins = if_else(
-      is.na(vegas_proj_wins),
-      {
-        # Find last non-NA value for this team from history
-        current_team <- team
-        last_valid <- team_vegas_history %>%
-          filter(team == current_team, !is.na(vegas_proj_wins), date < today) %>%
-          arrange(desc(date)) %>%
-          slice(1) %>%
-          pull(vegas_proj_wins)
-        
-        if(length(last_valid) > 0) last_valid else NA_real_
-      },
-      vegas_proj_wins
-    )
-  ) %>%
-  ungroup()
-
-# Recalculate vegas_consensus by applying hardcoded W/L picks to filled-in projected wins
-df_final_projections <- df_final_projections %>%
-  mutate(
-    vegas_consensus = if_else(skins_pick == "W", vegas_proj_wins, 82 - vegas_proj_wins),
-    # Recalculate weighted average with updated vegas values
-    weighted_average = if_else(
-      !is.na(vegas_consensus),
-      (vegas_consensus * 0.20) + (tr_skins * 0.30) + (espn_skins * 0.20) + (cbs_skins * 0.10) + (br_skins * 0.20),
-      (tr_skins * 0.35) + (espn_skins * 0.25) + (cbs_skins * 0.10) + (br_skins * 0.30)
-    )
-  )
-
-# Save updated team vegas history
-write.csv(team_vegas_history, team_vegas_history_file, row.names = FALSE)
 
 # --- Step 5: Calculate Player Scores ---
 player_scores <- draft_data %>%
