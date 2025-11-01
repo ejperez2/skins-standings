@@ -232,6 +232,36 @@ cbs_proj <- bind_rows(eastern_conf, western_conf) %>%
   filter(team_cbs != "Team") %>%  # Remove header rows
   mutate(cbs_proj_w = as.numeric(cbs_proj_w))
 
+# F: Scrape Basketball Reference
+url_br <- "https://www.basketball-reference.com/friv/playoff_prob.html"
+webpage_br <- read_html(url_br)
+tables_br <- webpage_br %>% html_table()
+
+# Fix Eastern Conference
+eastern_conf_br <- tables_br[[1]]
+names(eastern_conf_br) <- make.names(names(eastern_conf_br), unique = TRUE)
+eastern_conf_br <- eastern_conf_br %>%
+  slice(-1) %>%  # Remove header row
+  select(2, 3) %>%  # Team name, W
+  setNames(c("team_br", "br_proj_w"))
+
+# Fix Western Conference
+western_conf_br <- tables_br[[2]]
+names(western_conf_br) <- make.names(names(western_conf_br), unique = TRUE)
+western_conf_br <- western_conf_br %>%
+  slice(-1) %>%  # Remove header row
+  select(2, 3) %>%  # Team name, W
+  setNames(c("team_br", "br_proj_w"))
+
+# Combine both conferences
+br_proj <- bind_rows(eastern_conf_br, western_conf_br) %>%
+  filter(team_br != "") %>%  # Remove empty rows
+  mutate(
+    br_proj_w = as.numeric(br_proj_w),
+    team = team_br
+  ) %>%
+  select(team, br_proj_w)
+
 # --- Step 3: Combine All Projections ---
 
 # Create a master team name crosswalk function to standardize ALL sources
@@ -301,6 +331,9 @@ cbs_proj <- cbs_proj %>%
   standardize_team_names("team") %>%
   select(team, cbs_proj_w)
 
+# Basketball Reference standardization
+br_proj <- br_proj %>% standardize_team_names("team")
+
 # Now combine with consistent team names
 # Start with a complete list of all 30 teams to ensure no teams are missing
 all_teams <- tibble(
@@ -323,6 +356,7 @@ df_final_projections <- all_teams %>%
   left_join(tr_cleaned, by = "team") %>%
   left_join(espn_cleaned %>% select(team, espn_proj_w), by = "team") %>%
   left_join(cbs_proj, by = "team") %>%
+  left_join(br_proj, by = "team") %>%
   left_join(nba_standings, by = "team") %>%
   # Join hardcoded picks LAST to ensure they are NEVER overwritten
   left_join(HARDCODED_PICKS, by = "team") %>%
@@ -343,11 +377,15 @@ df_final_projections <- all_teams %>%
     # CBS: use projected wins if W pick, else use projected losses
     cbs_skins = if_else(skins_pick == "W", cbs_proj_w, 82 - cbs_proj_w),
     
+    # Basketball Reference: use projected wins if W pick, else use projected losses
+    br_skins = if_else(skins_pick == "W", br_proj_w, 82 - br_proj_w),
+    
     # Calculate weighted average using skins (which now correctly apply draft picks)
+    # Updated formula to include Basketball Reference
     weighted_average = if_else(
       !is.na(vegas_consensus),
-      (vegas_consensus * 0.25) + (tr_skins * 0.38) + (espn_skins * 0.25) + (cbs_skins * 0.12),
-      (tr_skins * 0.50) + (espn_skins * 0.34) + (cbs_skins * 0.16)  # Fallback formula without Vegas
+      (vegas_consensus * 0.20) + (tr_skins * 0.30) + (espn_skins * 0.20) + (cbs_skins * 0.10) + (br_skins * 0.20),
+      (tr_skins * 0.35) + (espn_skins * 0.25) + (cbs_skins * 0.10) + (br_skins * 0.30)  # Fallback formula without Vegas
     ),
     
     # Calculate actual skins based on HARDCODED pick type from draft (never inferred)
@@ -430,8 +468,8 @@ df_final_projections <- df_final_projections %>%
     # Recalculate weighted average with updated vegas values
     weighted_average = if_else(
       !is.na(vegas_consensus),
-      (vegas_consensus * 0.25) + (tr_skins * 0.38) + (espn_skins * 0.25) + (cbs_skins * 0.12),
-      (tr_skins * 0.50) + (espn_skins * 0.34) + (cbs_skins * 0.16)
+      (vegas_consensus * 0.20) + (tr_skins * 0.30) + (espn_skins * 0.20) + (cbs_skins * 0.10) + (br_skins * 0.20),
+      (tr_skins * 0.35) + (espn_skins * 0.25) + (cbs_skins * 0.10) + (br_skins * 0.30)
     )
   )
 
@@ -450,9 +488,10 @@ player_scores <- draft_data %>%
     `Vegas Consensus` = sum(vegas_consensus, na.rm = TRUE),
     `TeamRankings` = sum(tr_skins, na.rm = TRUE),
     `ESPN BPI` = sum(espn_skins, na.rm = TRUE),
-    `CBS Sports` = sum(cbs_skins, na.rm = TRUE)
+    `CBS Sports` = sum(cbs_skins, na.rm = TRUE),
+    `BB-Ref` = sum(br_skins, na.rm = TRUE)
   ) %>%
-  mutate(Projection_Average = rowMeans(select(., `Weighted Average`, `Vegas Consensus`, `TeamRankings`, `ESPN BPI`, `CBS Sports`))) %>%
+  mutate(Projection_Average = rowMeans(select(., `Weighted Average`, `Vegas Consensus`, `TeamRankings`, `ESPN BPI`, `CBS Sports`, `BB-Ref`))) %>%
   arrange(desc(`Actual Skins`))
 
 # --- Step 6: Prepare Standings Table Data ---
@@ -477,6 +516,7 @@ current_standings <- player_scores %>%
     team_rankings = `TeamRankings`,
     espn_bpi = `ESPN BPI`,
     cbs_sports = `CBS Sports`,
+    basketball_reference = `BB-Ref`,
     projection_average = `Projection_Average`
   ) %>%
   mutate(date = today)
@@ -510,6 +550,7 @@ if(needs_zero_start) {
     team_rankings = NA,
     espn_bpi = NA,
     cbs_sports = NA,
+    basketball_reference = NA,
     projection_average = NA,
     date = min_date - 1
   )
@@ -544,6 +585,7 @@ player_scores_display <- player_scores %>%
     `TeamRankings` = sprintf("%.1f", `TeamRankings`),
     `ESPN BPI` = sprintf("%.1f", `ESPN BPI`),
     `CBS Sports` = sprintf("%.1f", `CBS Sports`),
+    `BB-Ref` = sprintf("%.1f", `BB-Ref`),
     `Projection_Average` = sprintf("%.1f", `Projection_Average`)
   )
 
@@ -566,13 +608,14 @@ global_avg_row <- tibble(
   `TeamRankings` = sprintf("%.1f", mean(player_scores$TeamRankings, na.rm = TRUE)),
   `ESPN BPI` = sprintf("%.1f", mean(player_scores$`ESPN BPI`, na.rm = TRUE)),
   `CBS Sports` = sprintf("%.1f", mean(player_scores$`CBS Sports`, na.rm = TRUE)),
+  `BB-Ref` = sprintf("%.1f", mean(player_scores$`BB-Ref`, na.rm = TRUE)),
   `Projection_Average` = sprintf("%.1f", mean(player_scores$Projection_Average, na.rm = TRUE))
 )
 
 # Combine player data with global average
 player_scores_with_avg <- bind_rows(player_scores_display, global_avg_row)
 
-kable(player_scores_with_avg, align = c("l", "r", "r", "r", "r", "r", "r", "r", "r", "r")) %>%
+kable(player_scores_with_avg, align = c("l", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r")) %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, position = "center") %>%
   row_spec(0, bold = TRUE, color = "white", background = "#444444") %>%
   row_spec(nrow(player_scores_with_avg), bold = TRUE, background = "#F0F0F0") %>%  # Highlight average row
@@ -598,14 +641,15 @@ standings_table <- draft_data %>%
         `Vegas Consensus` = vegas_consensus,
         `TeamRankings` = tr_skins,
         `ESPN BPI` = espn_skins,
-        `CBS Sports` = cbs_skins
+        `CBS Sports` = cbs_skins,
+        `BB-Ref` = br_skins
       ),
     by = "team"
   ) %>%
   # Calculate Projection Average for each team
   rowwise() %>%
   mutate(
-    `Projection Average` = mean(c(`Weighted Average`, `Vegas Consensus`, `TeamRankings`, `ESPN BPI`, `CBS Sports`), na.rm = TRUE)
+    `Projection Average` = mean(c(`Weighted Average`, `Vegas Consensus`, `TeamRankings`, `ESPN BPI`, `CBS Sports`, `BB-Ref`), na.rm = TRUE)
   ) %>%
   ungroup() %>%
   select(
@@ -621,6 +665,7 @@ standings_table <- draft_data %>%
     `TeamRankings`,
     `ESPN BPI`,
     `CBS Sports`,
+    `BB-Ref`,
     `Projection Average`
   ) %>%
   arrange(
@@ -636,6 +681,7 @@ standings_table <- draft_data %>%
     `TeamRankings` = sprintf("%.1f", `TeamRankings`),
     `ESPN BPI` = sprintf("%.1f", `ESPN BPI`),
     `CBS Sports` = sprintf("%.1f", `CBS Sports`),
+    `BB-Ref` = sprintf("%.1f", `BB-Ref`),
     `Projection Average` = sprintf("%.1f", `Projection Average`)
   )
 
@@ -654,7 +700,7 @@ for(i in seq_along(player_order)) {
   
   table_html <- kable(
     player_data,
-    align = c("c", "c", "r", "r", "r", "r", "r", "r", "r", "r", "r"),
+    align = c("c", "c", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r"),
     escape = FALSE
   ) %>%
     kable_styling(
@@ -680,7 +726,7 @@ team_projections_table <- df_final_projections %>%
   left_join(draft_data %>% select(team, player), by = "team") %>%
   rowwise() %>%
   mutate(
-    `Projection Average` = mean(c(weighted_average, vegas_consensus, tr_skins, espn_skins, cbs_skins), na.rm = TRUE)
+    `Projection Average` = mean(c(weighted_average, vegas_consensus, tr_skins, espn_skins, cbs_skins, br_skins), na.rm = TRUE)
   ) %>%
   ungroup() %>%
   select(
@@ -695,6 +741,7 @@ team_projections_table <- df_final_projections %>%
     `TeamRankings` = tr_skins,
     `ESPN BPI` = espn_skins,
     `CBS Sports` = cbs_skins,
+    `BB-Ref` = br_skins,
     `Projection Average`
   ) %>%
   arrange(desc(`Actual Skins`)) %>%
@@ -707,10 +754,11 @@ team_projections_table <- df_final_projections %>%
     `TeamRankings` = sprintf("%.1f", `TeamRankings`),
     `ESPN BPI` = sprintf("%.1f", `ESPN BPI`),
     `CBS Sports` = sprintf("%.1f", `CBS Sports`),
+    `BB-Ref` = sprintf("%.1f", `BB-Ref`),
     `Projection Average` = sprintf("%.1f", `Projection Average`)
   )
 
-kable(team_projections_table, align = c("l", "l", "c", "r", "r", "r", "r", "r", "r", "r", "r", "r")) %>%
+kable(team_projections_table, align = c("l", "l", "c", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r")) %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, position = "center") %>%
   row_spec(0, bold = TRUE, color = "white", background = "#444444") %>%
   column_spec(1, bold = TRUE) %>%
@@ -973,6 +1021,39 @@ ggplot(history_projections, aes(x = date, y = cbs_sports, color = player, group 
   ) +
   labs(
     title = "CBS Sports Projection over time",
+    x = NULL,
+    y = "Projected Skins",
+    color = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.text = element_text(size = 11),
+    axis.title = element_text(size = 12),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "gray90"),
+    legend.text = element_text(size = 11)
+  )
+```
+
+## BB-Ref Projection Over Time
+
+```{r basketball-reference-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
+# Filter out NA values for Basketball Reference chart
+history_br <- history %>% filter(!is.na(basketball_reference))
+
+ggplot(history_br, aes(x = date, y = basketball_reference, color = player, group = player)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2.5) +
+  scale_color_manual(values = colorblind_colors) +
+  scale_y_continuous(
+    labels = function(x) sprintf("%.1f", x),
+    limits = c(200, NA),
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  labs(
+    title = "BB-Ref Projection over time",
     x = NULL,
     y = "Projected Skins",
     color = NULL
