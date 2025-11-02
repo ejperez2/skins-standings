@@ -1,341 +1,1269 @@
-# NBA Skins Standings Tracker
+# NBA Skins Standings Tracker - Comprehensive Documentation
 
 An automated NBA fantasy league tracking system that scrapes live standings and multiple projection sources to track a 6-player "skins" draft league throughout the 2024-25 season.
 
+## 📊 Table of Contents
+
+- [Project Overview](#project-overview)
+- [League Setup](#league-setup)
+- [Repository Structure](#repository-structure)
+- [Data Sources](#data-sources)
+- [Key Calculations](#key-calculations)
+- [Display Tables and Charts](#display-tables-and-charts)
+- [Automation System](#automation-system)
+- [Technical Architecture](#technical-architecture)
+- [Troubleshooting Guide](#troubleshooting-guide)
+- [Common Issues and Solutions](#common-issues-and-solutions)
+- [Maintenance](#maintenance)
+- [Development Tips](#development-tips)
+
+---
+
 ## 📊 Project Overview
 
-**Skins Concept**: Players draft NBA teams and earn "skins" based on either wins (W pick) or losses (L pick). The system tracks:
-- Live actual performance from ESPN standings
-- Multiple projection sources (Vegas, TeamRankings, ESPN BPI, CBS Sports)
-- Historical trends over time
-- Season completion percentage
+### Skins Concept
+Players draft NBA teams and earn "skins" based on either wins (W pick) or losses (L pick). The system:
+- Tracks live actual performance from ESPN standings
+- Aggregates 6 projection sources (Vegas, TeamRankings, ESPN BPI, CBS Sports, Basketball Reference, and a weighted average)
+- Maintains historical trends over time
+- Calculates season completion percentage
+- Automatically updates 9 times daily via GitHub Actions
 
-**Live Site**: Hosted on GitHub Pages, automatically updated 9 times daily via GitHub Actions
+### Core Features
+- ✅ **Real-time scraping** from 6 independent sources
+- ✅ **Historical backfill** for missing data (especially Vegas odds)
+- ✅ **Automated deployment** via GitHub Actions
+- ✅ **Self-contained HTML** output for easy viewing
+- ✅ **Colorblind-friendly** visualizations
+- ✅ **Mobile-responsive** tables
+
+**Live Site**: Automatically deployed to GitHub Pages
+
+---
 
 ## 🏀 League Setup
 
 ### Players
-- Eristeo
-- Matt
-- Brian
-- Adam
-- Thomas
-- Kenneth
+1. Eristeo
+2. Matt
+3. Brian
+4. Adam
+5. Thomas
+6. Kenneth
 
 ### Draft Format
-- 6 players × 5 teams each = 30 NBA teams
-- Snake draft (picks 1-30)
-- Each team assigned either "W" (wins) or "L" (losses) as skins source
+- **Total Teams**: 30 NBA teams (6 players × 5 teams each)
+- **Draft Type**: Snake draft
+- **Pick Range**: Picks 1-30
+- **Skins Assignment**: Each team is assigned either "W" (wins) or "L" (losses) as the skins source
+
+### Critical: Hardcoded W/L Picks
+The W/L pick for each team is **hardcoded** in the `draft_data` tibble and stored in `HARDCODED_PICKS`. This prevents any logic from inferring picks based on projections (which would be circular logic). The system verifies picks match the draft on every run.
+
+---
 
 ## 📁 Repository Structure
 
 ```
 /
-├── index.qmd                      # Main Quarto document (source)
+├── index.qmd                      # Main Quarto document (source code)
 ├── index.html                     # Generated output (deployed to GitHub Pages)
-├── standings_history.csv          # Player-level historical data
-├── team_vegas_history.csv         # Team-level Vegas odds backfill
-└── .github/workflows/publish.yml  # Automation workflow
+├── standings_history.csv          # Player-level historical data (time series)
+├── team_vegas_history.csv         # Team-level Vegas odds backfill data
+├── .github/
+│   └── workflows/
+│       └── publish.yml            # GitHub Actions automation workflow
+├── README.md                      # This comprehensive documentation
+└── [diagnostic files]             # Optional: For troubleshooting
 ```
+
+### Key Files Explained
+
+#### index.qmd
+- **Single-chunk design**: One massive R code chunk handles everything (scraping, processing, calculations, tables, charts)
+- **cache=FALSE**: Ensures fresh data on every render
+- **Self-contained HTML**: Output includes all CSS/JS inline for portability
+
+#### standings_history.csv
+- **Purpose**: Time series data for charts
+- **Columns**: player, actual_skins, skins_pct, pct_projected, weighted_average, vegas_consensus, team_rankings, espn_bpi, cbs_sports, basketball_reference, projection_average, date
+- **Updates**: Once per day (removes existing data for current date before appending)
+- **Special**: Includes zero starting point (day before first games) for clean chart visualization
+
+#### team_vegas_history.csv
+- **Purpose**: Backfill missing Vegas odds for specific teams
+- **Why needed**: Rotowire sometimes excludes teams from their API (especially MIL and SAC)
+- **Columns**: team, vegas_proj_wins, date
+- **Logic**: Stores projected WINS (not skins), then applies W/L picks later
+- **Critical**: Only stores non-NA values to avoid pollution
+
+---
 
 ## 🔄 Data Sources
 
 ### 1. ESPN Standings (Actual Results)
 - **URL**: `https://www.espn.com/nba/standings`
 - **Method**: HTML scraping (rvest)
-- **Data**: Live wins and losses for all 30 teams
+- **Data Extracted**: Live wins and losses for all 30 teams
 - **Frequency**: Every render (9x daily)
+- **Reliability**: ⭐⭐⭐⭐⭐ (Highly stable)
+- **Parsing**: 4 tables (East teams, East stats, West teams, West stats)
+
+**Common Issues**:
+- ESPN sometimes uses abbreviated team names in the raw HTML
+- The scraper handles this with regex cleaning and standardization
 
 ### 2. Rotowire Vegas Odds
 - **URL**: `https://www.rotowire.com/betting/nba/tables/team-futures.php?future=Win%20Totals`
 - **Method**: JSON API
-- **Books**: MGM, DraftKings, Caesars, BetRivers, HardRock, FanDuel, ESPNBet
-- **Processing**: 
-  - Adjusts totals by ±0.5 based on over/under odds
-  - Creates composite projection (mean of 7 books)
-  - Converts to skins (≥41 wins → use wins, else 82 - wins)
-- **Issue**: Teams sometimes missing → uses `team_vegas_history.csv` for backfill
+- **Books Aggregated**: MGM, DraftKings, Caesars, BetRivers, HardRock, FanDuel, ESPNBet (7 total)
+- **Processing Steps**:
+  1. Extract win total lines and over/under odds from each book
+  2. Adjust totals by ±0.5 based on which side has better odds
+  3. Calculate composite projection (mean of 7 adjusted values)
+  4. Store as projected WINS (converted to skins later using W/L picks)
+- **Frequency**: Every render
+- **Reliability**: ⭐⭐⭐ (Sometimes missing teams)
+
+**Common Issues**:
+- **Missing Teams**: Rotowire sometimes excludes 2-4 teams (usually MIL, SAC)
+- **Solution**: Historical backfill system with hardcoded fallback values
+- **Season Changes**: Odds may disappear mid-season for eliminated teams
+
+**Vegas Backfill Logic**:
+```r
+1. Check current scrape
+2. If NA, check team_vegas_history.csv for most recent value
+3. If no history, use hardcoded fallback (MIL: 47.25, SAC: 31.5)
+4. Only save non-NA values to history to prevent pollution
+```
 
 ### 3. TeamRankings Projections
 - **URL**: `https://www.teamrankings.com/nba/projections/standings/`
 - **Method**: HTML table scraping
-- **Data**: Projected wins and losses
+- **Data Extracted**: Projected wins and losses
+- **Frequency**: Every render
+- **Reliability**: ⭐⭐⭐⭐ (Very stable)
+- **Notes**: Combines East and West conference tables
 
-### 4. ESPN BPI
+### 4. ESPN BPI (Basketball Power Index)
 - **URL**: `https://www.espn.com/nba/bpi/_/view/projections`
 - **Method**: HTML table scraping
-- **Data**: Overall projected W-L record
+- **Data Extracted**: Overall projected W-L record
+- **Frequency**: Every render
+- **Reliability**: ⭐⭐⭐⭐ (Very stable)
+- **Format**: Combined W-L string (e.g., "52-30") that must be split
 
 ### 5. CBS Sports Projections
 - **URL**: `https://www.cbssports.com/nba/standings/`
 - **Method**: HTML table scraping
-- **Data**: 2025 season win projections
+- **Data Extracted**: 2025 season win projections (column 16)
 - **Processing**: Extracts from both Eastern and Western conference tables
+- **Frequency**: Every render
+- **Reliability**: ⭐⭐⭐⭐ (Stable)
+- **Notes**: Sometimes uses abbreviated team names (e.g., "Golden St.")
+
+### 6. Basketball Reference (BB-Ref)
+- **URL**: `https://www.basketball-reference.com/friv/playoff_prob.html`
+- **Method**: HTML table scraping
+- **Data Extracted**: Projected wins from playoff probability tables
+- **Processing**: 
+  - Extracts from separate Eastern and Western conference tables
+  - Removes empty rows
+  - Table structure requires special handling with `make.names()`
+- **Frequency**: Every render
+- **Reliability**: ⭐⭐⭐⭐ (Stable)
+- **Added**: November 2024 update
+
+---
 
 ## 📐 Key Calculations
 
-### Actual Skins
+### 1. Actual Skins
 ```r
 actual_skins = if_else(skins_pick == "W", actual_wins, actual_losses)
 ```
+- Uses the **hardcoded** W/L pick from draft_data
+- Never inferred from projections
 
-### Skins Percentage
+### 2. Skins Percentage
 ```r
 skins_pct = actual_skins / games_played
 ```
 - Displayed as percentage (e.g., "76.5%")
-- **Global League Average**: total_league_skins / total_league_games
+- Zero if no games played yet
 
-### % Projected (Pace-Based)
+### 3. Global League Average
+```r
+league_skins_pct = total_league_skins / total_league_games
+```
+- **Critical**: Uses sum across ALL 30 teams (not average of 6 player averages)
+- Prevents inflation from players with more games played
+- Displayed in gray row at bottom of player summary table
+
+### 4. % Projected (Pace-Based Projection)
 ```r
 pct_projected = skins_pct × 82
 ```
-- **Team level**: Each team's pace projection
-- **Player level**: Sum of all team pct_projected values
+- **Team level**: Extrapolates current pace to full 82-game season
+- **Player level**: Sum of all 5 team projections (not pace × 82)
+- Example: If a team is 10-2 (83.3%), % Projected = 68.3 skins
 
-### Weighted Average
-**With Vegas data** (Vegas available):
+### 5. Weighted Average
+The composite projection uses different weights depending on Vegas availability:
+
+**With Vegas data** (most common):
 ```r
-(vegas_consensus × 0.25) + (tr_skins × 0.38) + (espn_skins × 0.25) + (cbs_skins × 0.12)
+weighted_average = (vegas_consensus × 0.20) + 
+                   (tr_skins × 0.30) + 
+                   (espn_skins × 0.20) + 
+                   (cbs_skins × 0.10) + 
+                   (br_skins × 0.20)
 ```
 
-**Without Vegas data** (Vegas missing):
+**Without Vegas data** (fallback):
 ```r
-(tr_skins × 0.50) + (espn_skins × 0.34) + (cbs_skins × 0.16)
+weighted_average = (tr_skins × 0.35) + 
+                   (espn_skins × 0.25) + 
+                   (cbs_skins × 0.10) + 
+                   (br_skins × 0.30)
 ```
 
-### Projection Average
-```r
-mean(weighted_average, vegas_consensus, team_rankings, espn_bpi, cbs_sports)
-```
+**Weight Rationale**:
+- **Vegas** (20%): Real money market, but can be missing
+- **TeamRankings** (30%/35%): Sophisticated model, updated frequently
+- **ESPN BPI** (20%/25%): Strong statistical model
+- **BB-Ref** (20%/30%): Reliable historical data
+- **CBS Sports** (10%/16%): Lower weight, simpler model
 
-### Season Completion
+### 6. Projection Average
+```r
+projection_average = mean(weighted_average, vegas_consensus, 
+                         team_rankings, espn_bpi, cbs_sports, br_ref)
+```
+- Simple mean of all 6 projection sources
+- Treats each source equally
+- Provides alternative to weighted approach
+
+### 7. Season Completion
 ```r
 season_completion_pct = (total_games_played / 2460) × 100
 ```
-- Total NBA season games: 30 teams × 82 games = 2,460
+- Total possible games: 30 teams × 82 games = 2,460
+- Displayed at top of page below timestamp
 
-## 📊 Display Tables
+---
+
+## 📊 Display Tables and Charts
 
 ### Table 1: Skins Standings (Player Summary)
-**Columns**: player, Actual Skins, Skins %, % Projected, Weighted Average, Vegas Consensus, TeamRankings, ESPN BPI, CBS Sports, Projection_Average
 
-**Special Row**: League Average (bottom row)
-- Uses global calculations (total league skins / total league games)
-- Prevents inflation from players with more games
+**Purpose**: High-level view of each player's performance
+
+**Columns**: 
+- Player (name)
+- Actual Skins (current total)
+- Skins % (current winning/losing rate)
+- % Projected (pace-based projection)
+- Weighted Average (composite projection)
+- Vegas Consensus (betting market)
+- TeamRankings (model projection)
+- ESPN BPI (power index)
+- CBS Sports (simple projection)
+- BB-Ref (reference projection)
+- Projection Average (mean of all sources)
+
+**Special Features**:
+- **League Average row** (bottom): Gray background (#F0F0F0)
+  - Uses global calculation (total league skins / total league games)
+  - Prevents inflation from players with different game counts
+- **Highlighting**:
+  - Actual Skins: Green (#E8F5E9)
+  - Skins %: Yellow (#FFF9C4)
+  - Weighted Average: Light green (#DFF0D8)
 
 **Formatting**:
-- Actual Skins: Integer
+- Actual Skins: Integer (no decimals)
 - Skins %: Percentage with 1 decimal (e.g., "76.5%")
-- All others: 1 decimal place
-- League Average row: Gray background (#F0F0F0)
+- All projections: 1 decimal place (e.g., "253.8")
 
-**Highlighting**:
-- Actual Skins: Green (#E8F5E9)
-- Skins %: Yellow (#FFF9C4)
-- Weighted Average: Light green (#DFF0D8)
+### Table 2: Standings by Player (6 Separate Tables)
 
-### Table 2: Standings and Projections by Player
-**Structure**: 6 separate tables (one per player), seamlessly connected
+**Purpose**: Detailed breakdown of each player's 5 teams
 
-**Player Order**: Eristeo, Matt, Brian, Adam, Thomas, Kenneth
+**Structure**: 6 seamless tables with gray headers showing player names
 
-**Columns**: Abbr, Skins Pick, Actual Skins, Skins %, % Projected, Weighted Average, Vegas Consensus, TeamRankings, ESPN BPI, CBS Sports, Projection Average
+**Player Order**: Eristeo → Matt → Brian → Adam → Thomas → Kenneth
 
-**Features**:
-- Gray header bar with player name
-- Column headers repeat for each player
-- Teams sorted by Actual Skins (descending)
-- Same formatting and highlighting as Table 1
+**Columns**: 
+- Abbr (team abbreviation)
+- Skins Pick (W or L)
+- Actual Skins
+- Skins %
+- % Projected
+- Weighted Average
+- Vegas Consensus
+- TeamRankings
+- ESPN BPI
+- CBS Sports
+- BB-Ref
+- Projection Average
 
-### Table 3: Standings and Projections by Team
-**Columns**: Team, Player, Pick Type, Actual Skins, Skins %, % Projected, Weighted Average, Vegas Consensus, TeamRankings, ESPN BPI, CBS Sports, Projection Average
+**Sorting**: Within each player, teams sorted by Actual Skins (descending)
 
-**Sort**: Descending by Actual Skins
+**Visual Design**:
+- Gray header bar (#666) for player name
+- Blue column headers (#0073C2)
+- Same highlighting as Table 1
+- Zero margin between tables for seamless appearance
 
-**Formatting**: Same as other tables
+### Table 3: Standings by Team
 
-## 📈 Charts (9 Total)
+**Purpose**: See all 30 teams ranked by performance
 
-### Colorblind-Friendly Palette
+**Columns**: Team, Player, Pick Type, [same projection columns as above]
+
+**Sorting**: Descending by Actual Skins (best performers at top)
+
+**Use Cases**:
+- Compare teams across different players
+- See which teams are overperforming/underperforming projections
+- Identify draft steals and busts
+
+### Charts (10 Total)
+
+All charts use a **colorblind-friendly palette** (Paul Tol's vibrant scheme):
 ```r
-Eristeo: #0077BB (Blue)
-Brian: #CC3311 (Red)
-Adam: #33BBEE (Cyan)
-Thomas: #009988 (Teal)
-Kenneth: #EE7733 (Orange)
-Matt: #EE3377 (Magenta)
+Eristeo:  #0077BB (Blue)
+Brian:    #CC3311 (Red)
+Adam:     #33BBEE (Cyan)
+Thomas:   #009988 (Teal)
+Kenneth:  #EE7733 (Orange)
+Matt:     #EE3377 (Magenta)
 ```
 
-### Chart Specifications
+#### Chart 1: Skins Over Time
+- **Y-axis**: 0 to max, integer scale
+- **Start**: One day before first games (with 0 values for clean visual)
+- **Purpose**: Track cumulative skins accumulation
 
-1. **Skins Over Time**
-   - Y-axis: 0 to max, integers
-   - Starts one day before first games (with 0 values)
+#### Chart 2: Skins % Over Time
+- **Y-axis**: 45% to max (focused range)
+- **Format**: Percentage with 1 decimal
+- **Purpose**: Compare efficiency regardless of games played
 
-2. **Skins % Over Time**
-   - Y-axis: 45% to max
-   - Format: Percentage with 1 decimal
+#### Chart 3: % Projected Over Time
+- **Y-axis**: 180 to max
+- **Format**: 1 decimal place
+- **Purpose**: See how pace-based projections evolve
 
-3. **% Projected Over Time**
-   - Y-axis: 180 to max
-   - Format: 1 decimal place
+#### Charts 4-10: Projection Sources Over Time
+Each projection source gets its own chart:
+4. Weighted Average
+5. Vegas Consensus
+6. TeamRankings
+7. ESPN BPI
+8. CBS Sports
+9. BB-Ref (Y-axis: 200 to max)
+10. Projection Average
 
-4-9. **Projection Source Charts**
-   - Weighted Average
-   - Vegas Consensus
-   - TeamRankings
-   - ESPN BPI
-   - CBS Sports
-   - Projection Average
-   - Y-axis: 220 to max
-   - Format: 1 decimal place
+- **Y-axis**: 220 to max (200 for BB-Ref)
+- **Format**: 1 decimal place
+- **Purpose**: Track how different models project the season
 
-## 🔧 Historical Data Tracking
+**Chart Features**:
+- Line width: 1.2 (thick enough for visibility)
+- Point size: 2.5 (visible markers)
+- Grid: Major lines only (minor removed for clarity)
+- Theme: Minimal with gray90 grid lines
+- Legend: Right side, 11pt text
 
-### Player History (standings_history.csv)
-**Columns**:
-- player, actual_skins, skins_pct, pct_projected
-- weighted_average, vegas_consensus, team_rankings, espn_bpi, cbs_sports
-- projection_average, date
+---
 
-**Logic**:
-- Removes existing data for current date
-- Appends today's data
-- Adds zero starting point (day before first games)
+## ⚙️ Automation System
 
-### Team Vegas History (team_vegas_history.csv)
-**Purpose**: Backfill missing Vegas odds
-
-**Columns**: team, vegas_consensus, date
-
-**Process**:
-1. Records all 30 teams' Vegas values each run
-2. When team has NA:
-   - Searches history for that team
-   - Finds most recent non-NA value
-   - Uses historical value instead
-3. Recalculates weighted_average
-4. Saves updated history
-
-**First Run Caveat**: Teams with NA stay NA (no history yet)
-
-## ⚙️ GitHub Actions Workflow
+### GitHub Actions Workflow
 
 **File**: `.github/workflows/publish.yml`
 
 **Triggers**:
-1. Push to main branch
-2. Manual workflow_dispatch button
-3. Scheduled (9 times daily)
+1. **Push to main branch**: Immediate render on code changes
+2. **Manual dispatch**: Button in Actions tab for on-demand renders
+3. **Scheduled cron jobs**: 9 times daily at strategic times
 
-**Schedule** (Central Time → UTC):
-- 6:00 AM → 12:00 UTC
-- 8:00 AM → 14:00 UTC
-- 12:00 PM → 18:00 UTC
-- 4:00 PM → 22:00 UTC
-- 8:00 PM → 02:00 UTC (next day)
-- 9:00 PM → 03:00 UTC
-- 10:00 PM → 04:00 UTC
-- 11:00 PM → 05:00 UTC
-- 12:00 AM → 06:00 UTC
+### Schedule (Central Time → UTC)
 
-**Steps**:
-1. Checkout repository
-2. Set up R (latest version)
-3. Set up Quarto
-4. Install system dependencies
-5. Install R packages: rmarkdown, knitr, pacman, httr, jsonlite, rvest, dplyr, tidyr, kableExtra, tibble, stringr, ggplot2, scales
-6. Render Quarto document
-7. **Commit both CSV files**: `git add standings_history.csv team_vegas_history.csv`
-8. Push with `[skip ci]` tag
-9. Deploy to GitHub Pages
+The workflow runs at times when NBA games are likely to have updates:
 
-## 🚀 Getting Started
+| Central Time | UTC Time | Reasoning |
+|--------------|----------|-----------|
+| 6:00 AM | 12:00 UTC | Morning update |
+| 8:00 AM | 14:00 UTC | Pre-work check |
+| 12:00 PM | 18:00 UTC | Lunch update |
+| 4:00 PM | 22:00 UTC | Early games starting |
+| 8:00 PM | 02:00 UTC (next day) | Peak game time |
+| 9:00 PM | 03:00 UTC | Mid-game update |
+| 10:00 PM | 04:00 UTC | Late game update |
+| 11:00 PM | 05:00 UTC | Final games |
+| 12:00 AM | 06:00 UTC | Midnight wrap-up |
 
-### Prerequisites
-- R (latest version)
-- Quarto
-- Git/GitHub account
-- GitHub Pages enabled
+**Cron Syntax Notes**:
+- Times are in UTC (GitHub Actions default)
+- Central Time = UTC - 5 hours (CST) or UTC - 6 hours (CDT)
+- Schedule accounts for CDT offset used in comments
 
-### Local Development
+### Workflow Steps
+
+```yaml
+1. Checkout repository (actions/checkout@v4)
+2. Set up R (r-lib/actions/setup-r@v2, latest version)
+3. Set up Quarto (quarto-dev/quarto-actions/setup@v2)
+4. Install system dependencies (libcurl, fontconfig, freetype, etc.)
+5. Install R packages (rmarkdown, knitr, pacman, httr, jsonlite, 
+                       rvest, dplyr, tidyr, kableExtra, tibble, 
+                       stringr, ggplot2, scales)
+6. Render Quarto document (quarto render index.qmd)
+7. Commit history CSVs (standings_history.csv, team_vegas_history.csv)
+   - Uses [skip ci] tag to prevent infinite loops
+8. Deploy to GitHub Pages (peaceiris/actions-gh-pages@v4)
+```
+
+**Key Permissions**:
+```yaml
+permissions:
+  contents: write  # Needed for: 
+                   # 1. Pushing to gh-pages branch
+                   # 2. Committing history CSV updates
+```
+
+**Important**: The workflow commits BOTH CSV files back to main branch to preserve historical data across renders.
+
+---
+
+## 🏗️ Technical Architecture
+
+### Data Flow Diagram
+
+```
+1. SCRAPE (5 sources + ESPN standings)
+   ↓
+2. STANDARDIZE (team names across all sources)
+   ↓
+3. VEGAS BACKFILL (handle missing Rotowire data)
+   ↓
+4. CREATE all_teams (ensure all 30 teams present)
+   ↓
+5. JOIN (combine all sources + hardcoded W/L picks)
+   ↓
+6. CALCULATE (apply W/L picks to get skins for each source)
+   ↓
+7. AGGREGATE (sum by player)
+   ↓
+8. HISTORICAL TRACKING (append to CSV files)
+   ↓
+9. GENERATE TABLES & CHARTS
+   ↓
+10. OUTPUT (self-contained HTML)
+```
+
+### Critical Design Decisions
+
+#### 1. Single-Chunk Architecture
+**Why**: Ensures all variables are in scope for debugging
+- **Pros**: Easy to trace data flow, simple debugging
+- **Cons**: Large chunk can be slow to render
+- **Alternative considered**: Separate chunks with caching (rejected due to stale data risk)
+
+#### 2. Hardcoded W/L Picks (HARDCODED_PICKS)
+**Why**: Prevent circular logic where projections influence pick assignment
+- Created once from draft_data
+- Joined LAST in the pipeline to overwrite any vestigial code
+- Verified on every run with warning if mismatch detected
+
+#### 3. Vegas Backfill System
+**Why**: Rotowire API frequently excludes 2-4 teams
+- Three-tier fallback: Current scrape → Historical data → Hardcoded values
+- Only saves non-NA values to prevent history pollution
+- Stores projected WINS (not skins) to avoid pick-dependent storage
+
+#### 4. Team Name Standardization
+**Why**: Each source uses different naming conventions
+- Centralized `standardize_team_names()` function
+- Applied to ALL sources before joins
+- Handles variations like:
+  - "LA Clippers" vs "Los Angeles Clippers"
+  - "Golden St." vs "Golden State Warriors"
+  - "Okla City" vs "Oklahoma City Thunder"
+
+#### 5. Historical Zero Starting Point
+**Why**: Charts look better with a defined start
+- Adds one row per player with 0 values
+- Date set to day before first games (October 21, 2024)
+- Only added if not already present (prevents duplicates)
+
+#### 6. League Average Calculation
+**Why**: Simple player average inflates with different game counts
+```r
+# CORRECT (global average):
+league_avg = sum(all_team_skins) / sum(all_team_games)
+
+# WRONG (inflated average):
+league_avg = mean(player_skins_pct)  # Players with more games dominate
+```
+
+---
+
+## 🔧 Troubleshooting Guide
+
+### Diagnostic Workflow
+
+If something breaks, follow this systematic approach:
+
+#### Step 1: Identify the Symptom
+- [ ] Workflow failing to run?
+- [ ] Render succeeding but tables show NA?
+- [ ] Specific teams missing data?
+- [ ] Historical charts not updating?
+- [ ] Projections seem wrong?
+
+#### Step 2: Check GitHub Actions Log
+1. Go to repository → Actions tab
+2. Click the failing workflow run
+3. Expand each step to find errors
+4. Look for:
+   - R package installation failures
+   - Network errors during scraping
+   - Quarto rendering errors
+
+#### Step 3: Test Locally
 ```bash
-# Render document
+# Render locally to see full error messages
 quarto render index.qmd
 
-# Preview with auto-refresh
+# Or with preview (auto-refresh)
 quarto preview index.qmd --no-browse
 ```
 
-### Deployment
-1. Push to main branch → automatic deployment
-2. Or use "Actions" tab → "Run workflow" button
+#### Step 4: Create Diagnostic File
+See "Common Issues" section for diagnostic QMD templates
+
+### Log Interpretation
+
+**Network Errors**:
+```
+Error in curl::curl_fetch_memory(url, handle = handle) : 
+  Could not resolve host: www.rotowire.com
+```
+→ **Solution**: Temporary network issue or domain blocked. Check network_configuration in workflow.
+
+**Scraping Errors**:
+```
+Error: Can't find column `vegas_proj_wins` in `.data`.
+```
+→ **Solution**: Source website changed structure. Check HTML selectors.
+
+**Rendering Errors**:
+```
+Error: object 'today' not found
+```
+→ **Solution**: Variable defined after it's used. Check code order.
+
+**Date/Time Errors**:
+```
+Error in as.Date.numeric(vegas_proj_wins) : 
+  'origin' must be supplied
+```
+→ **Solution**: Date column not properly converted. Add `as.Date()` after reading CSV.
+
+---
+
+## 🚨 Common Issues and Solutions
+
+### Issue 1: Missing Vegas Data for Specific Teams
+
+**Symptoms**:
+- Table shows "NA" for Vegas Consensus column
+- Usually affects Milwaukee Bucks and/or Sacramento Kings
+- Other teams show values correctly
+
+**Root Cause**: 
+Rotowire API excludes certain teams from their futures endpoint, particularly:
+1. Teams with very high/low win totals that sportsbooks aren't actively taking bets on
+2. Teams during certain times of season (playoffs, offseason)
+
+**Diagnosis**:
+```r
+# Check if team is in raw scrape
+df_vegas %>% 
+  filter(grepl("Milwaukee|Sacramento", name, ignore.case = TRUE)) %>%
+  nrow()
+# Should return 2, but returns 0 if teams missing
+```
+
+**Solution** (already implemented in latest code):
+1. **Historical backfill**: System checks `team_vegas_history.csv` for most recent value
+2. **Hardcoded fallback**: If no history, uses reasonable estimates:
+   - Milwaukee Bucks: 47.25 wins
+   - Sacramento Kings: 31.5 wins
+3. **Prevent pollution**: Only non-NA values saved to history
+
+**Manual Override** (if needed):
+Edit hardcoded fallback in index.qmd:
+```r
+vegas_fallback <- tibble(
+  team = c("Milwaukee Bucks", "Sacramento Kings", "Other Team"),
+  vegas_proj_wins = c(47.25, 31.5, 45.0)
+)
+```
+
+### Issue 2: Historical Data Not Updating
+
+**Symptoms**:
+- Charts show old data (lines stop at previous date)
+- standings_history.csv not being updated in repository
+
+**Root Cause**:
+Git commit step in workflow failing, usually due to:
+1. No changes detected (`git diff --quiet` returns true)
+2. Merge conflict in CSV file
+3. Permissions issue
+
+**Diagnosis**:
+Check Actions log for:
+```
+nothing to commit, working tree clean
+```
+
+**Solutions**:
+
+**If no changes detected**:
+- This is normal if data hasn't changed
+- Verify by checking if actual games have been played
+
+**If commit failing**:
+```yaml
+# Check workflow has correct permissions
+permissions:
+  contents: write
+```
+
+**If merge conflicts**:
+```bash
+# Locally resolve conflicts
+git pull origin main
+# Manually merge standings_history.csv
+git add standings_history.csv team_vegas_history.csv
+git commit -m "Resolve history merge conflict"
+git push
+```
+
+**Nuclear option** (destructive):
+```bash
+# Delete history files and let them rebuild
+git rm standings_history.csv team_vegas_history.csv
+git commit -m "Reset history files"
+git push
+```
+Note: This loses ALL historical data!
+
+### Issue 3: BB-Ref Scraping Failure
+
+**Symptoms**:
+- BB-Ref column shows NA for all teams
+- Error message about Basketball Reference table structure
+
+**Root Cause**:
+Basketball Reference updates their table structure occasionally
+
+**Diagnosis**:
+Check if table structure changed:
+```r
+url_br <- "https://www.basketball-reference.com/friv/playoff_prob.html"
+page <- read_html(url_br)
+tables <- page %>% html_table()
+
+# Check table structure
+lapply(tables, names)  # Should show column names
+```
+
+**Solutions**:
+
+**If column names changed**:
+Update the column selection in index.qmd:
+```r
+eastern_conf_br <- tables_br[[1]]
+names(eastern_conf_br) <- make.names(names(eastern_conf_br), unique = TRUE)
+eastern_conf_br <- eastern_conf_br %>%
+  slice(-1) %>%
+  select(2, 3) %>%  # Adjust these indices if columns moved
+  setNames(c("team_br", "br_proj_w"))
+```
+
+**If table indices changed**:
+Basketball Reference may add/remove tables. Check:
+```r
+length(tables)  # Should be at least 2
+```
+Update `tables_br[[1]]` and `tables_br[[2]]` if needed.
+
+**Temporary workaround**:
+Comment out BB-Ref scraping and update weighted average to exclude it:
+```r
+# Fallback formula (no Vegas, no BB-Ref):
+weighted_average = (tr_skins × 0.45) + (espn_skins × 0.35) + (cbs_skins × 0.20)
+```
+
+### Issue 4: Team Name Mismatches
+
+**Symptoms**:
+- Specific teams show NA across all projection columns
+- Same teams have data in actual standings
+- Affects 1-2 teams only
+
+**Root Cause**:
+Source website changed team name format, breaking the standardization function
+
+**Diagnosis**:
+```r
+# Check what names are coming from each source
+df_skins %>% select(team) %>% arrange(team)  # Vegas
+tr_cleaned %>% select(team) %>% arrange(team)  # TeamRankings
+espn_cleaned %>% select(team) %>% arrange(team)  # ESPN BPI
+# Look for naming differences
+```
+
+**Solution**:
+Update `standardize_team_names()` function:
+```r
+standardize_team_names <- function(df, team_col) {
+  df %>%
+    mutate(
+      !!sym(team_col) := case_when(
+        grepl("New Pattern|Old Pattern", !!sym(team_col), ignore.case = TRUE) ~ "Standardized Name",
+        # Add new pattern matching rules here
+        TRUE ~ !!sym(team_col)
+      )
+    )
+}
+```
+
+### Issue 5: Workflow Running Too Frequently
+
+**Symptoms**:
+- GitHub Actions shows many workflow runs
+- Hitting rate limits or usage quotas
+
+**Root Cause**:
+Missing `[skip ci]` tag in commit messages, causing infinite loops
+
+**Solution**:
+Verify commit step includes skip tag:
+```yaml
+- name: Commit standings history
+  run: |
+    git config --local user.email "github-actions[bot]@users.noreply.github.com"
+    git config --local user.name "github-actions[bot]"
+    git add standings_history.csv team_vegas_history.csv
+    git diff --quiet && git diff --staged --quiet || git commit -m "Update standings history [skip ci]"
+    git push
+```
+
+The `[skip ci]` tag tells GitHub Actions to ignore this commit.
+
+### Issue 6: Self-Contained HTML Too Large
+
+**Symptoms**:
+- index.html file size > 10 MB
+- Slow to load in browser
+- Git warnings about large files
+
+**Root Cause**:
+- Too many data points in charts (historical data accumulating)
+- Base64-encoded images in output
+
+**Solutions**:
+
+**Limit historical data in charts**:
+```r
+# Only show last 60 days
+recent_history <- history %>%
+  filter(date >= today - 60)
+
+# Use for all charts
+ggplot(recent_history, ...)
+```
+
+**Reduce chart size**:
+```r
+# In chart code blocks, adjust dimensions
+{r chart-name, fig.width=10, fig.height=5}  # Smaller than default 12x6
+```
+
+**Alternative**: Switch to non-self-contained HTML
+```yaml
+format: 
+  html:
+    self-contained: false  # Creates separate files for resources
+```
+Note: Requires deploying additional files to GitHub Pages.
+
+### Issue 7: Calculations Seem Wrong
+
+**Symptoms**:
+- Weighted average doesn't match manual calculation
+- Projection average wildly different from individual sources
+- Skins % seems incorrect
+
+**Diagnosis Checklist**:
+- [ ] Are W/L picks applied correctly?
+  ```r
+  # Verify picks match draft
+  HARDCODED_PICKS %>% 
+    left_join(df_final_projections, by = "team") %>%
+    filter(skins_pick != skins_pick_hardcoded)
+  ```
+
+- [ ] Is Vegas being included when it should be excluded?
+  ```r
+  # Check which formula is being used
+  df_final_projections %>%
+    mutate(has_vegas = !is.na(vegas_consensus)) %>%
+    count(has_vegas)
+  ```
+
+- [ ] Are projections in WINS when they should be SKINS?
+  ```r
+  # All projection columns should be converted to skins:
+  vegas_consensus = if_else(skins_pick == "W", vegas_proj_wins, 82 - vegas_proj_wins)
+  ```
+
+**Common Mistakes**:
+1. **Forgetting to apply W/L picks**: Projections should be converted to skins
+2. **Using wrong average**: Player % Projected is SUM of teams, not average
+3. **League average inflation**: Must use global calculation, not mean of players
+
+### Issue 8: Charts Not Showing All Players
+
+**Symptoms**:
+- One or more players missing from time series charts
+- Other players display correctly
+
+**Root Cause**:
+Historical data missing for that player, often due to:
+1. Player name typo in history file
+2. History file corrupted
+3. Zero starting point not added for that player
+
+**Diagnosis**:
+```r
+# Check history file
+history <- read.csv("standings_history.csv")
+unique(history$player)  # Should show all 6 players
+```
+
+**Solution**:
+Manually add missing player rows to history:
+```r
+# Add to standings_history.csv
+missing_player_rows <- tibble(
+  player = "Missing Player Name",
+  actual_skins = 0,
+  skins_pct = 0,
+  pct_projected = 0,
+  weighted_average = NA,
+  vegas_consensus = NA,
+  team_rankings = NA,
+  espn_bpi = NA,
+  cbs_sports = NA,
+  basketball_reference = NA,
+  projection_average = NA,
+  date = as.Date("2024-10-21")  # Day before first games
+)
+```
+
+---
 
 ## 🛠️ Maintenance
 
-### Update Draft Data
-Edit `draft_data` tibble in index.qmd (around line 30)
+### Regular Tasks
 
-### Modify Projection Weights
-Update weighted_average formula in index.qmd (around line 282)
+#### Weekly
+- [ ] Verify all 9 scheduled runs executed successfully
+- [ ] Spot-check tables for obvious errors (NA values, wrong sums)
+- [ ] Monitor workflow run time (should be < 5 minutes)
 
-### Change Colors
-Modify `colorblind_colors` vector in index.qmd (around line 750)
+#### Monthly
+- [ ] Review and clean up old workflow runs (optional)
+- [ ] Check that historical CSV files are growing appropriately
+- [ ] Verify all projection sources still working
 
-### Adjust Schedule
-Edit cron expressions in .github/workflows/publish.yml
+#### Season Changes
+- [ ] Update draft_data for new season
+- [ ] Reset historical CSV files
+- [ ] Update cron schedule if needed for playoff times
+- [ ] Archive previous season's data
 
-## 🔍 Troubleshooting
+### Updating Draft Data
 
-### "Object 'today' not found"
-**Fix**: Ensure `today <- Sys.Date()` is defined before team vegas history section
+When the draft changes (new season, different teams, etc.):
 
-### Vegas totals too low
-**Fix**: Check team_vegas_history.csv is being properly committed and loaded
+1. **Update draft_data tibble** in index.qmd (around line 30):
+```r
+draft_data <- tribble(
+  ~team, ~player, ~abbr, ~skins_pick, ~draft_pick,
+  "Team Name", "Player Name", "ABR", "W", 1,
+  # ... 30 rows total
+)
+```
 
-### Table rendering issues
-**Fix**: Ensure `results='asis'` in chunk options for HTML output
+2. **Verify HARDCODED_PICKS creation** (happens automatically from draft_data)
 
-### Scraping failures
-**Fix**: Check tryCatch blocks have proper fallback values
+3. **Update colorblind_colors** if player names changed (around line 750):
+```r
+colorblind_colors <- c(
+  "Player1" = "#0077BB",
+  "Player2" = "#CC3311",
+  # ...
+)
+```
 
-## 📝 File Format Specifications
+4. **Reset historical files** (optional but recommended for new season):
+```bash
+rm standings_history.csv team_vegas_history.csv
+```
 
-### Team Name Standardization
-All sources normalized to full names:
-- "LA Clippers" → "Los Angeles Clippers"
-- "Golden St." → "Golden State Warriors"
-- Applied to all scraped data before joining
+5. **Update all_teams** if league expands/contracts:
+```r
+all_teams <- tibble(
+  team = c("30 team names here")
+)
+```
 
-### Number Formatting
-- **Actual Skins**: Integer (no decimals)
-- **Skins %**: Percentage format (e.g., "76.5%")
-- **All other numbers**: 1 decimal place (e.g., "253.8")
-- **Charts**: Follow same formatting on axes
+### Modifying Projection Weights
 
-## 🎯 Key Features
+To adjust the weighted average formula:
 
-✅ Automated 9x daily updates  
-✅ 5 independent projection sources  
-✅ Historical trend tracking  
-✅ Missing data backfill system  
-✅ Season completion tracking  
-✅ Global league averages  
-✅ Colorblind-friendly visualizations  
-✅ Mobile-responsive tables  
-✅ Self-contained HTML output  
+1. **Find weighted_average calculation** in index.qmd (around line 385):
+```r
+weighted_average = if_else(
+  !is.na(vegas_consensus),
+  (vegas_consensus × WEIGHT1) + (tr_skins × WEIGHT2) + ...,
+  (tr_skins × WEIGHT1) + ...  # Fallback without Vegas
+)
+```
+
+2. **Ensure weights sum to 1.0**:
+```r
+# With Vegas: 0.20 + 0.30 + 0.20 + 0.10 + 0.20 = 1.0
+# Without Vegas: 0.35 + 0.25 + 0.10 + 0.30 = 1.0
+```
+
+3. **Update both formulas** (with/without Vegas)
+
+4. **Test locally** before pushing
+
+### Changing Update Schedule
+
+To modify when the workflow runs:
+
+1. **Edit .github/workflows/publish.yml**
+
+2. **Update cron expressions**:
+```yaml
+- cron: '0 12 * * *'  # 6am Central (12:00 UTC)
+```
+
+Format: `minute hour day month weekday`
+- Use [Crontab Guru](https://crontab.guru/) for help
+- Remember UTC conversion (Central + 6 hours for CDT)
+
+3. **Common schedules**:
+```yaml
+- cron: '0 */2 * * *'     # Every 2 hours
+- cron: '0 0 * * *'       # Daily at midnight UTC
+- cron: '0 0 * * 1'       # Weekly on Monday
+- cron: '0 1,13 * * *'    # Twice daily (1am, 1pm UTC)
+```
+
+4. **Testing**: Use manual dispatch button to test changes
+
+### Adding New Projection Sources
+
+To add a 7th projection source:
+
+1. **Add scraping code** after existing sources:
+```r
+# G: Scrape New Source
+url_new <- "https://example.com/projections"
+webpage_new <- read_html(url_new)
+new_proj <- webpage_new %>% html_table() %>% .[[1]]
+new_cleaned <- new_proj %>%
+  select(team_new = 1, new_proj_w = 2) %>%
+  mutate(new_proj_w = as.numeric(new_proj_w))
+```
+
+2. **Standardize team names**:
+```r
+new_proj <- new_proj %>% standardize_team_names("team")
+```
+
+3. **Add to df_final_projections join**:
+```r
+df_final_projections <- all_teams %>%
+  # ... existing joins
+  left_join(new_proj, by = "team") %>%
+```
+
+4. **Convert to skins**:
+```r
+mutate(
+  new_skins = if_else(skins_pick == "W", new_proj_w, 82 - new_proj_w),
+```
+
+5. **Update weighted_average formula**:
+```r
+weighted_average = (...existing...) + (new_skins × NEW_WEIGHT)
+```
+Ensure weights still sum to 1.0!
+
+6. **Add column to all tables**:
+- player_scores summarise()
+- standings_table select()
+- team_projections_table select()
+
+7. **Add column to historical tracking**:
+```r
+current_standings <- player_scores %>%
+  select(
+    # ... existing columns
+    new_source = `New Source`,
+```
+
+8. **Create chart** for new source (copy existing chart and modify)
+
+9. **Update README** with new source details
+
+---
+
+## 💻 Development Tips
+
+### Local Development Setup
+
+1. **Install R** (latest version from CRAN)
+
+2. **Install Quarto** (https://quarto.org/docs/get-started/)
+
+3. **Install R packages**:
+```r
+install.packages(c('rmarkdown', 'knitr', 'pacman', 'httr', 'jsonlite', 
+                   'rvest', 'dplyr', 'tidyr', 'kableExtra', 'tibble', 
+                   'stringr', 'ggplot2', 'scales'))
+```
+
+4. **Clone repository**:
+```bash
+git clone https://github.com/yourusername/nba-skins-tracker.git
+cd nba-skins-tracker
+```
+
+5. **Render document**:
+```bash
+quarto render index.qmd
+```
+
+6. **Preview with auto-refresh** (recommended):
+```bash
+quarto preview index.qmd --no-browse
+```
+Opens at http://localhost:4200 and auto-reloads on save
+
+### Debugging Workflow
+
+#### Enable Verbose Output
+Add to code blocks:
+```r
+options(warn = 1)  # Show warnings immediately
+message("Checkpoint: Loaded Vegas data")
+print(summary(df_vegas))
+```
+
+#### Test Individual Sections
+Comment out later sections and run just the scraping:
+```r
+# Test Vegas scraping only
+df_vegas <- fromJSON(...) %>% as_tibble()
+print(df_vegas)
+# [Comment out everything after this]
+```
+
+#### Use tryCatch for Scraping
+Wrap scraping in error handlers:
+```r
+df_vegas <- tryCatch({
+  # Scraping code
+}, error = function(e) {
+  message("Vegas scraping failed: ", e$message)
+  # Return empty tibble with correct structure
+  tibble(team = character(), vegas_proj_wins = numeric())
+})
+```
+
+#### Create Diagnostic Files
+See vegas_diagnostic.qmd and vegas_diagnostic_v2.qmd examples:
+- Test one component at a time
+- Print intermediate results
+- Use verbose console output
+- Display data at each transformation step
+
+### Best Practices
+
+#### Code Organization
+- Keep scraping code in order: ESPN → Vegas → TeamRankings → BPI → CBS → BB-Ref
+- Standardize team names immediately after scraping
+- Handle missing data early (before joins)
+- Apply W/L picks late (after all joins)
+
+#### Error Handling
+- Use `tryCatch()` for all external API calls
+- Provide fallback values for failed scrapes
+- Log errors to console with `message()` or `warning()`
+- Never let single source failure crash entire render
+
+#### Performance Optimization
+- Scraping is the bottleneck (network I/O)
+- Consider parallel scraping for multiple sources (advanced)
+- Historical CSVs grow slowly (not a concern until 1000+ rows)
+- Self-contained HTML is large but acceptable (<10 MB)
+
+#### Git Workflow
+```bash
+# Standard development cycle
+git checkout -b feature/my-change
+# Make changes to index.qmd
+quarto render index.qmd  # Test locally
+git add index.qmd
+git commit -m "Descriptive message"
+git push origin feature/my-change
+# Create pull request
+# After merge, workflow auto-runs
+```
+
+#### Testing Before Push
+```bash
+# Render locally to verify no errors
+quarto render index.qmd
+
+# Check output file exists and looks correct
+open index.html  # macOS
+xdg-open index.html  # Linux
+start index.html  # Windows
+
+# Verify CSV files updated (if appropriate)
+git diff standings_history.csv
+git diff team_vegas_history.csv
+```
+
+### Common Development Mistakes
+
+1. **Forgetting to update both CSV files**
+   - If you add a column to player_scores, update historical tracking too
+
+2. **Not testing with missing data**
+   - Simulate missing Vegas data by commenting out scrape
+   - Verify backfill logic works
+
+3. **Breaking team name standardization**
+   - Always use standardize_team_names() function
+   - Test with all 30 teams
+
+4. **Circular logic in calculations**
+   - Never use projections to determine W/L picks
+   - HARDCODED_PICKS is source of truth
+
+5. **Off-by-one errors in table indices**
+   - BB-Ref tables start at index 1, not 0
+   - Some sources need slice(-1) to remove header
+
+6. **Date/timezone confusion**
+   - GitHub Actions uses UTC
+   - Local development may use different timezone
+   - Always use `Sys.Date()` not `Sys.time()`
+
+---
+
+## 📞 Support
+
+### Quick Reference
+
+- **Workflow not running?** → Check `.github/workflows/publish.yml` and Actions tab
+- **Tables show NA?** → Check scraping errors in Actions log
+- **Vegas missing for MIL/SAC?** → Historical backfill should handle this automatically
+- **Charts not updating?** → Verify CSV commit step in workflow succeeded
+- **Website not updating?** → Check GitHub Pages deployment in Actions
+- **Code won't render locally?** → Check R package versions match workflow
+
+### Resources
+
+- **Quarto Documentation**: https://quarto.org/docs/
+- **GitHub Actions Docs**: https://docs.github.com/en/actions
+- **dplyr Reference**: https://dplyr.tidyverse.org/
+- **ggplot2 Documentation**: https://ggplot2.tidyverse.org/
+- **R for Data Science** (free book): https://r4ds.had.co.nz/
+
+### Getting Help
+
+1. **Check this README first** (especially Troubleshooting section)
+2. **Review GitHub Actions logs** for specific error messages
+3. **Create diagnostic file** using provided templates
+4. **Test locally** to isolate issue (workflow vs code)
+5. **Check source websites** (did they change structure?)
+
+---
 
 ## 📄 License
 
 This is a personal fantasy league tracker. Feel free to fork and adapt for your own league!
 
+---
+
 ## 🤝 Contributing
 
-This is a personal project, but suggestions for improvements are welcome via issues.
+This is a personal project, but if you find bugs or have suggestions:
+1. Open an issue describing the problem
+2. Include relevant diagnostic information
+3. Suggest a fix if you have one
+
+Pull requests welcome for bug fixes and enhancements!
+
+---
+
+## 📝 Version History
+
+### v2.1.0 (November 2024)
+- ✅ Added Basketball Reference projections (6th source)
+- ✅ Updated weighted average formula
+- ✅ Fixed Vegas backfill issue with hardcoded fallbacks
+- ✅ Prevented NA pollution in team_vegas_history.csv
+- ✅ Shortened "Basketball Reference" to "BB-Ref" in tables
+- ✅ Adjusted BB-Ref chart Y-axis to start at 200
+
+### v2.0.0 (November 2024)
+- ✅ Complete rewrite of Vegas backfill system
+- ✅ Restructured code for better maintainability
+- ✅ Enhanced historical tracking
+- ✅ Improved error handling for missing data
+
+### v1.0.0 (October 2024)
+- ✅ Initial release
+- ✅ 5 projection sources (Vegas, TeamRankings, ESPN, CBS)
+- ✅ Automated GitHub Actions workflow
+- ✅ Historical tracking and charts
+- ✅ Self-contained HTML output
 
 ---
 
 **Current Season**: 2024-25 NBA Season  
-**Last Updated**: November 2024  
-**Maintained by**: League Commissioner
+**Last Major Update**: November 2024  
+**Maintained by**: League Commissioner  
+**Repository**: [Your GitHub URL Here]  
+**Live Site**: [Your GitHub Pages URL Here]
