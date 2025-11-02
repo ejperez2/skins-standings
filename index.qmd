@@ -1,5 +1,5 @@
 ---
-title: "Skins Standings"
+title: "Skins Standings and Projections Dashboard"
 format: 
   html:
     self-contained: true
@@ -12,7 +12,7 @@ editor: visual
 ts <- format(Sys.time(), "%A, %B %d, %Y at %I:%M %p %Z", tz = "America/Chicago")
 
 cat(sprintf(
-  "<p style='font-size:14px; color:#555; margin-top:8px;'>
+  "<p style='font-size:14px; color:#555; margin-top:2px;margin-bottom: 0; '>
    <strong>Last updated:</strong> %s</p>", ts)
 )
 ```
@@ -480,11 +480,9 @@ df_final_projections <- all_teams %>%
     
     # Calculate weighted average using skins (which now correctly apply draft picks)
     # Updated formula to include Basketball Reference
-    weighted_average = if_else(
-      !is.na(vegas_consensus),
-      (vegas_consensus * 0.20) + (tr_skins * 0.30) + (espn_skins * 0.20) + (cbs_skins * 0.10) + (br_skins * 0.20),
-      (tr_skins * 0.35) + (espn_skins * 0.25) + (cbs_skins * 0.10) + (br_skins * 0.30)  # Fallback formula without Vegas
-    ),
+    weighted_average = 
+      (tr_skins * 0.5) + (espn_skins * 0.34) + (cbs_skins * 0.16) ,  # Fallback formula without Vegas
+    
     
     # Calculate actual skins based on HARDCODED pick type from draft (never inferred)
     actual_skins = if_else(skins_pick == "W", actual_wins, actual_losses),
@@ -597,13 +595,13 @@ write.csv(history, history_file, row.names = FALSE)
 ```{r season-completion-display, echo=FALSE, results='asis'}
 # Display season completion percentage
 cat(sprintf(
-  "<p style='font-size:14px; color:#555; margin-top:4px; margin-bottom:16px;'>
+  "<p style='font-size:14px; color:#555; margin-top:0px; margin-bottom:16px;'>
    <strong>Season completion:</strong> %.1f%% (%d of 2,460 games played)</p>", 
   season_completion_pct, season_total_games)
 )
 ```
 
-## Skins Standings (Based on Live Projections and Actual Standings)
+## Skins Standings and Live Projections)
 
 ```{r player-scores, echo=FALSE}
 # Format the player scores for display
@@ -655,8 +653,16 @@ kable(player_scores_with_avg, align = c("l", "r", "r", "r", "r", "r", "r", "r", 
   column_spec(2, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
   column_spec(3, bold = TRUE, background = "#FFF9C4") %>%  # Highlight skins %
   column_spec(5, bold = TRUE, background = "#DFF0D8")  # Highlight weighted average
-```
 
+```
+```{r player-footnotes, echo=FALSE, results='asis'}
+# Manually print the footnotes as HTML <p> tags
+# This divorces them from the table's column widths
+cat("<p style='font-size: 13px; margin-top: 5px; margin-bottom: 0; text-align: left;'>Avg Skins 2023-25: <b>236, 253, 240</b></p>")
+cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Skins % 2023-25: <b>58%, 62%, 59%</b></p>")
+cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Winner's Skins 2023-25: <b>249, 280, 260</b></p>")
+cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>November Weighted Avg: TR 50%, ESPN 34%, CBS 16% (Last season's most accurate Nov weightings)</p>")
+```
 ## Standings and Projections by player
 
 ```{r draft-results, echo=FALSE, results='asis'}
@@ -799,7 +805,8 @@ kable(team_projections_table, align = c("l", "l", "c", "r", "r", "r", "r", "r", 
   column_spec(7, bold = TRUE, background = "#DFF0D8")  # Highlight weighted average
 ```
 
-## Skins Over Time
+## Season Charts
+
 ```{r skins-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
 library(ggplot2)
 
@@ -850,7 +857,7 @@ ggplot(history_actual, aes(x = date, y = actual_skins, color = player, group = p
   )
 ```
 
-## Skins % Over Time
+## 
 
 ```{r skins-pct-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
 # Filter out zero values for skins percentage chart
@@ -883,7 +890,7 @@ ggplot(history_skins_pct, aes(x = date, y = skins_pct, color = player, group = p
   )
 ```
 
-## % Projected Over Time
+
 
 ```{r pct-projected-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
 # Filter out zero values for % projected chart
@@ -916,7 +923,7 @@ ggplot(history_pct_projected, aes(x = date, y = pct_projected, color = player, g
   )
 ```
 
-## Weighted Average Projection Over Time
+## 
 
 ```{r weighted-avg-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
 # Filter out NA values for projection charts
@@ -949,7 +956,7 @@ ggplot(history_projections, aes(x = date, y = weighted_average, color = player, 
   )
 ```
 
-## Vegas Consensus Projection Over Time
+## 
 
 ```{r vegas-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
 ggplot(history_projections, aes(x = date, y = vegas_consensus, color = player, group = player)) +
@@ -979,7 +986,7 @@ ggplot(history_projections, aes(x = date, y = vegas_consensus, color = player, g
   )
 ```
 
-## TeamRankings Projection Over Time
+## 
 
 ```{r teamrankings-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
 ggplot(history_projections, aes(x = date, y = team_rankings, color = player, group = player)) +
@@ -1009,7 +1016,7 @@ ggplot(history_projections, aes(x = date, y = team_rankings, color = player, gro
   )
 ```
 
-## ESPN BPI Projection Over Time
+## 
 
 ```{r espn-bpi-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
 ggplot(history_projections, aes(x = date, y = espn_bpi, color = player, group = player)) +
@@ -1039,7 +1046,7 @@ ggplot(history_projections, aes(x = date, y = espn_bpi, color = player, group = 
   )
 ```
 
-## CBS Sports Projection Over Time
+## 
 
 ```{r cbs-sports-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
 ggplot(history_projections, aes(x = date, y = cbs_sports, color = player, group = player)) +
@@ -1069,7 +1076,7 @@ ggplot(history_projections, aes(x = date, y = cbs_sports, color = player, group 
   )
 ```
 
-## BB-Ref Projection Over Time
+## 
 
 ```{r basketball-reference-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
 # Filter out NA values for Basketball Reference chart
@@ -1102,7 +1109,7 @@ ggplot(history_br, aes(x = date, y = basketball_reference, color = player, group
   )
 ```
 
-## Projection Average Over Time
+## 
 
 ```{r projection-avg-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
 ggplot(history_projections, aes(x = date, y = projection_average, color = player, group = player)) +
