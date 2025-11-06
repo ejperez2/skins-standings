@@ -16,7 +16,7 @@
 "Boston Celtics",42.5,2025-11-03
 "Boston Celtics",41.5,2025-11-04
 "Boston Celtics",41.5,2025-11-05
-"Boston Celtics",41.5,2025-11-06
+"Boston Celtics",43,2025-11-06
 "Brooklyn Nets",17.5,2025-10-29
 "Brooklyn Nets",17.5,2025-10-30
 "Brooklyn Nets",17.5,2025-10-31
@@ -25,7 +25,7 @@
 "Brooklyn Nets",16.6666666666667,2025-11-03
 "Brooklyn Nets",16.5,2025-11-04
 "Brooklyn Nets",16.5,2025-11-05
-"Brooklyn Nets",16.5,2025-11-06
+"Brooklyn Nets",17.5,2025-11-06
 "Charlotte Hornets",30.6666666666667,2025-10-29
 "Charlotte Hornets",31,2025-10-30
 "Charlotte Hornets",31,2025-10-31
@@ -52,7 +52,7 @@
 "Cleveland Cavaliers",55.5,2025-11-03
 "Cleveland Cavaliers",55.6666666666667,2025-11-04
 "Cleveland Cavaliers",55.6666666666667,2025-11-05
-"Cleveland Cavaliers",55.6666666666667,2025-11-06
+"Cleveland Cavaliers",55.5,2025-11-06
 "Dallas Mavericks",42.625,2025-10-29
 "Dallas Mavericks",43.3333333333333,2025-10-30
 "Dallas Mavericks",38.5,2025-10-31
@@ -79,7 +79,7 @@
 "Detroit Pistons",45.5,2025-11-03
 "Detroit Pistons",45.1666666666667,2025-11-04
 "Detroit Pistons",45.25,2025-11-05
-"Detroit Pistons",45.25,2025-11-06
+"Detroit Pistons",47,2025-11-06
 "Golden State Warriors",52.1666666666667,2025-10-29
 "Golden State Warriors",52.8333333333333,2025-10-30
 "Golden State Warriors",52.25,2025-10-31
@@ -97,7 +97,7 @@
 "Houston Rockets",51.6666666666667,2025-11-03
 "Houston Rockets",51.6666666666667,2025-11-04
 "Houston Rockets",51.6666666666667,2025-11-05
-"Houston Rockets",51.6666666666667,2025-11-06
+"Houston Rockets",53,2025-11-06
 "Indiana Pacers",33.6666666666667,2025-10-29
 "Indiana Pacers",32.5,2025-10-30
 "Indiana Pacers",32.5,2025-10-31
@@ -133,7 +133,7 @@
 "Memphis Grizzlies",35.5,2025-11-03
 "Memphis Grizzlies",35.8333333333333,2025-11-04
 "Memphis Grizzlies",35.8333333333333,2025-11-05
-"Memphis Grizzlies",35.8333333333333,2025-11-06
+"Memphis Grizzlies",35.5,2025-11-06
 "Miami Heat",40.3333333333333,2025-10-29
 "Miami Heat",40.3333333333333,2025-10-30
 "Miami Heat",42.5,2025-10-31
@@ -178,7 +178,7 @@
 "New York Knicks",50.5,2025-11-03
 "New York Knicks",51.8333333333333,2025-11-04
 "New York Knicks",51.8333333333333,2025-11-05
-"New York Knicks",51.8333333333333,2025-11-06
+"New York Knicks",52,2025-11-06
 "Oklahoma City Thunder",64,2025-10-29
 "Oklahoma City Thunder",64,2025-10-30
 "Oklahoma City Thunder",63.5,2025-10-31
@@ -205,7 +205,7 @@
 "Philadelphia 76ers",43.8333333333333,2025-11-03
 "Philadelphia 76ers",43.5,2025-11-04
 "Philadelphia 76ers",44.8333333333333,2025-11-05
-"Philadelphia 76ers",44.8333333333333,2025-11-06
+"Philadelphia 76ers",45,2025-11-06
 "Phoenix Suns",29.875,2025-10-29
 "Phoenix Suns",29.75,2025-10-30
 "Phoenix Suns",29.375,2025-10-31
@@ -259,7 +259,7 @@
 "Utah Jazz",21.5,2025-11-03
 "Utah Jazz",22.6666666666667,2025-11-04
 "Utah Jazz",22.75,2025-11-05
-"Utah Jazz",22.75,2025-11-06
+"Utah Jazz",20,2025-11-06
 "Washington Wizards",19,2025-10-29
 "Washington Wizards",19,2025-10-30
 "Washington Wizards",19.25,2025-10-31
