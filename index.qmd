@@ -600,8 +600,15 @@ cat(sprintf(
   season_completion_pct, season_total_games)
 )
 ```
-
-## Skins Standings and Live Projections
+```{r explain-display, echo=FALSE, results='asis'}
+# Display season completion percentage
+cat(sprintf(
+  "<p style='font-size:14px; color:#555; margin-top:0px; margin-bottom:16px;'>
+   <strong><a href='https://bdubcodes.net/posts/the-nba-skins-game'>Skins Game</a>:</strong> In this fantasy NBA game, players draft all 30 NBA teams. For each team, you must choose to root for their WINS or their LOSSES. If your chosen outcome happens (e.g., you picked 'losses' for the Spurs and they lose), you get a 'skin,' or a point. Whoever accumulates the most skins wins.</p>" 
+  )
+)
+```
+## Skins Standings and Live Projections)
 
 ```{r player-scores, echo=FALSE}
 # Format the player scores for display
