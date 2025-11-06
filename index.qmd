@@ -608,7 +608,7 @@ cat(sprintf(
   )
 )
 ```
-## Skins Standings and Live Projections)
+## Skins Standings and Live Projections
 
 ```{r player-scores, echo=FALSE}
 # Format the player scores for display
