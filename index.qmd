@@ -1221,5 +1221,5 @@ ggplot(history_max, aes(x = date, y = max_projection, color = player, group = pl
     panel.grid.minor = element_blank(),
     panel.grid.major = element_line(color = "gray90"),
     legend.text = element_text(size = 11)
-  )
+  )#
 ```
