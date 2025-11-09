@@ -483,6 +483,8 @@ df_final_projections <- all_teams %>%
     weighted_average = 
       (tr_skins * 0.5) + (espn_skins * 0.34) + (cbs_skins * 0.16) ,  # Fallback formula without Vegas
     
+    # Calculate max projection for each team
+    max_projection = pmax(weighted_average, vegas_consensus, tr_skins, espn_skins, cbs_skins, br_skins, na.rm = TRUE),
     
     # Calculate actual skins based on HARDCODED pick type from draft (never inferred)
     actual_skins = if_else(skins_pick == "W", actual_wins, actual_losses),
@@ -516,12 +518,13 @@ player_scores <- draft_data %>%
     `% Projected` = sum(pct_projected, na.rm = TRUE),  # Sum of team projections
     `Weighted Average` = sum(weighted_average, na.rm = TRUE),
     `Vegas Consensus` = sum(vegas_consensus, na.rm = TRUE),
-    `TeamRankings` = sum(tr_skins, na.rm = TRUE),
-    `ESPN BPI` = sum(espn_skins, na.rm = TRUE),
-    `CBS Sports` = sum(cbs_skins, na.rm = TRUE),
-    `BB-Ref` = sum(br_skins, na.rm = TRUE)
+    `TR` = sum(tr_skins, na.rm = TRUE),
+    `ESPN` = sum(espn_skins, na.rm = TRUE),
+    `CBS` = sum(cbs_skins, na.rm = TRUE),
+    `BB-Ref` = sum(br_skins, na.rm = TRUE),
+    `Max Proj` = sum(max_projection, na.rm = TRUE)
   ) %>%
-  mutate(Projection_Average = rowMeans(select(., `Weighted Average`, `Vegas Consensus`, `TeamRankings`, `ESPN BPI`, `CBS Sports`, `BB-Ref`))) %>%
+  mutate(`Proj Avg` = rowMeans(select(., `Weighted Average`, `Vegas Consensus`, `TR`, `ESPN`, `CBS`, `BB-Ref`))) %>%
   arrange(desc(`Actual Skins`))
 
 # --- Step 6: Prepare Standings Table Data ---
@@ -543,11 +546,12 @@ current_standings <- player_scores %>%
     pct_projected = `% Projected`,
     weighted_average = `Weighted Average`,
     vegas_consensus = `Vegas Consensus`,
-    team_rankings = `TeamRankings`,
-    espn_bpi = `ESPN BPI`,
-    cbs_sports = `CBS Sports`,
+    team_rankings = `TR`,
+    espn_bpi = `ESPN`,
+    cbs_sports = `CBS`,
     basketball_reference = `BB-Ref`,
-    projection_average = `Projection_Average`
+    projection_average = `Proj Avg`,
+    max_projection = `Max Proj`
   ) %>%
   mutate(date = today)
 
@@ -555,6 +559,11 @@ current_standings <- player_scores %>%
 if(file.exists(history_file)) {
   history <- read.csv(history_file, stringsAsFactors = FALSE) %>%
     mutate(date = as.Date(date))
+  
+  # Add max_projection column if it doesn't exist
+  if(!"max_projection" %in% names(history)) {
+    history$max_projection <- NA
+  }
   
   # Remove today's data if it exists (keep only last render per day)
   history <- history %>%
@@ -582,6 +591,7 @@ if(needs_zero_start) {
     cbs_sports = NA,
     basketball_reference = NA,
     projection_average = NA,
+    max_projection = NA,
     date = min_date - 1
   )
   history <- bind_rows(zero_start, history) %>%
@@ -619,11 +629,12 @@ player_scores_display <- player_scores %>%
     `% Projected` = sprintf("%.1f", `% Projected`),
     `Weighted Average` = sprintf("%.1f", `Weighted Average`),
     `Vegas Consensus` = sprintf("%.1f", `Vegas Consensus`),
-    `TeamRankings` = sprintf("%.1f", `TeamRankings`),
-    `ESPN BPI` = sprintf("%.1f", `ESPN BPI`),
-    `CBS Sports` = sprintf("%.1f", `CBS Sports`),
+    `TR` = sprintf("%.1f", `TR`),
+    `ESPN` = sprintf("%.1f", `ESPN`),
+    `CBS` = sprintf("%.1f", `CBS`),
     `BB-Ref` = sprintf("%.1f", `BB-Ref`),
-    `Projection_Average` = sprintf("%.1f", `Projection_Average`)
+    `Proj Avg` = sprintf("%.1f", `Proj Avg`),
+    `Max Proj` = sprintf("%.1f", `Max Proj`)
   )
 
 # Calculate global averages (across all teams in league, not player averages)
@@ -642,19 +653,29 @@ global_avg_row <- tibble(
   `% Projected` = sprintf("%.1f", league_pct_projected_avg),
   `Weighted Average` = sprintf("%.1f", mean(player_scores$`Weighted Average`, na.rm = TRUE)),
   `Vegas Consensus` = sprintf("%.1f", mean(player_scores$`Vegas Consensus`, na.rm = TRUE)),
-  `TeamRankings` = sprintf("%.1f", mean(player_scores$TeamRankings, na.rm = TRUE)),
-  `ESPN BPI` = sprintf("%.1f", mean(player_scores$`ESPN BPI`, na.rm = TRUE)),
-  `CBS Sports` = sprintf("%.1f", mean(player_scores$`CBS Sports`, na.rm = TRUE)),
+  `TR` = sprintf("%.1f", mean(player_scores$`TR`, na.rm = TRUE)),
+  `ESPN` = sprintf("%.1f", mean(player_scores$`ESPN`, na.rm = TRUE)),
+  `CBS` = sprintf("%.1f", mean(player_scores$`CBS`, na.rm = TRUE)),
   `BB-Ref` = sprintf("%.1f", mean(player_scores$`BB-Ref`, na.rm = TRUE)),
-  `Projection_Average` = sprintf("%.1f", mean(player_scores$Projection_Average, na.rm = TRUE))
+  `Proj Avg` = sprintf("%.1f", mean(player_scores$`Proj Avg`, na.rm = TRUE)),
+  `Max Proj` = sprintf("%.1f", mean(player_scores$`Max Proj`, na.rm = TRUE))
 )
 
 # Combine player data with global average
 player_scores_with_avg <- bind_rows(player_scores_display, global_avg_row)
 
-kable(player_scores_with_avg, align = c("l", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r")) %>%
+# Add column names with hyperlinks
+col_names <- c("Player", "Actual Skins", "Skins %", "% Projected", "Weighted Average", 
+               "Vegas Consensus", 
+               "<a href='https://www.teamrankings.com/nba/projections/standings/' target='_blank'>TR</a>",
+               "<a href='https://www.espn.com/nba/bpi/_/view/projections' target='_blank'>ESPN</a>",
+               "<a href='https://www.cbssports.com/nba/standings/' target='_blank'>CBS</a>",
+               "<a href='https://www.basketball-reference.com/friv/playoff_prob.html' target='_blank'>BB-Ref</a>",
+               "Proj Avg", "Max Proj")
+
+kable(player_scores_with_avg, align = c("l", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r"),
+      col.names = col_names, escape = FALSE, format = "html") %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, position = "center") %>%
-  row_spec(0, bold = TRUE, color = "white", background = "#444444") %>%
   row_spec(nrow(player_scores_with_avg), bold = TRUE, background = "#F0F0F0") %>%  # Highlight average row
   column_spec(1, bold = TRUE) %>%
   column_spec(2, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
@@ -684,17 +705,18 @@ standings_table <- draft_data %>%
         `% Projected` = pct_projected,
         `Weighted Average` = weighted_average,
         `Vegas Consensus` = vegas_consensus,
-        `TeamRankings` = tr_skins,
-        `ESPN BPI` = espn_skins,
-        `CBS Sports` = cbs_skins,
-        `BB-Ref` = br_skins
+        `TR` = tr_skins,
+        `ESPN` = espn_skins,
+        `CBS` = cbs_skins,
+        `BB-Ref` = br_skins,
+        `Max Proj` = max_projection
       ),
     by = "team"
   ) %>%
   # Calculate Projection Average for each team
   rowwise() %>%
   mutate(
-    `Projection Average` = mean(c(`Weighted Average`, `Vegas Consensus`, `TeamRankings`, `ESPN BPI`, `CBS Sports`, `BB-Ref`), na.rm = TRUE)
+    `Proj Avg` = mean(c(`Weighted Average`, `Vegas Consensus`, `TR`, `ESPN`, `CBS`, `BB-Ref`), na.rm = TRUE)
   ) %>%
   ungroup() %>%
   select(
@@ -707,11 +729,12 @@ standings_table <- draft_data %>%
     `% Projected`,
     `Weighted Average`,
     `Vegas Consensus`,
-    `TeamRankings`,
-    `ESPN BPI`,
-    `CBS Sports`,
+    `TR`,
+    `ESPN`,
+    `CBS`,
     `BB-Ref`,
-    `Projection Average`
+    `Proj Avg`,
+    `Max Proj`
   ) %>%
   arrange(
     match(Player, c("Eristeo", "Matt", "Brian", "Adam", "Thomas", "Kenneth")),
@@ -723,12 +746,22 @@ standings_table <- draft_data %>%
     `% Projected` = sprintf("%.1f", `% Projected`),
     `Weighted Average` = sprintf("%.1f", `Weighted Average`),
     `Vegas Consensus` = sprintf("%.1f", `Vegas Consensus`),
-    `TeamRankings` = sprintf("%.1f", `TeamRankings`),
-    `ESPN BPI` = sprintf("%.1f", `ESPN BPI`),
-    `CBS Sports` = sprintf("%.1f", `CBS Sports`),
+    `TR` = sprintf("%.1f", `TR`),
+    `ESPN` = sprintf("%.1f", `ESPN`),
+    `CBS` = sprintf("%.1f", `CBS`),
     `BB-Ref` = sprintf("%.1f", `BB-Ref`),
-    `Projection Average` = sprintf("%.1f", `Projection Average`)
+    `Proj Avg` = sprintf("%.1f", `Proj Avg`),
+    `Max Proj` = sprintf("%.1f", `Max Proj`)
   )
+
+# Column names with hyperlinks for by-player tables
+player_col_names <- c("Abbr", "Skins Pick", "Actual Skins", "Skins %", "% Projected", "Weighted Average", 
+                      "Vegas Consensus", 
+                      "<a href='https://www.teamrankings.com/nba/projections/standings/' target='_blank'>TR</a>",
+                      "<a href='https://www.espn.com/nba/bpi/_/view/projections' target='_blank'>ESPN</a>",
+                      "<a href='https://www.cbssports.com/nba/standings/' target='_blank'>CBS</a>",
+                      "<a href='https://www.basketball-reference.com/friv/playoff_prob.html' target='_blank'>BB-Ref</a>",
+                      "Proj Avg", "Max Proj")
 
 # Generate 6 separate tables (one for each player) with no spacing
 player_order <- c("Eristeo", "Matt", "Brian", "Adam", "Thomas", "Kenneth")
@@ -745,15 +778,16 @@ for(i in seq_along(player_order)) {
   
   table_html <- kable(
     player_data,
-    align = c("c", "c", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r"),
-    escape = FALSE
+    align = c("c", "c", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r"),
+    col.names = player_col_names,
+    escape = FALSE,
+    format = "html"
   ) %>%
     kable_styling(
       bootstrap_options = c("striped", "hover", "condensed"),
       full_width = FALSE,
       position = "center"
     ) %>%
-    row_spec(0, bold = TRUE, color = "white", background = "#0073C2") %>%
     column_spec(3, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
     column_spec(4, bold = TRUE, background = "#FFF9C4") %>%  # Highlight skins %
     column_spec(6, bold = TRUE, background = "#DFF0D8")  # Highlight weighted average
@@ -771,7 +805,7 @@ team_projections_table <- df_final_projections %>%
   left_join(draft_data %>% select(team, player), by = "team") %>%
   rowwise() %>%
   mutate(
-    `Projection Average` = mean(c(weighted_average, vegas_consensus, tr_skins, espn_skins, cbs_skins, br_skins), na.rm = TRUE)
+    `Proj Avg` = mean(c(weighted_average, vegas_consensus, tr_skins, espn_skins, cbs_skins, br_skins), na.rm = TRUE)
   ) %>%
   ungroup() %>%
   select(
@@ -783,11 +817,12 @@ team_projections_table <- df_final_projections %>%
     `% Projected` = pct_projected,
     `Weighted Average` = weighted_average,
     `Vegas Consensus` = vegas_consensus,
-    `TeamRankings` = tr_skins,
-    `ESPN BPI` = espn_skins,
-    `CBS Sports` = cbs_skins,
+    `TR` = tr_skins,
+    `ESPN` = espn_skins,
+    `CBS` = cbs_skins,
     `BB-Ref` = br_skins,
-    `Projection Average`
+    `Proj Avg`,
+    `Max Proj` = max_projection
   ) %>%
   arrange(desc(`Actual Skins`)) %>%
   mutate(
@@ -796,16 +831,26 @@ team_projections_table <- df_final_projections %>%
     `% Projected` = sprintf("%.1f", `% Projected`),
     `Weighted Average` = sprintf("%.1f", `Weighted Average`),
     `Vegas Consensus` = sprintf("%.1f", `Vegas Consensus`),
-    `TeamRankings` = sprintf("%.1f", `TeamRankings`),
-    `ESPN BPI` = sprintf("%.1f", `ESPN BPI`),
-    `CBS Sports` = sprintf("%.1f", `CBS Sports`),
+    `TR` = sprintf("%.1f", `TR`),
+    `ESPN` = sprintf("%.1f", `ESPN`),
+    `CBS` = sprintf("%.1f", `CBS`),
     `BB-Ref` = sprintf("%.1f", `BB-Ref`),
-    `Projection Average` = sprintf("%.1f", `Projection Average`)
+    `Proj Avg` = sprintf("%.1f", `Proj Avg`),
+    `Max Proj` = sprintf("%.1f", `Max Proj`)
   )
 
-kable(team_projections_table, align = c("l", "l", "c", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r")) %>%
+# Column names with hyperlinks for team table
+team_col_names <- c("Team", "Player", "Pick Type", "Actual Skins", "Skins %", "% Projected", "Weighted Average", 
+                     "Vegas Consensus", 
+                     "<a href='https://www.teamrankings.com/nba/projections/standings/' target='_blank'>TR</a>",
+                     "<a href='https://www.espn.com/nba/bpi/_/view/projections' target='_blank'>ESPN</a>",
+                     "<a href='https://www.cbssports.com/nba/standings/' target='_blank'>CBS</a>",
+                     "<a href='https://www.basketball-reference.com/friv/playoff_prob.html' target='_blank'>BB-Ref</a>",
+                     "Proj Avg", "Max Proj")
+
+kable(team_projections_table, align = c("l", "l", "c", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r"),
+      col.names = team_col_names, escape = FALSE, format = "html") %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, position = "center") %>%
-  row_spec(0, bold = TRUE, color = "white", background = "#444444") %>%
   column_spec(1, bold = TRUE) %>%
   column_spec(4, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
   column_spec(5, bold = TRUE, background = "#FFF9C4") %>%  # Highlight skins %
@@ -1130,6 +1175,39 @@ ggplot(history_projections, aes(x = date, y = projection_average, color = player
   ) +
   labs(
     title = "Projection Average over time",
+    x = NULL,
+    y = "Projected Skins",
+    color = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.text = element_text(size = 11),
+    axis.title = element_text(size = 12),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "gray90"),
+    legend.text = element_text(size = 11)
+  )
+```
+
+## 
+
+```{r max-projection-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
+# Filter out NA values for Max Projection chart
+history_max <- history %>% filter(!is.na(max_projection))
+
+ggplot(history_max, aes(x = date, y = max_projection, color = player, group = player)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2.5) +
+  scale_color_manual(values = colorblind_colors) +
+  scale_y_continuous(
+    labels = function(x) sprintf("%.1f", x),
+    limits = c(220, NA),
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  labs(
+    title = "Max Projection over time",
     x = NULL,
     y = "Projected Skins",
     color = NULL
