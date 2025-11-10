@@ -524,7 +524,9 @@ player_scores <- draft_data %>%
     `BB-Ref` = sum(br_skins, na.rm = TRUE),
     `Max Proj` = sum(max_projection, na.rm = TRUE)
   ) %>%
-  mutate(`Proj Avg` = rowMeans(select(., `Weighted Average`, `Vegas Consensus`, `TR`, `ESPN`, `CBS`, `BB-Ref`))) %>%
+  mutate(`Proj Avg` = rowMeans(select(., `Vegas Consensus`, `TR`, `ESPN`, `CBS`))) %>%
+  select(player, `Actual Skins`, `Skins %`, `% Projected`, `Weighted Average`, 
+         `Vegas Consensus`, `TR`, `ESPN`, `CBS`, `BB-Ref`, `Proj Avg`, `Max Proj`) %>%
   arrange(desc(`Actual Skins`))
 
 # --- Step 6: Prepare Standings Table Data ---
@@ -620,7 +622,7 @@ cat(sprintf(
 ```
 ## Skins Standings and Live Projections
 
-```{r player-scores, echo=FALSE}
+```{r player-scores, echo=FALSE, results='asis'}
 # Format the player scores for display
 player_scores_display <- player_scores %>%
   mutate(
@@ -664,16 +666,16 @@ global_avg_row <- tibble(
 # Combine player data with global average
 player_scores_with_avg <- bind_rows(player_scores_display, global_avg_row)
 
-# Add column names with hyperlinks
+# Add column names with hyperlinks (with light colored links for dark background)
 col_names <- c("Player", "Actual Skins", "Skins %", "% Projected", "Weighted Average", 
                "Vegas Consensus", 
-               "<a href='https://www.teamrankings.com/nba/projections/standings/' target='_blank'>TR</a>",
-               "<a href='https://www.espn.com/nba/bpi/_/view/projections' target='_blank'>ESPN</a>",
-               "<a href='https://www.cbssports.com/nba/standings/' target='_blank'>CBS</a>",
-               "<a href='https://www.basketball-reference.com/friv/playoff_prob.html' target='_blank'>BB-Ref</a>",
+               "<a href='https://www.teamrankings.com/nba/projections/standings/' target='_blank' style='color: #66B2FF;'>TR</a>",
+               "<a href='https://www.espn.com/nba/bpi/_/view/projections' target='_blank' style='color: #66B2FF;'>ESPN</a>",
+               "<a href='https://www.cbssports.com/nba/standings/' target='_blank' style='color: #66B2FF;'>CBS</a>",
+               "<a href='https://www.basketball-reference.com/friv/playoff_prob.html' target='_blank' style='color: #66B2FF;'>BB-Ref</a>",
                "Proj Avg", "Max Proj")
 
-kable(player_scores_with_avg, align = c("l", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r"),
+table_output <- kable(player_scores_with_avg, align = c("l", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r"),
       col.names = col_names, escape = FALSE, format = "html") %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, position = "center") %>%
   row_spec(nrow(player_scores_with_avg), bold = TRUE, background = "#F0F0F0") %>%  # Highlight average row
@@ -681,6 +683,11 @@ kable(player_scores_with_avg, align = c("l", "r", "r", "r", "r", "r", "r", "r", 
   column_spec(2, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
   column_spec(3, bold = TRUE, background = "#FFF9C4") %>%  # Highlight skins %
   column_spec(5, bold = TRUE, background = "#DFF0D8")  # Highlight weighted average
+
+# Add header styling via CSS
+table_html <- as.character(table_output)
+table_html <- gsub("<thead>", "<thead style='background-color: #444444; color: white; font-weight: bold;'>", table_html)
+cat(table_html)
 
 ```
 ```{r player-footnotes, echo=FALSE, results='asis'}
@@ -716,7 +723,7 @@ standings_table <- draft_data %>%
   # Calculate Projection Average for each team
   rowwise() %>%
   mutate(
-    `Proj Avg` = mean(c(`Weighted Average`, `Vegas Consensus`, `TR`, `ESPN`, `CBS`, `BB-Ref`), na.rm = TRUE)
+    `Proj Avg` = mean(c(`Vegas Consensus`, `TR`, `ESPN`, `CBS`), na.rm = TRUE)
   ) %>%
   ungroup() %>%
   select(
@@ -754,13 +761,13 @@ standings_table <- draft_data %>%
     `Max Proj` = sprintf("%.1f", `Max Proj`)
   )
 
-# Column names with hyperlinks for by-player tables
+# Column names with hyperlinks for by-player tables (light colored links for blue background)
 player_col_names <- c("Abbr", "Skins Pick", "Actual Skins", "Skins %", "% Projected", "Weighted Average", 
                       "Vegas Consensus", 
-                      "<a href='https://www.teamrankings.com/nba/projections/standings/' target='_blank'>TR</a>",
-                      "<a href='https://www.espn.com/nba/bpi/_/view/projections' target='_blank'>ESPN</a>",
-                      "<a href='https://www.cbssports.com/nba/standings/' target='_blank'>CBS</a>",
-                      "<a href='https://www.basketball-reference.com/friv/playoff_prob.html' target='_blank'>BB-Ref</a>",
+                      "<a href='https://www.teamrankings.com/nba/projections/standings/' target='_blank' style='color: #E0E0E0;'>TR</a>",
+                      "<a href='https://www.espn.com/nba/bpi/_/view/projections' target='_blank' style='color: #E0E0E0;'>ESPN</a>",
+                      "<a href='https://www.cbssports.com/nba/standings/' target='_blank' style='color: #E0E0E0;'>CBS</a>",
+                      "<a href='https://www.basketball-reference.com/friv/playoff_prob.html' target='_blank' style='color: #E0E0E0;'>BB-Ref</a>",
                       "Proj Avg", "Max Proj")
 
 # Generate 6 separate tables (one for each player) with no spacing
@@ -776,7 +783,7 @@ for(i in seq_along(player_order)) {
   cat('<div style="margin-bottom: 0px; margin-top: ', ifelse(i == 1, '0px', '-1px'), ';">\n')
   cat('<div style="background-color: #666; color: #fff; font-weight: bold; padding: 8px; text-align: center;">', player_name, '</div>\n')
   
-  table_html <- kable(
+  table_output <- kable(
     player_data,
     align = c("c", "c", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r"),
     col.names = player_col_names,
@@ -792,6 +799,9 @@ for(i in seq_along(player_order)) {
     column_spec(4, bold = TRUE, background = "#FFF9C4") %>%  # Highlight skins %
     column_spec(6, bold = TRUE, background = "#DFF0D8")  # Highlight weighted average
   
+  table_html <- as.character(table_output)
+  table_html <- gsub("<thead>", "<thead style='background-color: #0073C2; color: white; font-weight: bold;'>", table_html)
+  
   cat(as.character(table_html))
   cat('\n</div>\n')
 }
@@ -799,13 +809,13 @@ for(i in seq_along(player_order)) {
 
 ## Standings and Projections by Team
 
-```{r team-projections, echo=FALSE}
+```{r team-projections, echo=FALSE, results='asis'}
 # Select and format the final projections for display
 team_projections_table <- df_final_projections %>%
   left_join(draft_data %>% select(team, player), by = "team") %>%
   rowwise() %>%
   mutate(
-    `Proj Avg` = mean(c(weighted_average, vegas_consensus, tr_skins, espn_skins, cbs_skins, br_skins), na.rm = TRUE)
+    `Proj Avg` = mean(c(vegas_consensus, tr_skins, espn_skins, cbs_skins), na.rm = TRUE)
   ) %>%
   ungroup() %>%
   select(
@@ -839,22 +849,26 @@ team_projections_table <- df_final_projections %>%
     `Max Proj` = sprintf("%.1f", `Max Proj`)
   )
 
-# Column names with hyperlinks for team table
+# Column names with hyperlinks for team table (light colored links for dark background)
 team_col_names <- c("Team", "Player", "Pick Type", "Actual Skins", "Skins %", "% Projected", "Weighted Average", 
                      "Vegas Consensus", 
-                     "<a href='https://www.teamrankings.com/nba/projections/standings/' target='_blank'>TR</a>",
-                     "<a href='https://www.espn.com/nba/bpi/_/view/projections' target='_blank'>ESPN</a>",
-                     "<a href='https://www.cbssports.com/nba/standings/' target='_blank'>CBS</a>",
-                     "<a href='https://www.basketball-reference.com/friv/playoff_prob.html' target='_blank'>BB-Ref</a>",
+                     "<a href='https://www.teamrankings.com/nba/projections/standings/' target='_blank' style='color: #66B2FF;'>TR</a>",
+                     "<a href='https://www.espn.com/nba/bpi/_/view/projections' target='_blank' style='color: #66B2FF;'>ESPN</a>",
+                     "<a href='https://www.cbssports.com/nba/standings/' target='_blank' style='color: #66B2FF;'>CBS</a>",
+                     "<a href='https://www.basketball-reference.com/friv/playoff_prob.html' target='_blank' style='color: #66B2FF;'>BB-Ref</a>",
                      "Proj Avg", "Max Proj")
 
-kable(team_projections_table, align = c("l", "l", "c", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r"),
+table_output <- kable(team_projections_table, align = c("l", "l", "c", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r"),
       col.names = team_col_names, escape = FALSE, format = "html") %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, position = "center") %>%
   column_spec(1, bold = TRUE) %>%
   column_spec(4, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
   column_spec(5, bold = TRUE, background = "#FFF9C4") %>%  # Highlight skins %
   column_spec(7, bold = TRUE, background = "#DFF0D8")  # Highlight weighted average
+
+table_html <- as.character(table_output)
+table_html <- gsub("<thead>", "<thead style='background-color: #444444; color: white; font-weight: bold;'>", table_html)
+cat(table_html)
 ```
 
 ## Season Charts
@@ -1221,5 +1235,5 @@ ggplot(history_max, aes(x = date, y = max_projection, color = player, group = pl
     panel.grid.minor = element_blank(),
     panel.grid.major = element_line(color = "gray90"),
     legend.text = element_text(size = 11)
-  )#
+  )
 ```
