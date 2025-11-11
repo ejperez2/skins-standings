@@ -36,6 +36,8 @@ Players draft NBA teams and earn "skins" based on either wins (W pick) or losses
 - ✅ **Self-contained HTML** output for easy viewing
 - ✅ **Colorblind-friendly** visualizations
 - ✅ **Mobile-responsive** tables
+- ✅ **Max Projection** tracking for best-case scenarios
+- ✅ **Optimized weighted average** using last season's most accurate November weightings
 
 **Live Site**: Automatically deployed to GitHub Pages
 
@@ -86,7 +88,7 @@ The W/L pick for each team is **hardcoded** in the `draft_data` tibble and store
 
 #### standings_history.csv
 - **Purpose**: Time series data for charts
-- **Columns**: player, actual_skins, skins_pct, pct_projected, weighted_average, vegas_consensus, team_rankings, espn_bpi, cbs_sports, basketball_reference, projection_average, date
+- **Columns**: player, actual_skins, skins_pct, pct_projected, weighted_average, vegas_consensus, team_rankings, espn_bpi, cbs_sports, basketball_reference, projection_average, max_projection, date
 - **Updates**: Once per day (removes existing data for current date before appending)
 - **Special**: Includes zero starting point (day before first games) for clean chart visualization
 
@@ -124,6 +126,7 @@ The W/L pick for each team is **hardcoded** in the `draft_data` tibble and store
   4. Store as projected WINS (converted to skins later using W/L picks)
 - **Frequency**: Every render
 - **Reliability**: ⭐⭐⭐ (Sometimes missing teams)
+- **Note**: Vegas is tracked separately but NOT included in weighted average formula
 
 **Common Issues**:
 - **Missing Teams**: Rotowire sometimes excludes 2-4 teams (usually MIL, SAC)
@@ -143,7 +146,8 @@ The W/L pick for each team is **hardcoded** in the `draft_data` tibble and store
 - **Method**: HTML table scraping
 - **Data Extracted**: Projected wins and losses
 - **Frequency**: Every render
-- **Reliability**: ⭐⭐⭐⭐ (Very stable)
+- **Reliability**: ⭐⭐⭐⭐⭐ (Very stable and accurate)
+- **Weight in Formula**: 50% (highest weight due to proven accuracy)
 - **Notes**: Combines East and West conference tables
 
 ### 4. ESPN BPI (Basketball Power Index)
@@ -152,6 +156,7 @@ The W/L pick for each team is **hardcoded** in the `draft_data` tibble and store
 - **Data Extracted**: Overall projected W-L record
 - **Frequency**: Every render
 - **Reliability**: ⭐⭐⭐⭐ (Very stable)
+- **Weight in Formula**: 34%
 - **Format**: Combined W-L string (e.g., "52-30") that must be split
 
 ### 5. CBS Sports Projections
@@ -161,6 +166,7 @@ The W/L pick for each team is **hardcoded** in the `draft_data` tibble and store
 - **Processing**: Extracts from both Eastern and Western conference tables
 - **Frequency**: Every render
 - **Reliability**: ⭐⭐⭐⭐ (Stable)
+- **Weight in Formula**: 16%
 - **Notes**: Sometimes uses abbreviated team names (e.g., "Golden St.")
 
 ### 6. Basketball Reference (BB-Ref)
@@ -173,6 +179,7 @@ The W/L pick for each team is **hardcoded** in the `draft_data` tibble and store
   - Table structure requires special handling with `make.names()`
 - **Frequency**: Every render
 - **Reliability**: ⭐⭐⭐⭐ (Stable)
+- **Note**: Tracked separately but NOT included in weighted average formula
 - **Added**: November 2024 update
 
 ---
@@ -209,32 +216,28 @@ pct_projected = skins_pct × 82
 - **Player level**: Sum of all 5 team projections (not pace × 82)
 - Example: If a team is 10-2 (83.3%), % Projected = 68.3 skins
 
-### 5. Weighted Average
-The composite projection uses different weights depending on Vegas availability:
+### 5. Weighted Average ⭐ UPDATED
+The composite projection now uses **last season's most accurate November weightings**, excluding Vegas and Basketball Reference:
 
-**With Vegas data** (most common):
 ```r
-weighted_average = (vegas_consensus × 0.20) + 
-                   (tr_skins × 0.30) + 
-                   (espn_skins × 0.20) + 
-                   (cbs_skins × 0.10) + 
-                   (br_skins × 0.20)
+weighted_average = (tr_skins × 0.50) + 
+                   (espn_skins × 0.34) + 
+                   (cbs_skins × 0.16)
 ```
 
-**Without Vegas data** (fallback):
-```r
-weighted_average = (tr_skins × 0.35) + 
-                   (espn_skins × 0.25) + 
-                   (cbs_skins × 0.10) + 
-                   (br_skins × 0.30)
-```
+**Weight Rationale** (Based on 2023-24 November Performance):
+- **TeamRankings** (50%): Proved most accurate in early season last year
+- **ESPN BPI** (34%): Strong statistical model with good early-season accuracy
+- **CBS Sports** (16%): Simpler model but provides diversification
 
-**Weight Rationale**:
-- **Vegas** (20%): Real money market, but can be missing
-- **TeamRankings** (30%/35%): Sophisticated model, updated frequently
-- **ESPN BPI** (20%/25%): Strong statistical model
-- **BB-Ref** (20%/30%): Reliable historical data
-- **CBS Sports** (10%/16%): Lower weight, simpler model
+**Why Vegas and BB-Ref Are Excluded**:
+- Vegas lines can be influenced by betting activity rather than pure prediction
+- BB-Ref historically less accurate in early season
+- The 50/34/16 split proved most accurate for November projections in 2023-24
+
+**Historical Note**: Previous versions used different formulas:
+- v2.1.0: 20% Vegas, 30% TR, 20% ESPN, 10% CBS, 20% BB-Ref
+- v2.2.0 (current): 50% TR, 34% ESPN, 16% CBS (optimized for November)
 
 ### 6. Projection Average
 ```r
@@ -245,7 +248,17 @@ projection_average = mean(weighted_average, vegas_consensus,
 - Treats each source equally
 - Provides alternative to weighted approach
 
-### 7. Season Completion
+### 7. Max Projection ⭐ NEW
+```r
+max_projection = pmax(weighted_average, vegas_consensus, tr_skins, 
+                     espn_skins, cbs_skins, br_skins, na.rm = TRUE)
+```
+- Takes the **highest** projection from any source for each team
+- Represents the "best case scenario" if the most optimistic model is correct
+- Useful for identifying potential upside
+- Summed by player to show maximum possible outcome
+
+### 8. Season Completion
 ```r
 season_completion_pct = (total_games_played / 2460) × 100
 ```
@@ -265,13 +278,14 @@ season_completion_pct = (total_games_played / 2460) × 100
 - Actual Skins (current total)
 - Skins % (current winning/losing rate)
 - % Projected (pace-based projection)
-- Weighted Average (composite projection)
-- Vegas Consensus (betting market)
-- TeamRankings (model projection)
-- ESPN BPI (power index)
-- CBS Sports (simple projection)
-- BB-Ref (reference projection)
-- Projection Average (mean of all sources)
+- Weighted Average (composite projection - **50/34/16 formula**)
+- Vegas Consensus (betting market - tracked but not in weighted avg)
+- TR (TeamRankings - 50% of weighted avg)
+- ESPN (ESPN BPI - 34% of weighted avg)
+- CBS (CBS Sports - 16% of weighted avg)
+- BB-Ref (Basketball Reference - tracked but not in weighted avg)
+- Proj Avg (mean of all sources)
+- Max Proj (best-case scenario) ⭐ NEW
 
 **Special Features**:
 - **League Average row** (bottom): Gray background (#F0F0F0)
@@ -281,6 +295,11 @@ season_completion_pct = (total_games_played / 2460) × 100
   - Actual Skins: Green (#E8F5E9)
   - Skins %: Yellow (#FFF9C4)
   - Weighted Average: Light green (#DFF0D8)
+- **Historical Context**: Footnotes show:
+  - Average Skins 2023-25: 236, 253, 240
+  - Skins % 2023-25: 58%, 62%, 59%
+  - Winner's Skins 2023-25: 249, 280, 260
+  - Current weighted average formula explanation
 
 **Formatting**:
 - Actual Skins: Integer (no decimals)
@@ -303,11 +322,12 @@ season_completion_pct = (total_games_played / 2460) × 100
 - % Projected
 - Weighted Average
 - Vegas Consensus
-- TeamRankings
-- ESPN BPI
-- CBS Sports
-- BB-Ref
-- Projection Average
+- TR (TeamRankings)
+- ESPN (ESPN BPI)
+- CBS (CBS Sports)
+- BB-Ref (Basketball Reference)
+- Proj Avg (Projection Average)
+- Max Proj (Maximum Projection) ⭐ NEW
 
 **Sorting**: Within each player, teams sorted by Actual Skins (descending)
 
@@ -330,7 +350,7 @@ season_completion_pct = (total_games_played / 2460) × 100
 - See which teams are overperforming/underperforming projections
 - Identify draft steals and busts
 
-### Charts (10 Total)
+### Charts (11 Total) ⭐ UPDATED
 
 All charts use a **colorblind-friendly palette** (Paul Tol's vibrant scheme):
 ```r
@@ -357,15 +377,15 @@ Matt:     #EE3377 (Magenta)
 - **Format**: 1 decimal place
 - **Purpose**: See how pace-based projections evolve
 
-#### Charts 4-10: Projection Sources Over Time
-Each projection source gets its own chart:
-4. Weighted Average
-5. Vegas Consensus
-6. TeamRankings
-7. ESPN BPI
-8. CBS Sports
-9. BB-Ref (Y-axis: 200 to max)
-10. Projection Average
+#### Charts 4-11: Projection Sources Over Time
+4. **Weighted Average** (Y-axis: 220 to max) - Shows 50/34/16 formula
+5. **Vegas Consensus** (Y-axis: 220 to max) - Market expectations
+6. **TeamRankings** (Y-axis: 220 to max) - 50% component of weighted avg
+7. **ESPN BPI** (Y-axis: 220 to max) - 34% component of weighted avg
+8. **CBS Sports** (Y-axis: 220 to max) - 16% component of weighted avg
+9. **BB-Ref** (Y-axis: 200 to max) - Reference comparison
+10. **Projection Average** (Y-axis: 220 to max) - Simple mean
+11. **Max Projection** (Y-axis: 220 to max) ⭐ NEW - Best-case scenarios
 
 - **Y-axis**: 220 to max (200 for BB-Ref)
 - **Format**: 1 decimal place
@@ -445,7 +465,7 @@ permissions:
 ### Data Flow Diagram
 
 ```
-1. SCRAPE (5 sources + ESPN standings)
+1. SCRAPE (6 sources + ESPN standings)
    ↓
 2. STANDARDIZE (team names across all sources)
    ↓
@@ -457,13 +477,17 @@ permissions:
    ↓
 6. CALCULATE (apply W/L picks to get skins for each source)
    ↓
-7. AGGREGATE (sum by player)
+7. WEIGHTED AVERAGE (50% TR + 34% ESPN + 16% CBS)
    ↓
-8. HISTORICAL TRACKING (append to CSV files)
+8. MAX PROJECTION (best-case scenario from all sources)
    ↓
-9. GENERATE TABLES & CHARTS
+9. AGGREGATE (sum by player)
    ↓
-10. OUTPUT (self-contained HTML)
+10. HISTORICAL TRACKING (append to CSV files)
+   ↓
+11. GENERATE TABLES & CHARTS
+   ↓
+12. OUTPUT (self-contained HTML)
 ```
 
 ### Critical Design Decisions
@@ -511,6 +535,13 @@ league_avg = sum(all_team_skins) / sum(all_team_games)
 league_avg = mean(player_skins_pct)  # Players with more games dominate
 ```
 
+#### 7. Optimized Weighted Average Formula ⭐ NEW
+**Why**: Use empirically-validated weights from previous season
+- Analyzed 2023-24 November projections for accuracy
+- Found 50/34/16 split (TR/ESPN/CBS) was most accurate
+- Removed Vegas (betting-influenced) and BB-Ref (early-season inaccuracy)
+- Footnote on dashboard explains the formula's basis
+
 ---
 
 ## 🔧 Troubleshooting Guide
@@ -525,6 +556,7 @@ If something breaks, follow this systematic approach:
 - [ ] Specific teams missing data?
 - [ ] Historical charts not updating?
 - [ ] Projections seem wrong?
+- [ ] Weighted average calculation incorrect?
 
 #### Step 2: Check GitHub Actions Log
 1. Go to repository → Actions tab
@@ -534,6 +566,7 @@ If something breaks, follow this systematic approach:
    - R package installation failures
    - Network errors during scraping
    - Quarto rendering errors
+   - CSV commit failures
 
 #### Step 3: Test Locally
 ```bash
@@ -706,12 +739,7 @@ length(tables)  # Should be at least 2
 ```
 Update `tables_br[[1]]` and `tables_br[[2]]` if needed.
 
-**Temporary workaround**:
-Comment out BB-Ref scraping and update weighted average to exclude it:
-```r
-# Fallback formula (no Vegas, no BB-Ref):
-weighted_average = (tr_skins × 0.45) + (espn_skins × 0.35) + (cbs_skins × 0.20)
-```
+**Note**: Since BB-Ref is not in the weighted average, failures here only affect the BB-Ref column and chart, not the primary projections.
 
 ### Issue 4: Team Name Mismatches
 
@@ -823,12 +851,14 @@ Note: Requires deploying additional files to GitHub Pages.
     filter(skins_pick != skins_pick_hardcoded)
   ```
 
-- [ ] Is Vegas being included when it should be excluded?
+- [ ] Is weighted average using correct formula (50/34/16)?
   ```r
-  # Check which formula is being used
+  # Check the formula in the code
   df_final_projections %>%
-    mutate(has_vegas = !is.na(vegas_consensus)) %>%
-    count(has_vegas)
+    mutate(
+      manual_calc = (tr_skins * 0.5) + (espn_skins * 0.34) + (cbs_skins * 0.16)
+    ) %>%
+    filter(abs(weighted_average - manual_calc) > 0.01)
   ```
 
 - [ ] Are projections in WINS when they should be SKINS?
@@ -841,6 +871,7 @@ Note: Requires deploying additional files to GitHub Pages.
 1. **Forgetting to apply W/L picks**: Projections should be converted to skins
 2. **Using wrong average**: Player % Projected is SUM of teams, not average
 3. **League average inflation**: Must use global calculation, not mean of players
+4. **Incorrect weights**: Should be 50/34/16, not old formula
 
 ### Issue 8: Charts Not Showing All Players
 
@@ -877,9 +908,30 @@ missing_player_rows <- tibble(
   cbs_sports = NA,
   basketball_reference = NA,
   projection_average = NA,
+  max_projection = NA,
   date = as.Date("2024-10-21")  # Day before first games
 )
 ```
+
+### Issue 9: Max Projection Column Missing ⭐ NEW
+
+**Symptoms**:
+- Historical data loaded but max_projection shows as NA
+- Charts for max projection fail to render
+- Old history file without max_projection column
+
+**Root Cause**:
+Updating from v2.1.0 to v2.2.0 without max_projection column in historical data
+
+**Solution** (already implemented in code):
+```r
+# Code automatically adds column if missing
+if(!"max_projection" %in% names(history)) {
+  history$max_projection <- NA
+}
+```
+
+If issues persist, manually add column to standings_history.csv or delete file to rebuild.
 
 ---
 
@@ -891,17 +943,20 @@ missing_player_rows <- tibble(
 - [ ] Verify all 9 scheduled runs executed successfully
 - [ ] Spot-check tables for obvious errors (NA values, wrong sums)
 - [ ] Monitor workflow run time (should be < 5 minutes)
+- [ ] Verify weighted average formula is producing expected results
 
 #### Monthly
 - [ ] Review and clean up old workflow runs (optional)
 - [ ] Check that historical CSV files are growing appropriately
 - [ ] Verify all projection sources still working
+- [ ] Compare weighted average accuracy to individual sources
 
 #### Season Changes
 - [ ] Update draft_data for new season
 - [ ] Reset historical CSV files
 - [ ] Update cron schedule if needed for playoff times
 - [ ] Archive previous season's data
+- [ ] Re-evaluate weighted average formula based on past season's accuracy
 
 ### Updating Draft Data
 
@@ -943,24 +998,28 @@ all_teams <- tibble(
 
 To adjust the weighted average formula:
 
-1. **Find weighted_average calculation** in index.qmd (around line 385):
+1. **Find weighted_average calculation** in index.qmd (around line 390):
 ```r
-weighted_average = if_else(
-  !is.na(vegas_consensus),
-  (vegas_consensus × WEIGHT1) + (tr_skins × WEIGHT2) + ...,
-  (tr_skins × WEIGHT1) + ...  # Fallback without Vegas
-)
+weighted_average = (tr_skins × 0.50) + (espn_skins × 0.34) + (cbs_skins × 0.16)
 ```
 
 2. **Ensure weights sum to 1.0**:
 ```r
-# With Vegas: 0.20 + 0.30 + 0.20 + 0.10 + 0.20 = 1.0
-# Without Vegas: 0.35 + 0.25 + 0.10 + 0.30 = 1.0
+# Current: 0.50 + 0.34 + 0.16 = 1.0
 ```
 
-3. **Update both formulas** (with/without Vegas)
+3. **Update footnote** explaining the formula (around line 540):
+```r
+cat("<p style='font-size: 13px;'>November Weighted Avg: TR XX%, ESPN XX%, CBS XX% (Explanation)</p>")
+```
 
 4. **Test locally** before pushing
+
+5. **Document reasoning** in README and commit message
+
+**Historical Formulas for Reference**:
+- v2.1.0: 20% Vegas, 30% TR, 20% ESPN, 10% CBS, 20% BB-Ref (with/without Vegas fallback)
+- v2.2.0: 50% TR, 34% ESPN, 16% CBS (optimized for November based on 2023-24 data)
 
 ### Changing Update Schedule
 
@@ -1020,11 +1079,12 @@ mutate(
   new_skins = if_else(skins_pick == "W", new_proj_w, 82 - new_proj_w),
 ```
 
-5. **Update weighted_average formula**:
+5. **Decide if including in weighted_average**:
 ```r
-weighted_average = (...existing...) + (new_skins × NEW_WEIGHT)
+# If including, adjust weights to sum to 1.0:
+weighted_average = (tr_skins × 0.40) + (espn_skins × 0.27) + 
+                   (cbs_skins × 0.13) + (new_skins × 0.20)
 ```
-Ensure weights still sum to 1.0!
 
 6. **Add column to all tables**:
 - player_scores summarise()
@@ -1041,7 +1101,7 @@ current_standings <- player_scores %>%
 
 8. **Create chart** for new source (copy existing chart and modify)
 
-9. **Update README** with new source details
+9. **Update README** with new source details and rationale for weight
 
 ---
 
@@ -1108,12 +1168,22 @@ df_vegas <- tryCatch({
 })
 ```
 
-#### Create Diagnostic Files
-See vegas_diagnostic.qmd and vegas_diagnostic_v2.qmd examples:
-- Test one component at a time
-- Print intermediate results
-- Use verbose console output
-- Display data at each transformation step
+#### Test Weighted Average Formula
+Create test cases to verify calculations:
+```r
+# Test case
+test_data <- tibble(
+  tr_skins = 50,
+  espn_skins = 34,
+  cbs_skins = 16
+)
+
+test_data %>%
+  mutate(
+    weighted_avg = (tr_skins * 0.5) + (espn_skins * 0.34) + (cbs_skins * 0.16)
+  )
+# Should equal: 25 + 11.56 + 2.56 = 39.12
+```
 
 ### Best Practices
 
@@ -1122,6 +1192,7 @@ See vegas_diagnostic.qmd and vegas_diagnostic_v2.qmd examples:
 - Standardize team names immediately after scraping
 - Handle missing data early (before joins)
 - Apply W/L picks late (after all joins)
+- Calculate weighted average after all projections converted to skins
 
 #### Error Handling
 - Use `tryCatch()` for all external API calls
@@ -1161,6 +1232,9 @@ start index.html  # Windows
 # Verify CSV files updated (if appropriate)
 git diff standings_history.csv
 git diff team_vegas_history.csv
+
+# Verify weighted average formula
+# Check that 0.5 + 0.34 + 0.16 = 1.0
 ```
 
 ### Common Development Mistakes
@@ -1189,6 +1263,10 @@ git diff team_vegas_history.csv
    - Local development may use different timezone
    - Always use `Sys.Date()` not `Sys.time()`
 
+7. **Incorrect weight sums**
+   - Weighted average weights must sum to exactly 1.0
+   - Double-check: 0.50 + 0.34 + 0.16 = 1.00 ✓
+
 ---
 
 ## 📞 Support
@@ -1201,6 +1279,8 @@ git diff team_vegas_history.csv
 - **Charts not updating?** → Verify CSV commit step in workflow succeeded
 - **Website not updating?** → Check GitHub Pages deployment in Actions
 - **Code won't render locally?** → Check R package versions match workflow
+- **Weighted average seems off?** → Verify 50/34/16 formula and that it equals 1.0
+- **Max projection missing?** → Check if max_projection column exists in history file
 
 ### Resources
 
@@ -1209,6 +1289,7 @@ git diff team_vegas_history.csv
 - **dplyr Reference**: https://dplyr.tidyverse.org/
 - **ggplot2 Documentation**: https://ggplot2.tidyverse.org/
 - **R for Data Science** (free book): https://r4ds.had.co.nz/
+- **Skins Game Explanation**: https://bdubcodes.net/posts/the-nba-skins-game
 
 ### Getting Help
 
@@ -1217,6 +1298,7 @@ git diff team_vegas_history.csv
 3. **Create diagnostic file** using provided templates
 4. **Test locally** to isolate issue (workflow vs code)
 5. **Check source websites** (did they change structure?)
+6. **Verify formula calculations** (weighted average, max projection, etc.)
 
 ---
 
@@ -1239,9 +1321,22 @@ Pull requests welcome for bug fixes and enhancements!
 
 ## 📝 Version History
 
+### v2.2.0 (November 2024) - Current Version ⭐
+- ✅ **Optimized weighted average formula**: Changed to 50% TR, 34% ESPN, 16% CBS
+  - Based on 2023-24 November projection accuracy analysis
+  - Removed Vegas and BB-Ref from weighted calculation (still tracked separately)
+  - Footnote explains formula basis on dashboard
+- ✅ **Added Max Projection feature**: 
+  - New column showing best-case scenario from all sources
+  - New chart tracking max projections over time
+  - Useful for identifying potential upside
+- ✅ **Enhanced historical tracking**: Added max_projection column to CSV
+- ✅ **Updated documentation**: Complete README overhaul reflecting current formula
+- ✅ **Added Skins Game explanation**: Hyperlinked description on dashboard
+
 ### v2.1.0 (November 2024)
 - ✅ Added Basketball Reference projections (6th source)
-- ✅ Updated weighted average formula
+- ✅ Updated weighted average formula (with Vegas/BB-Ref)
 - ✅ Fixed Vegas backfill issue with hardcoded fallbacks
 - ✅ Prevented NA pollution in team_vegas_history.csv
 - ✅ Shortened "Basketball Reference" to "BB-Ref" in tables
@@ -1263,7 +1358,25 @@ Pull requests welcome for bug fixes and enhancements!
 ---
 
 **Current Season**: 2024-25 NBA Season  
-**Last Major Update**: November 2024  
+**Last Major Update**: November 2024 (v2.2.0)  
 **Maintained by**: League Commissioner  
 **Repository**: [Your GitHub URL Here]  
 **Live Site**: [Your GitHub Pages URL Here]
+
+---
+
+## 🔄 What's New in v2.2.0
+
+### Key Changes:
+
+1. **Formula Optimization**: Weighted average now uses empirically-validated 50/34/16 split
+2. **Max Projection**: Track best-case scenarios across all sources
+3. **Enhanced Transparency**: Dashboard explains formula methodology
+4. **Improved Documentation**: README fully updated to match current implementation
+
+### Migration Notes:
+
+If updating from v2.1.0:
+- Historical data automatically updated with max_projection column
+- Old weighted average formula deprecated
+- No manual intervention required - code handles migration automatically
