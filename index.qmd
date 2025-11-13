@@ -695,7 +695,7 @@ cat(table_html)
 # This divorces them from the table's column widths
 cat("<p style='font-size: 13px; margin-top: 5px; margin-bottom: 0; text-align: left;'>Avg Skins 2023-25: <b>236, 253, 240</b></p>")
 cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Skins % 2023-25: <b>58%, 62%, 59%</b></p>")
-cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Winner's Skins 2023-25: <b>249, 280, 260</b></p>")
+cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Winner's Skins 2023-25: <b>249, 280, 268</b></p>")
 cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>November Weighted Avg: TR 50%, ESPN 34%, CBS 16% (Last season's most accurate Nov weightings)</p>")
 ```
 ## Standings and Projections by player
@@ -1237,3 +1237,4 @@ ggplot(history_max, aes(x = date, y = max_projection, color = player, group = pl
     legend.text = element_text(size = 11)
   )
 ```
+ 
