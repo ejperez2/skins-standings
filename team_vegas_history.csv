@@ -28,7 +28,7 @@
 "Atlanta Hawks",47.25,2025-11-24
 "Atlanta Hawks",47.25,2025-11-25
 "Atlanta Hawks",46.5,2025-11-26
-"Atlanta Hawks",46.5,2025-11-27
+"Atlanta Hawks",46.625,2025-11-27
 "Boston Celtics",42.125,2025-10-29
 "Boston Celtics",42.125,2025-10-30
 "Boston Celtics",40,2025-10-31
@@ -58,7 +58,7 @@
 "Boston Celtics",41.5,2025-11-24
 "Boston Celtics",41.5,2025-11-25
 "Boston Celtics",41.5,2025-11-26
-"Boston Celtics",42.5,2025-11-27
+"Boston Celtics",42.75,2025-11-27
 "Brooklyn Nets",17.5,2025-10-29
 "Brooklyn Nets",17.5,2025-10-30
 "Brooklyn Nets",17.5,2025-10-31
@@ -298,7 +298,7 @@
 "Golden State Warriors",47.5,2025-11-24
 "Golden State Warriors",47.5,2025-11-25
 "Golden State Warriors",47.5,2025-11-26
-"Golden State Warriors",47.5,2025-11-27
+"Golden State Warriors",46.75,2025-11-27
 "Houston Rockets",52,2025-10-29
 "Houston Rockets",52,2025-10-30
 "Houston Rockets",52,2025-10-31
@@ -328,7 +328,7 @@
 "Houston Rockets",57,2025-11-24
 "Houston Rockets",56.5,2025-11-25
 "Houston Rockets",57,2025-11-26
-"Houston Rockets",57,2025-11-27
+"Houston Rockets",59,2025-11-27
 "Indiana Pacers",33.6666666666667,2025-10-29
 "Indiana Pacers",32.5,2025-10-30
 "Indiana Pacers",32.5,2025-10-31
@@ -358,7 +358,7 @@
 "Indiana Pacers",25.5,2025-11-24
 "Indiana Pacers",24.5,2025-11-25
 "Indiana Pacers",24.5,2025-11-26
-"Indiana Pacers",24.5,2025-11-27
+"Indiana Pacers",23,2025-11-27
 "Los Angeles Clippers",48.1666666666667,2025-10-29
 "Los Angeles Clippers",47.8333333333333,2025-10-30
 "Los Angeles Clippers",47.3333333333333,2025-10-31
@@ -388,7 +388,7 @@
 "Los Angeles Clippers",40.5,2025-11-24
 "Los Angeles Clippers",40,2025-11-25
 "Los Angeles Clippers",40.5,2025-11-26
-"Los Angeles Clippers",40.5,2025-11-27
+"Los Angeles Clippers",40,2025-11-27
 "Los Angeles Lakers",45.5,2025-10-29
 "Los Angeles Lakers",46.6666666666667,2025-10-30
 "Los Angeles Lakers",46.6666666666667,2025-10-31
@@ -448,7 +448,7 @@
 "Memphis Grizzlies",32.5,2025-11-24
 "Memphis Grizzlies",32,2025-11-25
 "Memphis Grizzlies",32,2025-11-26
-"Memphis Grizzlies",31.5,2025-11-27
+"Memphis Grizzlies",32,2025-11-27
 "Miami Heat",40.3333333333333,2025-10-29
 "Miami Heat",40.3333333333333,2025-10-30
 "Miami Heat",42.5,2025-10-31
@@ -478,7 +478,7 @@
 "Miami Heat",46,2025-11-24
 "Miami Heat",47,2025-11-25
 "Miami Heat",47,2025-11-26
-"Miami Heat",46.5,2025-11-27
+"Miami Heat",47.25,2025-11-27
 "Milwaukee Bucks",44.1666666666667,2025-10-29
 "Milwaukee Bucks",44.5,2025-10-30
 "Milwaukee Bucks",46.25,2025-10-31
@@ -508,7 +508,7 @@
 "Milwaukee Bucks",42.5,2025-11-24
 "Milwaukee Bucks",42.3333333333333,2025-11-25
 "Milwaukee Bucks",41.8333333333333,2025-11-26
-"Milwaukee Bucks",41.5,2025-11-27
+"Milwaukee Bucks",42,2025-11-27
 "Minnesota Timberwolves",48.5,2025-10-29
 "Minnesota Timberwolves",47.8333333333333,2025-10-30
 "Minnesota Timberwolves",47.8333333333333,2025-10-31
@@ -598,7 +598,7 @@
 "New York Knicks",51.75,2025-11-24
 "New York Knicks",51.5,2025-11-25
 "New York Knicks",51.6666666666667,2025-11-26
-"New York Knicks",51.5,2025-11-27
+"New York Knicks",52.25,2025-11-27
 "Oklahoma City Thunder",64,2025-10-29
 "Oklahoma City Thunder",64,2025-10-30
 "Oklahoma City Thunder",63.5,2025-10-31
@@ -628,7 +628,7 @@
 "Oklahoma City Thunder",67.5,2025-11-24
 "Oklahoma City Thunder",67.5,2025-11-25
 "Oklahoma City Thunder",67.5,2025-11-26
-"Oklahoma City Thunder",67.5,2025-11-27
+"Oklahoma City Thunder",68.5,2025-11-27
 "Orlando Magic",48,2025-10-29
 "Orlando Magic",47,2025-10-30
 "Orlando Magic",47,2025-10-31
@@ -778,7 +778,7 @@
 "Sacramento Kings",26.5,2025-11-24
 "Sacramento Kings",26.8333333333333,2025-11-25
 "Sacramento Kings",26.8333333333333,2025-11-26
-"Sacramento Kings",26,2025-11-27
+"Sacramento Kings",26.25,2025-11-27
 "San Antonio Spurs",46.5,2025-10-29
 "San Antonio Spurs",46.5,2025-10-30
 "San Antonio Spurs",46.5,2025-10-31
@@ -838,7 +838,7 @@
 "Toronto Raptors",45.5,2025-11-24
 "Toronto Raptors",46.5,2025-11-25
 "Toronto Raptors",46.5,2025-11-26
-"Toronto Raptors",46.5,2025-11-27
+"Toronto Raptors",47.5,2025-11-27
 "Utah Jazz",22.8333333333333,2025-10-29
 "Utah Jazz",23.1666666666667,2025-10-30
 "Utah Jazz",23.1666666666667,2025-10-31
