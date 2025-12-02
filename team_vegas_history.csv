@@ -33,7 +33,7 @@
 "Atlanta Hawks",48,2025-11-29
 "Atlanta Hawks",48,2025-11-30
 "Atlanta Hawks",47.5,2025-12-01
-"Atlanta Hawks",47.75,2025-12-02
+"Atlanta Hawks",47.875,2025-12-02
 "Boston Celtics",42.125,2025-10-29
 "Boston Celtics",42.125,2025-10-30
 "Boston Celtics",40,2025-10-31
@@ -208,7 +208,7 @@
 "Cleveland Cavaliers",55,2025-11-29
 "Cleveland Cavaliers",55,2025-11-30
 "Cleveland Cavaliers",53.75,2025-12-01
-"Cleveland Cavaliers",53.25,2025-12-02
+"Cleveland Cavaliers",53,2025-12-02
 "Dallas Mavericks",42.625,2025-10-29
 "Dallas Mavericks",43.3333333333333,2025-10-30
 "Dallas Mavericks",38.5,2025-10-31
@@ -243,7 +243,7 @@
 "Dallas Mavericks",29,2025-11-29
 "Dallas Mavericks",29,2025-11-30
 "Dallas Mavericks",30.25,2025-12-01
-"Dallas Mavericks",30.75,2025-12-02
+"Dallas Mavericks",31.3333333333333,2025-12-02
 "Denver Nuggets",53.5,2025-10-29
 "Denver Nuggets",54.8333333333333,2025-10-30
 "Denver Nuggets",54.8333333333333,2025-10-31
@@ -383,7 +383,7 @@
 "Houston Rockets",59,2025-11-29
 "Houston Rockets",59,2025-11-30
 "Houston Rockets",59,2025-12-01
-"Houston Rockets",58.5,2025-12-02
+"Houston Rockets",58,2025-12-02
 "Indiana Pacers",33.6666666666667,2025-10-29
 "Indiana Pacers",32.5,2025-10-30
 "Indiana Pacers",32.5,2025-10-31
@@ -488,7 +488,7 @@
 "Los Angeles Lakers",54.75,2025-11-29
 "Los Angeles Lakers",54.75,2025-11-30
 "Los Angeles Lakers",56,2025-12-01
-"Los Angeles Lakers",55.25,2025-12-02
+"Los Angeles Lakers",54.5,2025-12-02
 "Memphis Grizzlies",43.375,2025-10-29
 "Memphis Grizzlies",42.625,2025-10-30
 "Memphis Grizzlies",39.3333333333333,2025-10-31
@@ -628,7 +628,7 @@
 "Minnesota Timberwolves",48.5,2025-11-29
 "Minnesota Timberwolves",48.5,2025-11-30
 "Minnesota Timberwolves",50,2025-12-01
-"Minnesota Timberwolves",49.8333333333333,2025-12-02
+"Minnesota Timberwolves",49.875,2025-12-02
 "New Orleans Pelicans",29.625,2025-10-29
 "New Orleans Pelicans",29.6666666666667,2025-10-30
 "New Orleans Pelicans",29.5,2025-10-31
@@ -733,7 +733,7 @@
 "Oklahoma City Thunder",68.5,2025-11-29
 "Oklahoma City Thunder",68.5,2025-11-30
 "Oklahoma City Thunder",69,2025-12-01
-"Oklahoma City Thunder",69,2025-12-02
+"Oklahoma City Thunder",69.5,2025-12-02
 "Orlando Magic",48,2025-10-29
 "Orlando Magic",47,2025-10-30
 "Orlando Magic",47,2025-10-31
@@ -768,7 +768,7 @@
 "Orlando Magic",48.75,2025-11-29
 "Orlando Magic",48.75,2025-11-30
 "Orlando Magic",50.75,2025-12-01
-"Orlando Magic",50.5,2025-12-02
+"Orlando Magic",51,2025-12-02
 "Philadelphia 76ers",44.5,2025-10-29
 "Philadelphia 76ers",44.5,2025-10-30
 "Philadelphia 76ers",44.5,2025-10-31
@@ -1013,7 +1013,7 @@
 "Utah Jazz",21,2025-11-29
 "Utah Jazz",21,2025-11-30
 "Utah Jazz",21.75,2025-12-01
-"Utah Jazz",21.5,2025-12-02
+"Utah Jazz",22,2025-12-02
 "Washington Wizards",19,2025-10-29
 "Washington Wizards",19,2025-10-30
 "Washington Wizards",19.25,2025-10-31
@@ -1048,4 +1048,4 @@
 "Washington Wizards",15.5,2025-11-29
 "Washington Wizards",15.5,2025-11-30
 "Washington Wizards",15.5,2025-12-01
-"Washington Wizards",15.75,2025-12-02
+"Washington Wizards",15.5,2025-12-02
