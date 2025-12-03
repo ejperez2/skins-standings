@@ -358,7 +358,7 @@
 "Golden State Warriors",46.3333333333333,2025-11-30
 "Golden State Warriors",46.3333333333333,2025-12-01
 "Golden State Warriors",46.5,2025-12-02
-"Golden State Warriors",47,2025-12-03
+"Golden State Warriors",46.625,2025-12-03
 "Houston Rockets",52,2025-10-29
 "Houston Rockets",52,2025-10-30
 "Houston Rockets",52,2025-10-31
@@ -646,7 +646,7 @@
 "Minnesota Timberwolves",48.5,2025-11-30
 "Minnesota Timberwolves",50,2025-12-01
 "Minnesota Timberwolves",49.875,2025-12-02
-"Minnesota Timberwolves",50.8333333333333,2025-12-03
+"Minnesota Timberwolves",50.875,2025-12-03
 "New Orleans Pelicans",29.625,2025-10-29
 "New Orleans Pelicans",29.6666666666667,2025-10-30
 "New Orleans Pelicans",29.5,2025-10-31
@@ -754,7 +754,7 @@
 "Oklahoma City Thunder",68.5,2025-11-30
 "Oklahoma City Thunder",69,2025-12-01
 "Oklahoma City Thunder",69.5,2025-12-02
-"Oklahoma City Thunder",70,2025-12-03
+"Oklahoma City Thunder",69.8333333333333,2025-12-03
 "Orlando Magic",48,2025-10-29
 "Orlando Magic",47,2025-10-30
 "Orlando Magic",47,2025-10-31
@@ -826,7 +826,7 @@
 "Philadelphia 76ers",43.75,2025-11-30
 "Philadelphia 76ers",42.6666666666667,2025-12-01
 "Philadelphia 76ers",42.75,2025-12-02
-"Philadelphia 76ers",42.8333333333333,2025-12-03
+"Philadelphia 76ers",42.5,2025-12-03
 "Phoenix Suns",29.875,2025-10-29
 "Phoenix Suns",29.75,2025-10-30
 "Phoenix Suns",29.375,2025-10-31
@@ -1078,4 +1078,4 @@
 "Washington Wizards",15.5,2025-11-30
 "Washington Wizards",15.5,2025-12-01
 "Washington Wizards",15.5,2025-12-02
-"Washington Wizards",15.75,2025-12-03
+"Washington Wizards",15.5,2025-12-03
