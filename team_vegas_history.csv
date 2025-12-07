@@ -198,7 +198,7 @@
 "Chicago Bulls",38.5,2025-12-04
 "Chicago Bulls",37.8333333333333,2025-12-05
 "Chicago Bulls",37.8333333333333,2025-12-06
-"Chicago Bulls",37.8333333333333,2025-12-07
+"Chicago Bulls",36.5,2025-12-07
 "Cleveland Cavaliers",57.5,2025-10-29
 "Cleveland Cavaliers",56.5,2025-10-30
 "Cleveland Cavaliers",56.5,2025-10-31
@@ -318,7 +318,7 @@
 "Denver Nuggets",57,2025-12-04
 "Denver Nuggets",57,2025-12-05
 "Denver Nuggets",57,2025-12-06
-"Denver Nuggets",57,2025-12-07
+"Denver Nuggets",56.5,2025-12-07
 "Detroit Pistons",44.3333333333333,2025-10-29
 "Detroit Pistons",44.6666666666667,2025-10-30
 "Detroit Pistons",44.6666666666667,2025-10-31
@@ -558,7 +558,7 @@
 "Los Angeles Lakers",54.5,2025-12-04
 "Los Angeles Lakers",54.5,2025-12-05
 "Los Angeles Lakers",54.5,2025-12-06
-"Los Angeles Lakers",54.5,2025-12-07
+"Los Angeles Lakers",55,2025-12-07
 "Memphis Grizzlies",43.375,2025-10-29
 "Memphis Grizzlies",42.625,2025-10-30
 "Memphis Grizzlies",39.3333333333333,2025-10-31
@@ -838,7 +838,7 @@
 "Oklahoma City Thunder",69.6666666666667,2025-12-04
 "Oklahoma City Thunder",69.6666666666667,2025-12-05
 "Oklahoma City Thunder",69.6666666666667,2025-12-06
-"Oklahoma City Thunder",69.6666666666667,2025-12-07
+"Oklahoma City Thunder",69.5,2025-12-07
 "Orlando Magic",48,2025-10-29
 "Orlando Magic",47,2025-10-30
 "Orlando Magic",47,2025-10-31
@@ -998,7 +998,7 @@
 "Portland Trail Blazers",38.1666666666667,2025-12-04
 "Portland Trail Blazers",38.1666666666667,2025-12-05
 "Portland Trail Blazers",38.1666666666667,2025-12-06
-"Portland Trail Blazers",38.1666666666667,2025-12-07
+"Portland Trail Blazers",39.5,2025-12-07
 "Sacramento Kings",31.3333333333333,2025-10-29
 "Sacramento Kings",31.5,2025-10-30
 "Sacramento Kings",31.5,2025-10-31
@@ -1158,7 +1158,7 @@
 "Utah Jazz",22,2025-12-04
 "Utah Jazz",22.5,2025-12-05
 "Utah Jazz",22.5,2025-12-06
-"Utah Jazz",22.5,2025-12-07
+"Utah Jazz",23.5,2025-12-07
 "Washington Wizards",19,2025-10-29
 "Washington Wizards",19,2025-10-30
 "Washington Wizards",19.25,2025-10-31
@@ -1198,4 +1198,4 @@
 "Washington Wizards",15.5,2025-12-04
 "Washington Wizards",15.1666666666667,2025-12-05
 "Washington Wizards",15,2025-12-06
-"Washington Wizards",15,2025-12-07
+"Washington Wizards",15.5,2025-12-07
