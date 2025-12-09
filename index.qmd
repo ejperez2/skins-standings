@@ -481,7 +481,7 @@ df_final_projections <- all_teams %>%
     # Calculate weighted average using skins (which now correctly apply draft picks)
     # Updated formula to include Basketball Reference
     weighted_average = 
-      (tr_skins * 0.5) + (espn_skins * 0.34) + (cbs_skins * 0.16) ,  # Fallback formula without Vegas
+      (tr_skins * 0.38) + (espn_skins * 0.16) + (cbs_skins * 0.46) ,  # Fallback formula without Vegas
     
     # Calculate max projection for each team
     max_projection = pmax(weighted_average, vegas_consensus, tr_skins, espn_skins, cbs_skins, br_skins, na.rm = TRUE),
@@ -696,7 +696,7 @@ cat(table_html)
 cat("<p style='font-size: 13px; margin-top: 5px; margin-bottom: 0; text-align: left;'>Avg Skins 2023-25: <b>236, 253, 240</b></p>")
 cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Skins % 2023-25: <b>58%, 62%, 59%</b></p>")
 cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Winner's Skins 2023-25: <b>249, 280, 268</b></p>")
-cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>November Weighted Avg: TR 50%, ESPN 34%, CBS 16% (Last season's most accurate Nov weightings)</p>")
+cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>December Weighted Avg: TR 38%, ESPN 16%, CBS 46% (Last season's most accurate Dec weightings)</p>")
 ```
 ## Standings and Projections by player
 
