@@ -199,7 +199,7 @@
 "Brooklyn Nets",23,2025-12-31
 "Brooklyn Nets",23,2026-01-01
 "Brooklyn Nets",23.5,2026-01-02
-"Brooklyn Nets",23.5,2026-01-03
+"Brooklyn Nets",23,2026-01-03
 "Charlotte Hornets",30.6666666666667,2025-10-29
 "Charlotte Hornets",31,2025-10-30
 "Charlotte Hornets",31,2025-10-31
@@ -333,7 +333,7 @@
 "Chicago Bulls",35,2025-12-31
 "Chicago Bulls",34,2026-01-01
 "Chicago Bulls",34,2026-01-02
-"Chicago Bulls",35,2026-01-03
+"Chicago Bulls",35.25,2026-01-03
 "Cleveland Cavaliers",57.5,2025-10-29
 "Cleveland Cavaliers",56.5,2025-10-30
 "Cleveland Cavaliers",56.5,2025-10-31
@@ -668,7 +668,7 @@
 "Golden State Warriors",47.8333333333333,2025-12-31
 "Golden State Warriors",47.5,2026-01-01
 "Golden State Warriors",47.5,2026-01-02
-"Golden State Warriors",47.5,2026-01-03
+"Golden State Warriors",46.5,2026-01-03
 "Houston Rockets",52,2025-10-29
 "Houston Rockets",52,2025-10-30
 "Houston Rockets",52,2025-10-31
@@ -1070,7 +1070,7 @@
 "Miami Heat",44.5,2025-12-31
 "Miami Heat",44.5,2026-01-01
 "Miami Heat",46.25,2026-01-02
-"Miami Heat",46.25,2026-01-03
+"Miami Heat",47,2026-01-03
 "Milwaukee Bucks",44.1666666666667,2025-10-29
 "Milwaukee Bucks",44.5,2025-10-30
 "Milwaukee Bucks",46.25,2025-10-31
@@ -1673,7 +1673,7 @@
 "Portland Trail Blazers",36.5,2025-12-31
 "Portland Trail Blazers",36.5,2026-01-01
 "Portland Trail Blazers",36.5,2026-01-02
-"Portland Trail Blazers",36,2026-01-03
+"Portland Trail Blazers",36.25,2026-01-03
 "Sacramento Kings",31.3333333333333,2025-10-29
 "Sacramento Kings",31.5,2025-10-30
 "Sacramento Kings",31.5,2025-10-31
@@ -1941,7 +1941,7 @@
 "Utah Jazz",24.5,2025-12-31
 "Utah Jazz",24.5,2026-01-01
 "Utah Jazz",23.75,2026-01-02
-"Utah Jazz",23.75,2026-01-03
+"Utah Jazz",23.25,2026-01-03
 "Washington Wizards",19,2025-10-29
 "Washington Wizards",19,2025-10-30
 "Washington Wizards",19.25,2025-10-31
