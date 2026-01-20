@@ -586,7 +586,7 @@
 "Dallas Mavericks",28.5,2026-01-17
 "Dallas Mavericks",28.5,2026-01-18
 "Dallas Mavericks",28.5,2026-01-19
-"Dallas Mavericks",28.5,2026-01-20
+"Dallas Mavericks",29.5,2026-01-20
 "Denver Nuggets",53.5,2025-10-29
 "Denver Nuggets",54.8333333333333,2025-10-30
 "Denver Nuggets",54.8333333333333,2025-10-31
@@ -754,7 +754,7 @@
 "Detroit Pistons",56,2026-01-17
 "Detroit Pistons",56,2026-01-18
 "Detroit Pistons",55.75,2026-01-19
-"Detroit Pistons",55.75,2026-01-20
+"Detroit Pistons",57,2026-01-20
 "Golden State Warriors",52.1666666666667,2025-10-29
 "Golden State Warriors",52.8333333333333,2025-10-30
 "Golden State Warriors",52.25,2025-10-31
@@ -1342,7 +1342,7 @@
 "Miami Heat",46,2026-01-17
 "Miami Heat",46,2026-01-18
 "Miami Heat",45.5,2026-01-19
-"Miami Heat",45.5,2026-01-20
+"Miami Heat",46,2026-01-20
 "Milwaukee Bucks",44.1666666666667,2025-10-29
 "Milwaukee Bucks",44.5,2025-10-30
 "Milwaukee Bucks",46.25,2025-10-31
@@ -1426,7 +1426,7 @@
 "Milwaukee Bucks",34,2026-01-17
 "Milwaukee Bucks",34.25,2026-01-18
 "Milwaukee Bucks",34.25,2026-01-19
-"Milwaukee Bucks",34.25,2026-01-20
+"Milwaukee Bucks",35.5,2026-01-20
 "Minnesota Timberwolves",48.5,2025-10-29
 "Minnesota Timberwolves",47.8333333333333,2025-10-30
 "Minnesota Timberwolves",47.8333333333333,2025-10-31
@@ -1510,7 +1510,7 @@
 "Minnesota Timberwolves",52.5,2026-01-17
 "Minnesota Timberwolves",52.5,2026-01-18
 "Minnesota Timberwolves",52.25,2026-01-19
-"Minnesota Timberwolves",52.25,2026-01-20
+"Minnesota Timberwolves",52,2026-01-20
 "New Orleans Pelicans",29.625,2025-10-29
 "New Orleans Pelicans",29.6666666666667,2025-10-30
 "New Orleans Pelicans",29.5,2025-10-31
@@ -1678,7 +1678,7 @@
 "New York Knicks",51.5,2026-01-17
 "New York Knicks",51.5,2026-01-18
 "New York Knicks",52,2026-01-19
-"New York Knicks",52,2026-01-20
+"New York Knicks",49.5,2026-01-20
 "Oklahoma City Thunder",64,2025-10-29
 "Oklahoma City Thunder",64,2025-10-30
 "Oklahoma City Thunder",63.5,2025-10-31
@@ -1762,7 +1762,7 @@
 "Oklahoma City Thunder",68,2026-01-17
 "Oklahoma City Thunder",68,2026-01-18
 "Oklahoma City Thunder",68,2026-01-19
-"Oklahoma City Thunder",68,2026-01-20
+"Oklahoma City Thunder",67,2026-01-20
 "Orlando Magic",48,2025-10-29
 "Orlando Magic",47,2025-10-30
 "Orlando Magic",47,2025-10-31
@@ -1846,7 +1846,7 @@
 "Orlando Magic",46.5,2026-01-17
 "Orlando Magic",46.5,2026-01-18
 "Orlando Magic",47,2026-01-19
-"Orlando Magic",47,2026-01-20
+"Orlando Magic",46.8333333333333,2026-01-20
 "Philadelphia 76ers",44.5,2025-10-29
 "Philadelphia 76ers",44.5,2025-10-30
 "Philadelphia 76ers",44.5,2025-10-31
@@ -1930,7 +1930,7 @@
 "Philadelphia 76ers",45.5,2026-01-17
 "Philadelphia 76ers",45.5,2026-01-18
 "Philadelphia 76ers",45.25,2026-01-19
-"Philadelphia 76ers",45.25,2026-01-20
+"Philadelphia 76ers",46,2026-01-20
 "Phoenix Suns",29.875,2025-10-29
 "Phoenix Suns",29.75,2025-10-30
 "Phoenix Suns",29.375,2025-10-31
@@ -2014,7 +2014,7 @@
 "Phoenix Suns",45.5,2026-01-17
 "Phoenix Suns",45.5,2026-01-18
 "Phoenix Suns",47.75,2026-01-19
-"Phoenix Suns",47.75,2026-01-20
+"Phoenix Suns",47.5,2026-01-20
 "Portland Trail Blazers",35.125,2025-10-29
 "Portland Trail Blazers",35,2025-10-30
 "Portland Trail Blazers",35.375,2025-10-31
@@ -2098,7 +2098,7 @@
 "Portland Trail Blazers",38,2026-01-17
 "Portland Trail Blazers",38,2026-01-18
 "Portland Trail Blazers",40,2026-01-19
-"Portland Trail Blazers",40,2026-01-20
+"Portland Trail Blazers",39.6666666666667,2026-01-20
 "Sacramento Kings",31.3333333333333,2025-10-29
 "Sacramento Kings",31.5,2025-10-30
 "Sacramento Kings",31.5,2025-10-31
@@ -2266,7 +2266,7 @@
 "San Antonio Spurs",55.5,2026-01-17
 "San Antonio Spurs",55.5,2026-01-18
 "San Antonio Spurs",57,2026-01-19
-"San Antonio Spurs",57,2026-01-20
+"San Antonio Spurs",56.5,2026-01-20
 "Toronto Raptors",39.5,2025-10-29
 "Toronto Raptors",37.875,2025-10-30
 "Toronto Raptors",37.75,2025-10-31
@@ -2518,4 +2518,4 @@
 "Washington Wizards",21.5,2026-01-17
 "Washington Wizards",21.5,2026-01-18
 "Washington Wizards",21.5,2026-01-19
-"Washington Wizards",21.5,2026-01-20
+"Washington Wizards",20.5,2026-01-20
