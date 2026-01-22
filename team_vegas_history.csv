@@ -84,7 +84,7 @@
 "Atlanta Hawks",42.5,2026-01-19
 "Atlanta Hawks",40,2026-01-20
 "Atlanta Hawks",40,2026-01-21
-"Atlanta Hawks",40,2026-01-22
+"Atlanta Hawks",42,2026-01-22
 "Boston Celtics",42.125,2025-10-29
 "Boston Celtics",42.125,2025-10-30
 "Boston Celtics",40,2025-10-31
@@ -170,7 +170,7 @@
 "Boston Celtics",53,2026-01-19
 "Boston Celtics",52,2026-01-20
 "Boston Celtics",52,2026-01-21
-"Boston Celtics",52,2026-01-22
+"Boston Celtics",51.5,2026-01-22
 "Brooklyn Nets",17.5,2025-10-29
 "Brooklyn Nets",17.5,2025-10-30
 "Brooklyn Nets",17.5,2025-10-31
@@ -256,7 +256,7 @@
 "Brooklyn Nets",23.5,2026-01-19
 "Brooklyn Nets",23,2026-01-20
 "Brooklyn Nets",23,2026-01-21
-"Brooklyn Nets",23,2026-01-22
+"Brooklyn Nets",22,2026-01-22
 "Charlotte Hornets",30.6666666666667,2025-10-29
 "Charlotte Hornets",31,2025-10-30
 "Charlotte Hornets",31,2025-10-31
@@ -342,7 +342,7 @@
 "Charlotte Hornets",33,2026-01-19
 "Charlotte Hornets",33,2026-01-20
 "Charlotte Hornets",33.5,2026-01-21
-"Charlotte Hornets",33.5,2026-01-22
+"Charlotte Hornets",33,2026-01-22
 "Chicago Bulls",37.1666666666667,2025-10-29
 "Chicago Bulls",38.3333333333333,2025-10-30
 "Chicago Bulls",38.6666666666667,2025-10-31
@@ -514,7 +514,7 @@
 "Cleveland Cavaliers",48.5,2026-01-19
 "Cleveland Cavaliers",47.5,2026-01-20
 "Cleveland Cavaliers",47.5,2026-01-21
-"Cleveland Cavaliers",47.5,2026-01-22
+"Cleveland Cavaliers",49,2026-01-22
 "Dallas Mavericks",42.625,2025-10-29
 "Dallas Mavericks",43.3333333333333,2025-10-30
 "Dallas Mavericks",38.5,2025-10-31
@@ -600,7 +600,7 @@
 "Dallas Mavericks",28.5,2026-01-19
 "Dallas Mavericks",29.5,2026-01-20
 "Dallas Mavericks",29.5,2026-01-21
-"Dallas Mavericks",29.5,2026-01-22
+"Dallas Mavericks",29,2026-01-22
 "Denver Nuggets",53.5,2025-10-29
 "Denver Nuggets",54.8333333333333,2025-10-30
 "Denver Nuggets",54.8333333333333,2025-10-31
@@ -772,7 +772,7 @@
 "Detroit Pistons",55.75,2026-01-19
 "Detroit Pistons",57,2026-01-20
 "Detroit Pistons",56.8333333333333,2026-01-21
-"Detroit Pistons",56.8333333333333,2026-01-22
+"Detroit Pistons",56.5,2026-01-22
 "Golden State Warriors",52.1666666666667,2025-10-29
 "Golden State Warriors",52.8333333333333,2025-10-30
 "Golden State Warriors",52.25,2025-10-31
@@ -1030,7 +1030,7 @@
 "Indiana Pacers",21.5,2026-01-19
 "Indiana Pacers",21.5,2026-01-20
 "Indiana Pacers",21.5,2026-01-21
-"Indiana Pacers",21.5,2026-01-22
+"Indiana Pacers",20,2026-01-22
 "Los Angeles Clippers",48.1666666666667,2025-10-29
 "Los Angeles Clippers",47.8333333333333,2025-10-30
 "Los Angeles Clippers",47.3333333333333,2025-10-31
@@ -1288,7 +1288,7 @@
 "Memphis Grizzlies",34.5,2026-01-19
 "Memphis Grizzlies",34.5,2026-01-20
 "Memphis Grizzlies",34.5,2026-01-21
-"Memphis Grizzlies",34.5,2026-01-22
+"Memphis Grizzlies",33,2026-01-22
 "Miami Heat",40.3333333333333,2025-10-29
 "Miami Heat",40.3333333333333,2025-10-30
 "Miami Heat",42.5,2025-10-31
@@ -1374,7 +1374,7 @@
 "Miami Heat",45.5,2026-01-19
 "Miami Heat",46,2026-01-20
 "Miami Heat",46,2026-01-21
-"Miami Heat",46,2026-01-22
+"Miami Heat",45.8333333333333,2026-01-22
 "Milwaukee Bucks",44.1666666666667,2025-10-29
 "Milwaukee Bucks",44.5,2025-10-30
 "Milwaukee Bucks",46.25,2025-10-31
