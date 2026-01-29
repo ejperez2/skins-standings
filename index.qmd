@@ -178,14 +178,31 @@ df_skins <- df_vegas %>%
       "espnbet_line", "espnbet_odds_under", "espnbet_odds"
     ))
   ) %>%
-  rename(
-    mgm_total = mgm_line, mgm_under = mgm_odds_under, mgm_over = mgm_odds,
-    draftkings_total = draftkings_line, draftkings_under = draftkings_odds_under, draftkings_over = draftkings_odds,
-    caesars_total = caesars_line, caesars_under = caesars_odds_under, caesars_over = caesars_odds,
-    betrivers_total = betrivers_line, betrivers_under = betrivers_odds_under, betrivers_over = betrivers_odds,
-    hardrock_total = hardrock_line, hardrock_under = hardrock_odds_under, hardrock_over = hardrock_odds,
-    fanduel_total = fanduel_line, fanduel_under = fanduel_odds_under, fanduel_over = fanduel_odds,
-    espnbet_total = espnbet_line, espnbet_under = espnbet_odds_under, espnbet_over = espnbet_odds
+  rename_with(
+    ~ case_when(
+      . == "mgm_line" ~ "mgm_total",
+      . == "mgm_odds_under" ~ "mgm_under",
+      . == "mgm_odds" ~ "mgm_over",
+      . == "draftkings_line" ~ "draftkings_total",
+      . == "draftkings_odds_under" ~ "draftkings_under",
+      . == "draftkings_odds" ~ "draftkings_over",
+      . == "caesars_line" ~ "caesars_total",
+      . == "caesars_odds_under" ~ "caesars_under",
+      . == "caesars_odds" ~ "caesars_over",
+      . == "betrivers_line" ~ "betrivers_total",
+      . == "betrivers_odds_under" ~ "betrivers_under",
+      . == "betrivers_odds" ~ "betrivers_over",
+      . == "hardrock_line" ~ "hardrock_total",
+      . == "hardrock_odds_under" ~ "hardrock_under",
+      . == "hardrock_odds" ~ "hardrock_over",
+      . == "fanduel_line" ~ "fanduel_total",
+      . == "fanduel_odds_under" ~ "fanduel_under",
+      . == "fanduel_odds" ~ "fanduel_over",
+      . == "espnbet_line" ~ "espnbet_total",
+      . == "espnbet_odds_under" ~ "espnbet_under",
+      . == "espnbet_odds" ~ "espnbet_over",
+      TRUE ~ .
+    )
   ) %>%
   mutate(across(ends_with(c("_total", "_under", "_over")), as.numeric)) %>%
   rowwise() %>%
@@ -1250,3 +1267,4 @@ ggplot(history_max, aes(x = date, y = max_projection, color = player, group = pl
 ```
 
  
+
