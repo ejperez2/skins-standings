@@ -168,6 +168,17 @@ df_vegas <- fromJSON(raw_json, flatten = TRUE) %>% as_tibble()
 df_skins <- df_vegas %>%
   select(
     team = name,
+    any_of(c(
+      "mgm_line", "mgm_odds_under", "mgm_odds",
+      "draftkings_line", "draftkings_odds_under", "draftkings_odds",
+      "caesars_line", "caesars_odds_under", "caesars_odds",
+      "betrivers_line", "betrivers_odds_under", "betrivers_odds",
+      "hardrock_line", "hardrock_odds_under", "hardrock_odds",
+      "fanduel_line", "fanduel_odds_under", "fanduel_odds",
+      "espnbet_line", "espnbet_odds_under", "espnbet_odds"
+    ))
+  ) %>%
+  rename(
     mgm_total = mgm_line, mgm_under = mgm_odds_under, mgm_over = mgm_odds,
     draftkings_total = draftkings_line, draftkings_under = draftkings_odds_under, draftkings_over = draftkings_odds,
     caesars_total = caesars_line, caesars_under = caesars_odds_under, caesars_over = caesars_odds,
@@ -1237,4 +1248,5 @@ ggplot(history_max, aes(x = date, y = max_projection, color = player, group = pl
     legend.text = element_text(size = 11)
   )
 ```
+
  
