@@ -1061,7 +1061,7 @@ ggplot(history_projections, aes(x = date, y = weighted_average, color = player, 
   scale_color_manual(values = colorblind_colors) +
   scale_y_continuous(
     labels = function(x) sprintf("%.1f", x),
-    limits = c(220, NA),
+    limits = c(200, NA),
     expand = expansion(mult = c(0, 0.05))
   ) +
   labs(
@@ -1091,7 +1091,7 @@ ggplot(history_projections, aes(x = date, y = vegas_consensus, color = player, g
   scale_color_manual(values = colorblind_colors) +
   scale_y_continuous(
     labels = function(x) sprintf("%.1f", x),
-    limits = c(220, NA),
+    limits = c(200, NA),
     expand = expansion(mult = c(0, 0.05))
   ) +
   labs(
@@ -1121,7 +1121,7 @@ ggplot(history_projections, aes(x = date, y = team_rankings, color = player, gro
   scale_color_manual(values = colorblind_colors) +
   scale_y_continuous(
     labels = function(x) sprintf("%.1f", x),
-    limits = c(220, NA),
+    limits = c(200, NA),
     expand = expansion(mult = c(0, 0.05))
   ) +
   labs(
@@ -1151,7 +1151,7 @@ ggplot(history_projections, aes(x = date, y = espn_bpi, color = player, group = 
   scale_color_manual(values = colorblind_colors) +
   scale_y_continuous(
     labels = function(x) sprintf("%.1f", x),
-    limits = c(220, NA),
+    limits = c(200, NA),
     expand = expansion(mult = c(0, 0.05))
   ) +
   labs(
@@ -1181,7 +1181,7 @@ ggplot(history_projections, aes(x = date, y = cbs_sports, color = player, group 
   scale_color_manual(values = colorblind_colors) +
   scale_y_continuous(
     labels = function(x) sprintf("%.1f", x),
-    limits = c(220, NA),
+    limits = c(200, NA),
     expand = expansion(mult = c(0, 0.05))
   ) +
   labs(
@@ -1244,7 +1244,7 @@ ggplot(history_projections, aes(x = date, y = projection_average, color = player
   scale_color_manual(values = colorblind_colors) +
   scale_y_continuous(
     labels = function(x) sprintf("%.1f", x),
-    limits = c(220, NA),
+    limits = c(200, NA),
     expand = expansion(mult = c(0, 0.05))
   ) +
   labs(
@@ -1277,7 +1277,7 @@ ggplot(history_max, aes(x = date, y = max_projection, color = player, group = pl
   scale_color_manual(values = colorblind_colors) +
   scale_y_continuous(
     labels = function(x) sprintf("%.1f", x),
-    limits = c(220, NA),
+    limits = c(200, NA),
     expand = expansion(mult = c(0, 0.05))
   ) +
   labs(
@@ -1297,4 +1297,5 @@ ggplot(history_max, aes(x = date, y = max_projection, color = player, group = pl
     legend.text = element_text(size = 11)
   )
 ```
+
  
