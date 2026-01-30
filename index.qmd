@@ -280,279 +280,809 @@ espn_cleaned <- espn_proj %>%
 # E: Scrape CBS Sports
 url_cbs <- "https://www.cbssports.com/nba/standings/"
 webpage_cbs <- read_html(url_cbs)
-cbs_data <- bind_cols(webpage_cbs %>% html_table() %>% .[[1]], webpage_cbs %>% html_table() %>% .[[2]])
-cbs_cleaned <- cbs_data %>%
-  select(team_cbs = Team, overall = `W-L`) %>%
-  separate(overall, into = c("cbs_proj_w", "cbs_proj_l"), sep = "-", convert = TRUE) %>%
+tables_cbs <- webpage_cbs %>% html_table(fill = TRUE)
+
+# Extract Eastern and Western conferences
+eastern_conf <- tables_cbs[[1]]
+western_conf <- tables_cbs[[2]]
+
+# Combine both conferences
+cbs_proj <- bind_rows(eastern_conf, western_conf) %>%
+  select(team_cbs = 2, cbs_proj_w = 16) %>%
+  filter(team_cbs != "Team") %>%  # Remove header rows
+  mutate(cbs_proj_w = as.numeric(cbs_proj_w))
+
+# F: Scrape Basketball Reference
+url_br <- "https://www.basketball-reference.com/friv/playoff_prob.html"
+webpage_br <- read_html(url_br)
+tables_br <- webpage_br %>% html_table()
+
+# Fix Eastern Conference
+eastern_conf_br <- tables_br[[1]]
+names(eastern_conf_br) <- make.names(names(eastern_conf_br), unique = TRUE)
+eastern_conf_br <- eastern_conf_br %>%
+  slice(-1) %>%  # Remove header row
+  select(2, 3) %>%  # Team name, W
+  setNames(c("team_br", "br_proj_w"))
+
+# Fix Western Conference
+western_conf_br <- tables_br[[2]]
+names(western_conf_br) <- make.names(names(western_conf_br), unique = TRUE)
+western_conf_br <- western_conf_br %>%
+  slice(-1) %>%  # Remove header row
+  select(2, 3) %>%  # Team name, W
+  setNames(c("team_br", "br_proj_w"))
+
+# Combine both conferences
+br_proj <- bind_rows(eastern_conf_br, western_conf_br) %>%
+  filter(team_br != "") %>%  # Remove empty rows
   mutate(
-    team = case_when(
-      grepl("ATL", team_cbs) ~ "Atlanta Hawks",
-      grepl("BOS", team_cbs) ~ "Boston Celtics",
-      grepl("BKN", team_cbs) ~ "Brooklyn Nets",
-      grepl("CHA", team_cbs) ~ "Charlotte Hornets",
-      grepl("CHI", team_cbs) ~ "Chicago Bulls",
-      grepl("CLE", team_cbs) ~ "Cleveland Cavaliers",
-      grepl("DAL", team_cbs) ~ "Dallas Mavericks",
-      grepl("DEN", team_cbs) ~ "Denver Nuggets",
-      grepl("DET", team_cbs) ~ "Detroit Pistons",
-      grepl("GSW", team_cbs) ~ "Golden State Warriors",
-      grepl("HOU", team_cbs) ~ "Houston Rockets",
-      grepl("IND", team_cbs) ~ "Indiana Pacers",
-      grepl("LAC", team_cbs) ~ "Los Angeles Clippers",
-      grepl("LAL", team_cbs) ~ "Los Angeles Lakers",
-      grepl("MEM", team_cbs) ~ "Memphis Grizzlies",
-      grepl("MIA", team_cbs) ~ "Miami Heat",
-      grepl("MIL", team_cbs) ~ "Milwaukee Bucks",
-      grepl("MIN", team_cbs) ~ "Minnesota Timberwolves",
-      grepl("NOP", team_cbs) ~ "New Orleans Pelicans",
-      grepl("NYK", team_cbs) ~ "New York Knicks",
-      grepl("OKC", team_cbs) ~ "Oklahoma City Thunder",
-      grepl("ORL", team_cbs) ~ "Orlando Magic",
-      grepl("PHI", team_cbs) ~ "Philadelphia 76ers",
-      grepl("PHX", team_cbs) ~ "Phoenix Suns",
-      grepl("POR", team_cbs) ~ "Portland Trail Blazers",
-      grepl("SAC", team_cbs) ~ "Sacramento Kings",
-      grepl("SAS", team_cbs) ~ "San Antonio Spurs",
-      grepl("TOR", team_cbs) ~ "Toronto Raptors",
-      grepl("UTA", team_cbs) ~ "Utah Jazz",
-      grepl("WAS", team_cbs) ~ "Washington Wizards",
-      TRUE ~ team_cbs
-    )
+    br_proj_w = as.numeric(br_proj_w),
+    team = team_br
   ) %>%
-  select(team, cbs_proj_w, cbs_proj_l)
+  select(team, br_proj_w)
 
-# F: Scrape Basketball Reference (via HTML tables, since API is unreliable)
-url_bbref <- "https://www.basketball-reference.com/friv/playoff_prob.html"
-webpage_bbref <- tryCatch({
-  read_html(url_bbref)
-}, error = function(e) {
-  message("Failed to scrape Basketball Reference: ", e$message)
-  NULL
-})
+# --- Step 3: Combine All Projections ---
 
-if (!is.null(webpage_bbref)) {
-  bbref_tables <- webpage_bbref %>% html_table(fill = TRUE)
-  
-  if (length(bbref_tables) >= 2) {
-    bbref_east <- bbref_tables[[1]] %>%
-      select(team = Team, proj_w = W, proj_l = L) %>%
-      filter(!grepl("Division|Conference", team))
-    
-    bbref_west <- bbref_tables[[2]] %>%
-      select(team = Team, proj_w = W, proj_l = L) %>%
-      filter(!grepl("Division|Conference", team))
-    
-    bbref_cleaned <- bind_rows(bbref_east, bbref_west) %>%
-      mutate(
-        bbref_proj_w = as.numeric(proj_w),
-        bbref_proj_l = as.numeric(proj_l),
-        team = str_remove(team, "\\s*\\*$"),  # Remove trailing asterisks
-        team = case_when(
-          grepl("LA Clippers", team) ~ "Los Angeles Clippers",
-          grepl("LA Lakers", team) ~ "Los Angeles Lakers",
-          TRUE ~ team
-        )
-      ) %>%
-      select(team, bbref_proj_w, bbref_proj_l)
-  } else {
-    bbref_cleaned <- tibble(
-      team = character(),
-      bbref_proj_w = numeric(),
-      bbref_proj_l = numeric()
+# Create a master team name crosswalk function to standardize ALL sources
+standardize_team_names <- function(df, team_col) {
+  df %>%
+    mutate(
+      !!sym(team_col) := case_when(
+        grepl("Okla City|Oklahoma City", !!sym(team_col), ignore.case = TRUE) ~ "Oklahoma City Thunder",
+        grepl("Boston", !!sym(team_col), ignore.case = TRUE) ~ "Boston Celtics",
+        grepl("Cleveland|Cavaliers", !!sym(team_col), ignore.case = TRUE) ~ "Cleveland Cavaliers",
+        grepl("Denver|Nuggets", !!sym(team_col), ignore.case = TRUE) ~ "Denver Nuggets",
+        grepl("Houston|Rockets", !!sym(team_col), ignore.case = TRUE) ~ "Houston Rockets",
+        grepl("New York|Knicks", !!sym(team_col), ignore.case = TRUE) ~ "New York Knicks",
+        grepl("Orlando|Magic", !!sym(team_col), ignore.case = TRUE) ~ "Orlando Magic",
+        grepl("Minnesota|Timberwolves", !!sym(team_col), ignore.case = TRUE) ~ "Minnesota Timberwolves",
+        grepl("LA Clippers|Clippers", !!sym(team_col), ignore.case = TRUE) ~ "Los Angeles Clippers",
+        grepl("LA Lakers|Lakers", !!sym(team_col), ignore.case = TRUE) ~ "Los Angeles Lakers",
+        grepl("Atlanta|Hawks", !!sym(team_col), ignore.case = TRUE) ~ "Atlanta Hawks",
+        grepl("Golden State|Warriors", !!sym(team_col), ignore.case = TRUE) ~ "Golden State Warriors",
+        grepl("Detroit|Pistons", !!sym(team_col), ignore.case = TRUE) ~ "Detroit Pistons",
+        grepl("Milwaukee|Bucks", !!sym(team_col), ignore.case = TRUE) ~ "Milwaukee Bucks",
+        grepl("San Antonio|Spurs", !!sym(team_col), ignore.case = TRUE) ~ "San Antonio Spurs",
+        grepl("Philadelphia|76ers|Sixers", !!sym(team_col), ignore.case = TRUE) ~ "Philadelphia 76ers",
+        grepl("Memphis|Grizzlies", !!sym(team_col), ignore.case = TRUE) ~ "Memphis Grizzlies",
+        grepl("Dallas|Mavericks", !!sym(team_col), ignore.case = TRUE) ~ "Dallas Mavericks",
+        grepl("Toronto|Raptors", !!sym(team_col), ignore.case = TRUE) ~ "Toronto Raptors",
+        grepl("Indiana|Pacers", !!sym(team_col), ignore.case = TRUE) ~ "Indiana Pacers",
+        grepl("Miami|Heat", !!sym(team_col), ignore.case = TRUE) ~ "Miami Heat",
+        grepl("Sacramento|Kings", !!sym(team_col), ignore.case = TRUE) ~ "Sacramento Kings",
+        grepl("Portland|Trail Blazers|Blazers", !!sym(team_col), ignore.case = TRUE) ~ "Portland Trail Blazers",
+        grepl("Phoenix|Suns", !!sym(team_col), ignore.case = TRUE) ~ "Phoenix Suns",
+        grepl("Chicago|Bulls", !!sym(team_col), ignore.case = TRUE) ~ "Chicago Bulls",
+        grepl("New Orleans|Pelicans", !!sym(team_col), ignore.case = TRUE) ~ "New Orleans Pelicans",
+        grepl("Charlotte|Hornets", !!sym(team_col), ignore.case = TRUE) ~ "Charlotte Hornets",
+        grepl("Washington|Wizards", !!sym(team_col), ignore.case = TRUE) ~ "Washington Wizards",
+        grepl("Brooklyn|Nets", !!sym(team_col), ignore.case = TRUE) ~ "Brooklyn Nets",
+        grepl("Utah|Jazz", !!sym(team_col), ignore.case = TRUE) ~ "Utah Jazz",
+        TRUE ~ !!sym(team_col)
+      )
     )
-  }
-} else {
-  bbref_cleaned <- tibble(
-    team = character(),
-    bbref_proj_w = numeric(),
-    bbref_proj_l = numeric()
-  )
 }
 
-# --- Step 3: Merge All Data Sources ---
-standings <- nba_standings %>%
-  left_join(df_skins %>% select(team, vegas_proj_wins), by = "team") %>%
-  left_join(tr_cleaned %>% select(team = team_tr, tr_proj_w), by = "team") %>%
-  left_join(espn_cleaned %>% select(team, espn_proj_w), by = "team") %>%
-  left_join(cbs_cleaned %>% select(team, cbs_proj_w), by = "team") %>%
-  left_join(bbref_cleaned %>% select(team, bbref_proj_w), by = "team")
+# Apply standardization to all data sources
+df_skins <- df_skins %>% standardize_team_names("team")
+nba_standings <- nba_standings %>% standardize_team_names("team")
 
-# --- Step 4: Apply Draft Picks to Calculate SKINS (not just wins) ---
-# Join draft data to standings - this pulls in each team's W/L pick
-standings <- standings %>%
-  left_join(draft_data %>% select(team, player, skins_pick, draft_pick), by = "team") %>%
-  # Use HARDCODED_PICKS to verify - this ensures picks can NEVER be overridden
-  left_join(HARDCODED_PICKS %>% select(team, skins_pick_hardcoded), by = "team") %>%
-  # Sanity check: verify picks match hardcoded reference
+# TeamRankings crosswalk
+tr_cleaned <- tr_cleaned %>%
+  rename(team = team_tr) %>%
+  standardize_team_names("team") %>%
+  select(team, tr_proj_w)
+
+# ESPN BPI already has team column, just standardize it
+espn_cleaned <- espn_cleaned %>% standardize_team_names("team")
+
+# CBS Sports team name crosswalk and standardization
+cbs_proj <- cbs_proj %>%
+  rename(team = team_cbs) %>%
   mutate(
-    pick_verification = if_else(skins_pick == skins_pick_hardcoded, "OK", "MISMATCH"),
-    # Calculate projected SKINS for each source by applying W/L logic
-    vegas_proj_skins = if_else(skins_pick == "W", vegas_proj_wins, 82 - vegas_proj_wins),
-    tr_proj_skins = if_else(skins_pick == "W", tr_proj_w, 82 - tr_proj_w),
-    espn_proj_skins = if_else(skins_pick == "W", espn_proj_w, 82 - espn_proj_w),
-    cbs_proj_skins = if_else(skins_pick == "W", cbs_proj_w, 82 - cbs_proj_w),
-    bbref_proj_skins = if_else(skins_pick == "W", bbref_proj_w, 82 - bbref_proj_w),
-    # Calculate actual SKINS based on current record
-    actual_skins = if_else(skins_pick == "W", actual_wins, actual_losses),
-    games_played = actual_wins + actual_losses,
-    games_remaining = 82 - games_played,
-    # Calculate PACE (projected end-of-season skins based on current pace)
-    actual_pace = if_else(games_played > 0, 82 * (actual_skins / games_played), 0)
-  )
+    team = case_when(
+      grepl("Golden St", team, ignore.case = TRUE) ~ "Golden State Warriors",
+      grepl("L.A. Lakers", team, ignore.case = TRUE) ~ "Los Angeles Lakers",
+      grepl("L.A. Clippers", team, ignore.case = TRUE) ~ "Los Angeles Clippers",
+      TRUE ~ team
+    )
+  ) %>%
+  standardize_team_names("team") %>%
+  select(team, cbs_proj_w)
 
-# Calculate projection average across all available sources
-standings <- standings %>%
+# Basketball Reference standardization
+br_proj <- br_proj %>% standardize_team_names("team")
+
+# Now combine with consistent team names
+# Start with a complete list of all 30 teams to ensure no teams are missing
+all_teams <- tibble(
+  team = c("Atlanta Hawks", "Boston Celtics", "Brooklyn Nets", "Charlotte Hornets",
+           "Chicago Bulls", "Cleveland Cavaliers", "Dallas Mavericks", "Denver Nuggets",
+           "Detroit Pistons", "Golden State Warriors", "Houston Rockets", "Indiana Pacers",
+           "Los Angeles Clippers", "Los Angeles Lakers", "Memphis Grizzlies", "Miami Heat",
+           "Milwaukee Bucks", "Minnesota Timberwolves", "New Orleans Pelicans", "New York Knicks",
+           "Oklahoma City Thunder", "Orlando Magic", "Philadelphia 76ers", "Phoenix Suns",
+           "Portland Trail Blazers", "Sacramento Kings", "San Antonio Spurs", "Toronto Raptors",
+           "Utah Jazz", "Washington Wizards")
+)
+
+# Get today's date for historical tracking
+today <- Sys.Date()
+
+# --- Step 4.5: Handle Missing Vegas Data with Historical Values ---
+# IMPORTANT: This must happen BEFORE creating df_final_projections
+# File to store team-level historical vegas consensus
+team_vegas_history_file <- "team_vegas_history.csv"
+
+# Hardcoded fallback values for teams that may be missing from scrape
+# These are reasonable estimates based on recent season performance
+vegas_fallback <- tibble(
+  team = c("Milwaukee Bucks", "Sacramento Kings"),
+  vegas_proj_wins = c(47.25, 31.5)
+)
+
+# Load existing team vegas history if it exists
+if(file.exists(team_vegas_history_file)) {
+  team_vegas_history_raw <- read.csv(team_vegas_history_file, stringsAsFactors = FALSE) %>%
+    mutate(date = as.Date(date))
+  
+  # If the old format has vegas_consensus column, reconstruct vegas_proj_wins
+  if("vegas_consensus" %in% names(team_vegas_history_raw)) {
+    team_vegas_history <- team_vegas_history_raw %>%
+      left_join(HARDCODED_PICKS %>% select(team, skins_pick_hardcoded), by = "team") %>%
+      mutate(
+        # Reconstruct vegas_proj_wins from vegas_consensus using W/L picks
+        vegas_proj_wins = if_else(
+          is.na(vegas_proj_wins) & !is.na(vegas_consensus),
+          if_else(skins_pick_hardcoded == "W", vegas_consensus, 82 - vegas_consensus),
+          vegas_proj_wins
+        )
+      ) %>%
+      select(team, vegas_proj_wins, date)
+  } else {
+    team_vegas_history <- team_vegas_history_raw %>%
+      select(team, vegas_proj_wins, date)
+  }
+  
+  # Remove today's data if it exists
+  team_vegas_history <- team_vegas_history %>%
+    filter(date != today)
+    
+} else {
+  # Create empty history
+  team_vegas_history <- tibble(team = character(), vegas_proj_wins = numeric(), date = as.Date(character()))
+}
+
+# For each team in all_teams, get current value from df_skins or find historical value
+all_teams_with_vegas <- all_teams %>%
+  left_join(df_skins %>% select(team, vegas_proj_wins), by = "team") %>%
+  left_join(vegas_fallback, by = "team", suffix = c("", "_fallback")) %>%
   rowwise() %>%
   mutate(
-    projection_avg = mean(c(vegas_proj_skins, tr_proj_skins, espn_proj_skins, cbs_proj_skins, bbref_proj_skins), na.rm = TRUE),
-    max_projection = max(c(vegas_proj_skins, tr_proj_skins, espn_proj_skins, cbs_proj_skins, bbref_proj_skins), na.rm = TRUE)
+    vegas_proj_wins = if_else(
+      is.na(vegas_proj_wins) & nrow(team_vegas_history) > 0,
+      {
+        # Find last non-NA value for this team from history
+        current_team <- team
+        last_valid <- team_vegas_history %>%
+          filter(team == current_team, !is.na(vegas_proj_wins)) %>%
+          arrange(desc(date)) %>%
+          slice(1) %>%
+          pull(vegas_proj_wins)
+        
+        if(length(last_valid) > 0) {
+          last_valid
+        } else if(!is.na(vegas_proj_wins_fallback)) {
+          # Use fallback if no historical value found
+          vegas_proj_wins_fallback
+        } else {
+          NA_real_
+        }
+      },
+      vegas_proj_wins
+    )
   ) %>%
-  ungroup()
+  ungroup() %>%
+  select(team, vegas_proj_wins)
 
-# --- Step 5: Calculate Player Totals Across All Projection Sources ---
-player_totals <- standings %>%
+# Update df_skins with backfilled values (this replaces the scraped df_skins)
+df_skins <- all_teams_with_vegas %>%
+  select(team, vegas_proj_wins)
+
+# Prepare current team vegas data for history (store projected WINS, not skins)
+# CRITICAL: Only save non-NA values to avoid polluting the history
+current_team_vegas <- df_skins %>%
+  filter(!is.na(vegas_proj_wins)) %>%
+  select(team, vegas_proj_wins) %>%
+  mutate(date = today)
+
+# Add current data to history
+team_vegas_history <- bind_rows(team_vegas_history, current_team_vegas) %>%
+  arrange(team, date)
+
+# Save updated team vegas history
+write.csv(team_vegas_history, team_vegas_history_file, row.names = FALSE)
+
+# NOW create df_final_projections with the backfilled Vegas data
+# Join all data sources to the complete team list
+# CRITICAL: Join hardcoded W/L picks LAST to overwrite any vestigial inference code
+# NOTE: Do NOT join 'player' here - it causes conflicts when joining with draft_data later
+df_final_projections <- all_teams %>%
+  left_join(draft_data %>% select(team, abbr), by = "team") %>%
+  left_join(df_skins, by = "team") %>%
+  left_join(tr_cleaned, by = "team") %>%
+  left_join(espn_cleaned %>% select(team, espn_proj_w), by = "team") %>%
+  left_join(cbs_proj, by = "team") %>%
+  left_join(br_proj, by = "team") %>%
+  left_join(nba_standings, by = "team") %>%
+  # Join hardcoded picks LAST to ensure they are NEVER overwritten
+  left_join(HARDCODED_PICKS, by = "team") %>%
+  mutate(
+    # Use ONLY the hardcoded pick - never infer from projections
+    skins_pick = skins_pick_hardcoded,
+    
+    # NOW apply the hardcoded W/L pick to each projection source to get skins
+    # Vegas: use projected wins if W pick, else use projected losses (82 - wins)
+    vegas_consensus = if_else(skins_pick == "W", vegas_proj_wins, 82 - vegas_proj_wins),
+    
+    # TeamRankings: use projected wins if W pick, else use projected losses
+    tr_skins = if_else(skins_pick == "W", tr_proj_w, 82 - tr_proj_w),
+    
+    # ESPN BPI: use projected wins if W pick, else use projected losses
+    espn_skins = if_else(skins_pick == "W", espn_proj_w, 82 - espn_proj_w),
+    
+    # CBS: use projected wins if W pick, else use projected losses
+    cbs_skins = if_else(skins_pick == "W", cbs_proj_w, 82 - cbs_proj_w),
+    
+    # Basketball Reference: use projected wins if W pick, else use projected losses
+    br_skins = if_else(skins_pick == "W", br_proj_w, 82 - br_proj_w),
+    
+    # Calculate weighted average using skins (which now correctly apply draft picks)
+    # Updated formula to include Basketball Reference
+    weighted_average = 
+      (tr_skins * 0.38) + (espn_skins * 0.16) + (cbs_skins * 0.46) ,  # Fallback formula without Vegas
+    
+    # Calculate max projection for each team
+    max_projection = pmax(weighted_average, vegas_consensus, tr_skins, espn_skins, cbs_skins, br_skins, na.rm = TRUE),
+    
+    # Calculate actual skins based on HARDCODED pick type from draft (never inferred)
+    actual_skins = if_else(skins_pick == "W", actual_wins, actual_losses),
+    
+    # Calculate games played and skins percentage
+    games_played = actual_wins + actual_losses,
+    skins_pct = if_else(games_played > 0, actual_skins / games_played, 0),
+    pct_projected = skins_pct * 82
+  ) %>%
+  # Remove the temporary hardcoded column to keep data clean
+  select(-skins_pick_hardcoded, -source)
+
+# VERIFICATION: Ensure all W/L picks match the hardcoded draft values
+verification <- df_final_projections %>%
+  select(team, skins_pick) %>%
+  left_join(HARDCODED_PICKS %>% select(team, expected = skins_pick_hardcoded), by = "team") %>%
+  filter(skins_pick != expected | is.na(skins_pick))
+
+if(nrow(verification) > 0) {
+  warning("W/L PICKS DO NOT MATCH DRAFT! Mismatched teams: ", 
+          paste(verification$team, collapse = ", "))
+}
+
+# --- Step 5: Calculate Player Scores ---
+player_scores <- draft_data %>%
+  left_join(df_final_projections, by = "team") %>%
   group_by(player) %>%
   summarise(
-    actual_total = sum(actual_skins, na.rm = TRUE),
-    vegas_total = sum(vegas_proj_skins, na.rm = TRUE),
-    tr_total = sum(tr_proj_skins, na.rm = TRUE),
-    espn_total = sum(espn_proj_skins, na.rm = TRUE),
-    cbs_total = sum(cbs_proj_skins, na.rm = TRUE),
-    bbref_total = sum(bbref_proj_skins, na.rm = TRUE),
-    pace_total = sum(actual_pace, na.rm = TRUE),
-    projection_avg_total = sum(projection_avg, na.rm = TRUE),
-    max_projection_total = sum(max_projection, na.rm = TRUE),
-    .groups = "drop"
+    `Actual Skins` = sum(actual_skins, na.rm = TRUE),
+    `Skins %` = sum(actual_skins, na.rm = TRUE) / sum(games_played, na.rm = TRUE),
+    `% Projected` = sum(pct_projected, na.rm = TRUE),  # Sum of team projections
+    `Weighted Average` = sum(weighted_average, na.rm = TRUE),
+    `Vegas Consensus` = sum(vegas_consensus, na.rm = TRUE),
+    `TR` = sum(tr_skins, na.rm = TRUE),
+    `ESPN` = sum(espn_skins, na.rm = TRUE),
+    `CBS` = sum(cbs_skins, na.rm = TRUE),
+    `BB-Ref` = sum(br_skins, na.rm = TRUE),
+    `Max Proj` = sum(max_projection, na.rm = TRUE)
   ) %>%
-  arrange(desc(actual_total))
+  mutate(`Proj Avg` = rowMeans(select(., `Vegas Consensus`, `TR`, `ESPN`, `CBS`))) %>%
+  select(player, `Actual Skins`, `Skins %`, `% Projected`, `Weighted Average`, 
+         `Vegas Consensus`, `TR`, `ESPN`, `CBS`, `BB-Ref`, `Proj Avg`, `Max Proj`) %>%
+  arrange(desc(`Actual Skins`))
 
-# Prepare team-level display table
-team_display <- standings %>%
+# --- Step 6: Prepare Standings Table Data ---
+draft_table_data <- df_final_projections %>% 
+  select(team, abbr, skins_pick) %>%
+  right_join(draft_data, by="team") %>%
+  arrange(match(player, c("Eristeo", "Matt", "Brian", "Adam", "Thomas", "Kenneth")))
+
+# --- Step 7: Historical Data Tracking ---
+# File to store historical standings
+history_file <- "standings_history.csv"
+
+# Calculate current standings for each player (including all projections)
+current_standings <- player_scores %>%
   select(
-    Team = team,
-    Player = player,
-    Pick = skins_pick,
-    `Actual Skins` = actual_skins,
-    `Games Played` = games_played,
-    `Games Left` = games_remaining,
-    Pace = actual_pace,
-    Vegas = vegas_proj_skins,
-    TeamRankings = tr_proj_skins,
-    `ESPN BPI` = espn_proj_skins,
-    `CBS Sports` = cbs_proj_skins,
-    `BB-Ref` = bbref_proj_skins,
-    `Proj Avg` = projection_avg,
-    `Max Proj` = max_projection
+    player, 
+    actual_skins = `Actual Skins`,
+    skins_pct = `Skins %`,
+    pct_projected = `% Projected`,
+    weighted_average = `Weighted Average`,
+    vegas_consensus = `Vegas Consensus`,
+    team_rankings = `TR`,
+    espn_bpi = `ESPN`,
+    cbs_sports = `CBS`,
+    basketball_reference = `BB-Ref`,
+    projection_average = `Proj Avg`,
+    max_projection = `Max Proj`
   ) %>%
-  arrange(Player, desc(`Actual Skins`))
+  mutate(date = today)
 
-# Prepare player totals display table
-player_display <- player_totals %>%
-  select(
-    Player = player,
-    Actual = actual_total,
-    Pace = pace_total,
-    Vegas = vegas_total,
-    TeamRankings = tr_total,
-    `ESPN BPI` = espn_total,
-    `CBS Sports` = cbs_total,
-    `BB-Ref` = bbref_total,
-    `Proj Avg` = projection_avg_total,
-    `Max Proj` = max_projection_total
-  ) %>%
-  arrange(desc(Actual))
-
-# --- Step 6: Load Historical Data from GitHub ---
-history_url <- "https://raw.githubusercontent.com/eriatarka84/nba-dashboard/main/historical_data.csv"
-
-history <- tryCatch({
-  read.csv(history_url, stringsAsFactors = FALSE) %>%
-    as_tibble() %>%
+# Load existing history if it exists
+if(file.exists(history_file)) {
+  history <- read.csv(history_file, stringsAsFactors = FALSE) %>%
     mutate(date = as.Date(date))
-}, error = function(e) {
-  message("Failed to load historical data: ", e$message)
-  tibble(
-    date = as.Date(character()),
-    player = character(),
-    vegas_consensus = numeric(),
-    team_rankings = numeric(),
-    espn_bpi = numeric(),
-    cbs_sports = numeric(),
-    basketball_reference = numeric(),
-    projection_average = numeric(),
-    max_projection = numeric()
+  
+  # Add max_projection column if it doesn't exist
+  if(!"max_projection" %in% names(history)) {
+    history$max_projection <- NA
+  }
+  
+  # Remove today's data if it exists (keep only last render per day)
+  history <- history %>%
+    filter(date != today) %>%
+    bind_rows(current_standings)
+} else {
+  # Create new history file
+  history <- current_standings
+}
+
+# Add ONE zero starting point for actual skins chart (day before first real data)
+min_date <- min(history$date)
+needs_zero_start <- !any(history$actual_skins == 0)
+
+if(needs_zero_start) {
+  zero_start <- tibble(
+    player = unique(history$player),
+    actual_skins = 0,
+    skins_pct = 0,
+    pct_projected = 0,
+    weighted_average = NA,
+    vegas_consensus = NA,
+    team_rankings = NA,
+    espn_bpi = NA,
+    cbs_sports = NA,
+    basketball_reference = NA,
+    projection_average = NA,
+    max_projection = NA,
+    date = min_date - 1
   )
-})
+  history <- bind_rows(zero_start, history) %>%
+    arrange(date)
+}
 
-# Filter to only data with projections (removes placeholder rows)
-history_projections <- history %>% 
-  filter(!is.na(vegas_consensus) | !is.na(team_rankings) | !is.na(espn_bpi) | !is.na(cbs_sports))
-
-# Define colorblind-friendly palette
-colorblind_colors <- c(
-  "Adam" = "#E69F00",      # Orange
-  "Brian" = "#56B4E9",     # Sky Blue
-  "Eristeo" = "#009E73",   # Bluish Green
-  "Kenneth" = "#F0E442",   # Yellow
-  "Matt" = "#0072B2",      # Blue
-  "Thomas" = "#D55E00"     # Vermillion
-)
+# Save updated history
+write.csv(history, history_file, row.names = FALSE)
 ```
 
-## Season Progress
-
-```{r season-info, echo=FALSE, results='asis'}
+```{r season-completion-display, echo=FALSE, results='asis'}
+# Display season completion percentage
 cat(sprintf(
-  "<p style='font-size:14px; color:#555;'>
-   <strong>Season completion:</strong> %.1f%% (%d of 2,460 total games played)</p>",
+  "<p style='font-size:14px; color:#555; margin-top:0px; margin-bottom:16px;'>
+   <strong>Season completion:</strong> %.1f%% (%d of 2,460 games played)</p>", 
   season_completion_pct, season_total_games)
 )
 ```
+```{r explain-display, echo=FALSE, results='asis'}
+# Display season completion percentage
+cat(sprintf(
+  "<p style='font-size:14px; color:#555; margin-top:0px; margin-bottom:16px;'>
+   <strong><a href='https://bdubcodes.net/posts/the-nba-skins-game'>Skins Game</a>:</strong> In this fantasy NBA game, players draft all 30 NBA teams. For each team, you must choose to root for their WINS or their LOSSES. If your chosen outcome happens (e.g., you picked 'losses' for the Spurs and they lose), you get a 'skin,' or a point. Whoever accumulates the most skins wins.</p>" 
+  )
+)
+```
+## Skins Standings and Live Projections
 
-## Player Totals
+```{r player-scores, echo=FALSE, results='asis'}
+# Format the player scores for display
+player_scores_display <- player_scores %>%
+  mutate(
+    `Actual Skins` = as.integer(`Actual Skins`),
+    `Skins %` = sprintf("%.1f%%", `Skins %` * 100),
+    `% Projected` = sprintf("%.1f", `% Projected`),
+    `Weighted Average` = sprintf("%.1f", `Weighted Average`),
+    `Vegas Consensus` = sprintf("%.1f", `Vegas Consensus`),
+    `TR` = sprintf("%.1f", `TR`),
+    `ESPN` = sprintf("%.1f", `ESPN`),
+    `CBS` = sprintf("%.1f", `CBS`),
+    `BB-Ref` = sprintf("%.1f", `BB-Ref`),
+    `Proj Avg` = sprintf("%.1f", `Proj Avg`),
+    `Max Proj` = sprintf("%.1f", `Max Proj`)
+  )
 
-```{r player-table, echo=FALSE}
-player_display %>%
-  mutate(across(where(is.numeric), ~round(., 1))) %>%
-  kable(
-    align = c("l", rep("r", ncol(player_display) - 1)),
+# Calculate global averages (across all teams in league, not player averages)
+league_total_skins <- sum(df_final_projections$actual_skins, na.rm = TRUE)
+league_total_games <- sum(df_final_projections$games_played, na.rm = TRUE)
+league_skins_pct <- if_else(league_total_games > 0, league_total_skins / league_total_games, 0)
+
+# For % Projected, use mean of player values (not pace-based calculation)
+# since player % Projected is sum of team projections, not pace × 82
+league_pct_projected_avg <- mean(player_scores$`% Projected`, na.rm = TRUE)
+
+global_avg_row <- tibble(
+  player = "League Average",
+  `Actual Skins` = as.integer(league_total_skins / 6),  # Average per player
+  `Skins %` = sprintf("%.1f%%", league_skins_pct * 100),
+  `% Projected` = sprintf("%.1f", league_pct_projected_avg),
+  `Weighted Average` = sprintf("%.1f", mean(player_scores$`Weighted Average`, na.rm = TRUE)),
+  `Vegas Consensus` = sprintf("%.1f", mean(player_scores$`Vegas Consensus`, na.rm = TRUE)),
+  `TR` = sprintf("%.1f", mean(player_scores$`TR`, na.rm = TRUE)),
+  `ESPN` = sprintf("%.1f", mean(player_scores$`ESPN`, na.rm = TRUE)),
+  `CBS` = sprintf("%.1f", mean(player_scores$`CBS`, na.rm = TRUE)),
+  `BB-Ref` = sprintf("%.1f", mean(player_scores$`BB-Ref`, na.rm = TRUE)),
+  `Proj Avg` = sprintf("%.1f", mean(player_scores$`Proj Avg`, na.rm = TRUE)),
+  `Max Proj` = sprintf("%.1f", mean(player_scores$`Max Proj`, na.rm = TRUE))
+)
+
+# Combine player data with global average
+player_scores_with_avg <- bind_rows(player_scores_display, global_avg_row)
+
+# Add column names with hyperlinks (with light colored links for dark background)
+col_names <- c("Player", "Actual Skins", "Skins %", "% Projected", "Weighted Average", 
+               "Vegas Consensus", 
+               "<a href='https://www.teamrankings.com/nba/projections/standings/' target='_blank' style='color: #66B2FF;'>TR</a>",
+               "<a href='https://www.espn.com/nba/bpi/_/view/projections' target='_blank' style='color: #66B2FF;'>ESPN</a>",
+               "<a href='https://www.cbssports.com/nba/standings/' target='_blank' style='color: #66B2FF;'>CBS</a>",
+               "<a href='https://www.basketball-reference.com/friv/playoff_prob.html' target='_blank' style='color: #66B2FF;'>BB-Ref</a>",
+               "Proj Avg", "Max Proj")
+
+table_output <- kable(player_scores_with_avg, align = c("l", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r"),
+      col.names = col_names, escape = FALSE, format = "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, position = "center") %>%
+  row_spec(nrow(player_scores_with_avg), bold = TRUE, background = "#F0F0F0") %>%  # Highlight average row
+  column_spec(1, bold = TRUE) %>%
+  column_spec(2, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
+  column_spec(3, bold = TRUE, background = "#FFF9C4") %>%  # Highlight skins %
+  column_spec(5, bold = TRUE, background = "#DFF0D8")  # Highlight weighted average
+
+# Add header styling via CSS
+table_html <- as.character(table_output)
+table_html <- gsub("<thead>", "<thead style='background-color: #444444; color: white; font-weight: bold;'>", table_html)
+cat(table_html)
+
+```
+```{r player-footnotes, echo=FALSE, results='asis'}
+# Manually print the footnotes as HTML <p> tags
+# This divorces them from the table's column widths
+cat("<p style='font-size: 13px; margin-top: 5px; margin-bottom: 0; text-align: left;'>Avg Skins 2023-25: <b>236, 253, 240</b></p>")
+cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Skins % 2023-25: <b>58%, 62%, 59%</b></p>")
+cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Winner's Skins 2023-25: <b>249, 280, 268</b></p>")
+cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>December Weighted Avg: TR 38%, ESPN 16%, CBS 46% (Last season's most accurate Dec weightings)</p>")
+```
+## Standings and Projections by player
+
+```{r draft-results, echo=FALSE, results='asis'}
+# Create standings table grouped by player
+standings_table <- draft_data %>%
+  left_join(
+    df_final_projections %>% 
+      select(
+        team, # The join key
+        `Actual Skins` = actual_skins,
+        `Skins %` = skins_pct,
+        `% Projected` = pct_projected,
+        `Weighted Average` = weighted_average,
+        `Vegas Consensus` = vegas_consensus,
+        `TR` = tr_skins,
+        `ESPN` = espn_skins,
+        `CBS` = cbs_skins,
+        `BB-Ref` = br_skins,
+        `Max Proj` = max_projection
+      ),
+    by = "team"
+  ) %>%
+  # Calculate Projection Average for each team
+  rowwise() %>%
+  mutate(
+    `Proj Avg` = mean(c(`Vegas Consensus`, `TR`, `ESPN`, `CBS`), na.rm = TRUE)
+  ) %>%
+  ungroup() %>%
+  select(
+    team,
+    Player = player,
+    Abbr = abbr,
+    `Skins Pick` = skins_pick,
+    `Actual Skins`,
+    `Skins %`,
+    `% Projected`,
+    `Weighted Average`,
+    `Vegas Consensus`,
+    `TR`,
+    `ESPN`,
+    `CBS`,
+    `BB-Ref`,
+    `Proj Avg`,
+    `Max Proj`
+  ) %>%
+  arrange(
+    match(Player, c("Eristeo", "Matt", "Brian", "Adam", "Thomas", "Kenneth")),
+    desc(`Actual Skins`)
+  ) %>%
+  mutate(
+    `Actual Skins` = as.integer(`Actual Skins`),
+    `Skins %` = sprintf("%.1f%%", `Skins %` * 100),
+    `% Projected` = sprintf("%.1f", `% Projected`),
+    `Weighted Average` = sprintf("%.1f", `Weighted Average`),
+    `Vegas Consensus` = sprintf("%.1f", `Vegas Consensus`),
+    `TR` = sprintf("%.1f", `TR`),
+    `ESPN` = sprintf("%.1f", `ESPN`),
+    `CBS` = sprintf("%.1f", `CBS`),
+    `BB-Ref` = sprintf("%.1f", `BB-Ref`),
+    `Proj Avg` = sprintf("%.1f", `Proj Avg`),
+    `Max Proj` = sprintf("%.1f", `Max Proj`)
+  )
+
+# Column names with hyperlinks for by-player tables (light colored links for blue background)
+player_col_names <- c("Abbr", "Skins Pick", "Actual Skins", "Skins %", "% Projected", "Weighted Average", 
+                      "Vegas Consensus", 
+                      "<a href='https://www.teamrankings.com/nba/projections/standings/' target='_blank' style='color: #E0E0E0;'>TR</a>",
+                      "<a href='https://www.espn.com/nba/bpi/_/view/projections' target='_blank' style='color: #E0E0E0;'>ESPN</a>",
+                      "<a href='https://www.cbssports.com/nba/standings/' target='_blank' style='color: #E0E0E0;'>CBS</a>",
+                      "<a href='https://www.basketball-reference.com/friv/playoff_prob.html' target='_blank' style='color: #E0E0E0;'>BB-Ref</a>",
+                      "Proj Avg", "Max Proj")
+
+# Generate 6 separate tables (one for each player) with no spacing
+player_order <- c("Eristeo", "Matt", "Brian", "Adam", "Thomas", "Kenneth")
+
+for(i in seq_along(player_order)) {
+  player_name <- player_order[i]
+  player_data <- standings_table %>% 
+    filter(Player == player_name) %>% 
+    select(-team, -Player)
+  
+  # Add div wrapper with player name above table
+  cat('<div style="margin-bottom: 0px; margin-top: ', ifelse(i == 1, '0px', '-1px'), ';">\n')
+  cat('<div style="background-color: #666; color: #fff; font-weight: bold; padding: 8px; text-align: center;">', player_name, '</div>\n')
+  
+  table_output <- kable(
+    player_data,
+    align = c("c", "c", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r"),
+    col.names = player_col_names,
+    escape = FALSE,
     format = "html"
   ) %>%
-  kable_styling(
-    bootstrap_options = c("striped", "hover", "condensed"),
-    full_width = FALSE,
-    position = "left",
-    font_size = 14
-  ) %>%
-  row_spec(0, bold = TRUE, background = "#f0f0f0") %>%
-  column_spec(1, bold = TRUE, width = "8em") %>%
-  column_spec(2:ncol(player_display), width = "6em")
+    kable_styling(
+      bootstrap_options = c("striped", "hover", "condensed"),
+      full_width = FALSE,
+      position = "center"
+    ) %>%
+    column_spec(3, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
+    column_spec(4, bold = TRUE, background = "#FFF9C4") %>%  # Highlight skins %
+    column_spec(6, bold = TRUE, background = "#DFF0D8")  # Highlight weighted average
+  
+  table_html <- as.character(table_output)
+  table_html <- gsub("<thead>", "<thead style='background-color: #0073C2; color: white; font-weight: bold;'>", table_html)
+  
+  cat(as.character(table_html))
+  cat('\n</div>\n')
+}
 ```
 
-## Team-by-Team Breakdown
+## Standings and Projections by Team
 
-```{r team-table, echo=FALSE}
-team_display %>%
-  mutate(across(where(is.numeric), ~round(., 1))) %>%
-  kable(
-    align = c("l", "l", "c", rep("r", ncol(team_display) - 3)),
-    format = "html"
+```{r team-projections, echo=FALSE, results='asis'}
+# Select and format the final projections for display
+team_projections_table <- df_final_projections %>%
+  left_join(draft_data %>% select(team, player), by = "team") %>%
+  rowwise() %>%
+  mutate(
+    `Proj Avg` = mean(c(vegas_consensus, tr_skins, espn_skins, cbs_skins), na.rm = TRUE)
   ) %>%
-  kable_styling(
-    bootstrap_options = c("striped", "hover", "condensed"),
-    full_width = FALSE,
-    position = "left",
-    font_size = 13
+  ungroup() %>%
+  select(
+    Team = team,
+    Player = player,
+    `Pick Type` = skins_pick,
+    `Actual Skins` = actual_skins,
+    `Skins %` = skins_pct,
+    `% Projected` = pct_projected,
+    `Weighted Average` = weighted_average,
+    `Vegas Consensus` = vegas_consensus,
+    `TR` = tr_skins,
+    `ESPN` = espn_skins,
+    `CBS` = cbs_skins,
+    `BB-Ref` = br_skins,
+    `Proj Avg`,
+    `Max Proj` = max_projection
   ) %>%
-  row_spec(0, bold = TRUE, background = "#f0f0f0") %>%
-  column_spec(1, bold = TRUE, width = "12em") %>%
-  column_spec(2, width = "6em") %>%
-  column_spec(3, width = "4em") %>%
-  column_spec(4:ncol(team_display), width = "5em") %>%
-  collapse_rows(columns = 2, valign = "top")
+  arrange(desc(`Actual Skins`)) %>%
+  mutate(
+    `Actual Skins` = as.integer(`Actual Skins`),
+    `Skins %` = sprintf("%.1f%%", `Skins %` * 100),
+    `% Projected` = sprintf("%.1f", `% Projected`),
+    `Weighted Average` = sprintf("%.1f", `Weighted Average`),
+    `Vegas Consensus` = sprintf("%.1f", `Vegas Consensus`),
+    `TR` = sprintf("%.1f", `TR`),
+    `ESPN` = sprintf("%.1f", `ESPN`),
+    `CBS` = sprintf("%.1f", `CBS`),
+    `BB-Ref` = sprintf("%.1f", `BB-Ref`),
+    `Proj Avg` = sprintf("%.1f", `Proj Avg`),
+    `Max Proj` = sprintf("%.1f", `Max Proj`)
+  )
+
+# Column names with hyperlinks for team table (light colored links for dark background)
+team_col_names <- c("Team", "Player", "Pick Type", "Actual Skins", "Skins %", "% Projected", "Weighted Average", 
+                     "Vegas Consensus", 
+                     "<a href='https://www.teamrankings.com/nba/projections/standings/' target='_blank' style='color: #66B2FF;'>TR</a>",
+                     "<a href='https://www.espn.com/nba/bpi/_/view/projections' target='_blank' style='color: #66B2FF;'>ESPN</a>",
+                     "<a href='https://www.cbssports.com/nba/standings/' target='_blank' style='color: #66B2FF;'>CBS</a>",
+                     "<a href='https://www.basketball-reference.com/friv/playoff_prob.html' target='_blank' style='color: #66B2FF;'>BB-Ref</a>",
+                     "Proj Avg", "Max Proj")
+
+table_output <- kable(team_projections_table, align = c("l", "l", "c", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r"),
+      col.names = team_col_names, escape = FALSE, format = "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, position = "center") %>%
+  column_spec(1, bold = TRUE) %>%
+  column_spec(4, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
+  column_spec(5, bold = TRUE, background = "#FFF9C4") %>%  # Highlight skins %
+  column_spec(7, bold = TRUE, background = "#DFF0D8")  # Highlight weighted average
+
+table_html <- as.character(table_output)
+table_html <- gsub("<thead>", "<thead style='background-color: #444444; color: white; font-weight: bold;'>", table_html)
+cat(table_html)
 ```
 
-## Projections Over Time
+## Season Charts
+
+```{r skins-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
+library(ggplot2)
+
+# Colorblind-friendly palette (Paul Tol's vibrant scheme)
+colorblind_colors <- c(
+  "Eristeo" = "#0077BB",   # Blue
+  "Brian" = "#CC3311",     # Red
+  "Adam" = "#33BBEE",      # Cyan
+  "Thomas" = "#009988",    # Teal
+  "Kenneth" = "#EE7733",   # Orange
+  "Matt" = "#EE3377"       # Magenta
+)
+
+# Find the first date with actual games (non-zero skins)
+first_game_date <- history %>%
+  filter(actual_skins > 0) %>%
+  pull(date) %>%
+  min()
+
+# Create dataset for actual skins chart starting one day before first game
+history_actual <- history %>%
+  filter(date >= first_game_date - 1)
+
+# Create time series chart for Actual Skins
+ggplot(history_actual, aes(x = date, y = actual_skins, color = player, group = player)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2.5) +
+  scale_color_manual(values = colorblind_colors) +
+  scale_y_continuous(
+    limits = c(0, NA),
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  labs(
+    title = "Skins over time",
+    x = NULL,
+    y = "Skins",
+    color = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.text = element_text(size = 11),
+    axis.title = element_text(size = 12),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "gray90"),
+    legend.text = element_text(size = 11)
+  )
+```
+
+## 
+
+```{r skins-pct-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
+# Filter out zero values for skins percentage chart
+history_skins_pct <- history %>% filter(skins_pct > 0)
+
+ggplot(history_skins_pct, aes(x = date, y = skins_pct, color = player, group = player)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2.5) +
+  scale_color_manual(values = colorblind_colors) +
+  scale_y_continuous(
+    labels = function(x) sprintf("%.1f%%", x * 100),
+    limits = c(0.45, NA),
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  labs(
+    title = "Skins % over time",
+    x = NULL,
+    y = "Skins %",
+    color = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.text = element_text(size = 11),
+    axis.title = element_text(size = 12),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "gray90"),
+    legend.text = element_text(size = 11)
+  )
+```
+
+
+
+```{r pct-projected-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
+# Filter out zero values for % projected chart
+history_pct_projected <- history %>% filter(pct_projected > 0)
+
+ggplot(history_pct_projected, aes(x = date, y = pct_projected, color = player, group = player)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2.5) +
+  scale_color_manual(values = colorblind_colors) +
+  scale_y_continuous(
+    labels = function(x) sprintf("%.1f", x),
+    limits = c(180, NA),
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  labs(
+    title = "% Projected (Skins % × 82) over time",
+    x = NULL,
+    y = "Projected Skins",
+    color = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.text = element_text(size = 11),
+    axis.title = element_text(size = 12),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "gray90"),
+    legend.text = element_text(size = 11)
+  )
+```
+
+## 
+
+```{r weighted-avg-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
+# Filter out NA values for projection charts
+history_projections <- history %>% filter(!is.na(weighted_average))
+
+ggplot(history_projections, aes(x = date, y = weighted_average, color = player, group = player)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2.5) +
+  scale_color_manual(values = colorblind_colors) +
+  scale_y_continuous(
+    labels = function(x) sprintf("%.1f", x),
+    limits = c(220, NA),
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  labs(
+    title = "Weighted Average Projection over time",
+    x = NULL,
+    y = "Projected Skins",
+    color = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.text = element_text(size = 11),
+    axis.title = element_text(size = 12),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "gray90"),
+    legend.text = element_text(size = 11)
+  )
+```
+
+## 
 
 ```{r vegas-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
 ggplot(history_projections, aes(x = date, y = vegas_consensus, color = player, group = player)) +
@@ -767,3 +1297,4 @@ ggplot(history_max, aes(x = date, y = max_projection, color = player, group = pl
     legend.text = element_text(size = 11)
   )
 ```
+ 
