@@ -16,10 +16,6 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    # Added environment to match your screenshot
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
@@ -30,7 +26,7 @@ jobs:
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: 'latest'
-          use-public-rspm: true 
+          use-public-rspm: true # EFFICIENCY: Uses binaries instead of 11-min builds
 
       - name: Set up Quarto
         uses: quarto-dev/quarto-actions/setup@v2
@@ -55,8 +51,8 @@ jobs:
 
       - name: Render Quarto Document
         run: |
-          # Force output into a clean folder named 'public'
-          quarto render index.qmd --to html --output-dir public
+          # Render to a dedicated folder to separate HTML from your YAML code
+          quarto render index.qmd --to html --output-dir _site
 
       - name: Commit standings history
         run: |
@@ -70,7 +66,7 @@ jobs:
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: public
+          path: _site
 
       - name: Deploy to GitHub Pages
         id: deployment
