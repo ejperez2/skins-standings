@@ -59,8 +59,8 @@ jobs:
 
       - name: Render Quarto Document
         run: |
-          # Render index.qmd into an index.html file in the current directory
-          quarto render index.qmd --to html
+          # Render to a dedicated folder to keep YAML/QMD out of the web server
+          quarto render index.qmd --to html --output-dir _site
 
       - name: Commit standings history
         run: |
@@ -74,10 +74,7 @@ jobs:
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # This ensures ONLY index.html and its dependencies are uploaded
-          path: "."
-          # Only include the actual web files
-          pattern: "index.html"
+          path: _site
 
       - name: Deploy to GitHub Pages
         id: deployment
