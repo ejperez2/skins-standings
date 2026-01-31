@@ -54,8 +54,7 @@ jobs:
           # Render to _site
           quarto render index.qmd --to html --output-dir _site
           
-          # CRITICAL FIX: Create a .nojekyll file
-          # This tells GitHub Pages NOT to ignore folders starting with underscores
+          # CRITICAL FIX: Create a .nojekyll file to unhide the folder
           touch _site/.nojekyll
 
       - name: Commit standings history
