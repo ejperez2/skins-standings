@@ -2,64 +2,73 @@ name: Render and Publish NBA Stats
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
   schedule:
-    - cron: '0 12 * * *'
-    - cron: '0 14 * * *'
-    - cron: '0 18 * * *'
-    - cron: '0 22 * * *'
-    - cron: '0 2 * * *'
-    - cron: '0 3 * * *'
-    - cron: '0 4 * * *'
-    - cron: '0 5 * * *'
-    - cron: '0 6 * * *'
-    
+    - cron: '0 12,14,18,22 * * *'
+    - cron: '0 2,3,4,5,6 * * *'
+
+permissions:
+  contents: write
+
 jobs:
   publish:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up R
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: 'latest'
+          use-public-rspm: true # SPEED: Uses pre-compiled binaries
 
       - name: Set up Quarto
         uses: quarto-dev/quarto-actions/setup@v2
 
-      - name: Install Linux System Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libcurl4-openssl-dev libfontconfig1-dev libfreetype6-dev libharfbuzz-dev libfribidi-dev libpng-dev libtiff5-dev libjpeg-dev
-
       - name: Install R Dependencies
-        run: |
-          install.packages(c('rmarkdown', 'knitr', 'pacman', 'httr', 'jsonlite', 'rvest', 'dplyr', 'tidyr', 'kableExtra', 'tibble', 'stringr', 'ggplot2','scales'))
-        shell: Rscript {0}
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: |
+            any::rmarkdown
+            any::knitr
+            any::pacman
+            any::httr
+            any::jsonlite
+            any::rvest
+            any::dplyr
+            any::tidyr
+            any::kableExtra
+            any::tibble
+            any::stringr
+            any::ggplot2
+            any::scales
 
       - name: Render Quarto Document
         run: |
-          # Force Quarto to render to the root directory so it finds/updates your CSVs
-          quarto render index.qmd --output-dir .
+          # 1. Render to _site (This keeps your source code separate from the website)
+          quarto render index.qmd --to html --output-dir _site
+          
+          # 2. Add .nojekyll to ensure GitHub serves the folder correctly
+          touch _site/.nojekyll
 
       - name: Commit standings history
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          # Explicitly stage the data files and the HTML output
-          git add standings_history.csv team_vegas_history.csv index.html
+          git add standings_history.csv team_vegas_history.csv
           git diff --quiet && git diff --staged --quiet || git commit -m "Update standings history [skip ci]"
           git push
+        continue-on-error: true
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: .
+          # CRITICAL: This copies ONLY the _site folder to gh-pages
+          publish_dir: _site
+          # CLEANUP: This deletes old junk (like YAML files) from the website branch
+          force_orphan: true
