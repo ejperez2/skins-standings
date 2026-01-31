@@ -15,13 +15,15 @@ on:
     - cron: '0 4 * * *'   # 10pm Central
     - cron: '0 5 * * *'   # 11pm Central
     - cron: '0 6 * * *'   # Midnight Central
-    
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
 jobs:
   publish:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
@@ -37,11 +39,9 @@ jobs:
       - name: Set up Quarto
         uses: quarto-dev/quarto-actions/setup@v2
 
-      # Explicitly cache R packages to ensure the 11-minute wait disappears after the first run
       - name: Install R Dependencies
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          cache-version: 1
           extra-packages: |
             any::rmarkdown
             any::knitr
@@ -59,22 +59,22 @@ jobs:
 
       - name: Render Quarto Document
         run: |
-          quarto render index.qmd --to html
+          quarto render index.qmd --to html --output-dir _site
 
       - name: Commit standings history
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add standings_history.csv team_vegas_history.csv
-          # Only commit if there are changes
           git diff --quiet && git diff --staged --quiet || git commit -m "Update standings history [skip ci]"
           git push
         continue-on-error: true
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          # CRITICAL: Only deploy the rendered HTML file, not the whole repo
-          publish_dir: .
-          publish_files: index.html
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
