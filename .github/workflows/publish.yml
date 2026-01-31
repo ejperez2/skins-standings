@@ -2,53 +2,57 @@ name: Render and Publish NBA Stats
 
 on:
   push:
-    branches:
-      - main # Triggers on push to the 'main' branch
-  workflow_dispatch: # Allows manual trigger via button
-  schedule:         # Triggers on a schedule
-    # Central Time -> UTC conversion (using CDT, UTC-6)
-    # 6am, 8am, Noon, 4pm, 8pm, 9pm, 10pm, 11pm, Midnight Central
-    - cron: '0 12 * * *'  # 6am Central (12:00 UTC)
-    - cron: '0 14 * * *'  # 8am Central (14:00 UTC)
-    - cron: '0 18 * * *'  # Noon Central (18:00 UTC)
-    - cron: '0 22 * * *'  # 4pm Central (22:00 UTC)
-    - cron: '0 2 * * *'   # 8pm Central (02:00 UTC next day)
-    - cron: '0 3 * * *'   # 9pm Central (03:00 UTC next day)
-    - cron: '0 4 * * *'   # 10pm Central (04:00 UTC next day)
-    - cron: '0 5 * * *'   # 11pm Central (05:00 UTC next day)
-    - cron: '0 6 * * *'   # Midnight Central (06:00 UTC next day)
-    
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 12,14,18,22 * * *'
+    - cron: '0 2,3,4,5,6 * * *'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
 jobs:
   publish:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write # Allows it to push to the gh-pages branch AND commit history
-
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up R
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: 'latest'
+          use-public-rspm: true # EFFICIENCY: Uses binaries instead of 11-min builds
 
       - name: Set up Quarto
         uses: quarto-dev/quarto-actions/setup@v2
 
-      - name: Install Linux System Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libcurl4-openssl-dev libfontconfig1-dev libfreetype6-dev libharfbuzz-dev libfribidi-dev libpng-dev libtiff5-dev libjpeg-dev
-
       - name: Install R Dependencies
-        run: |
-          install.packages(c('rmarkdown', 'knitr', 'pacman', 'httr', 'jsonlite', 'rvest', 'dplyr', 'tidyr', 'kableExtra', 'tibble', 'stringr', 'ggplot2','scales'))
-        shell: Rscript {0}
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: |
+            any::rmarkdown
+            any::knitr
+            any::pacman
+            any::httr
+            any::jsonlite
+            any::rvest
+            any::dplyr
+            any::tidyr
+            any::kableExtra
+            any::tibble
+            any::stringr
+            any::ggplot2
+            any::scales
 
       - name: Render Quarto Document
         run: |
-          quarto render index.qmd
+          # Render to a dedicated folder to separate HTML from your YAML code
+          quarto render index.qmd --to html --output-dir _site
 
       - name: Commit standings history
         run: |
@@ -57,9 +61,13 @@ jobs:
           git add standings_history.csv team_vegas_history.csv
           git diff --quiet && git diff --staged --quiet || git commit -m "Update standings history [skip ci]"
           git push
+        continue-on-error: true
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
 
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: .
+        id: deployment
+        uses: actions/deploy-pages@v4
