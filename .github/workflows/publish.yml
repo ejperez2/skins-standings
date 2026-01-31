@@ -6,15 +6,15 @@ on:
       - main
   workflow_dispatch:
   schedule:
-    - cron: '0 12 * * *'  # 6am Central
-    - cron: '0 14 * * *'  # 8am Central
-    - cron: '0 18 * * *'  # Noon Central
-    - cron: '0 22 * * *'  # 4pm Central
-    - cron: '0 2 * * *'   # 8pm Central
-    - cron: '0 3 * * *'   # 9pm Central
-    - cron: '0 4 * * *'   # 10pm Central
-    - cron: '0 5 * * *'   # 11pm Central
-    - cron: '0 6 * * *'   # Midnight Central
+    - cron: '0 12 * * *'
+    - cron: '0 14 * * *'
+    - cron: '0 18 * * *'
+    - cron: '0 22 * * *'
+    - cron: '0 2 * * *'
+    - cron: '0 3 * * *'
+    - cron: '0 4 * * *'
+    - cron: '0 5 * * *'
+    - cron: '0 6 * * *'
 
 permissions:
   contents: write
