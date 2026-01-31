@@ -24,7 +24,7 @@ jobs:
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: 'latest'
-          use-public-rspm: true # EFFICIENCY: Uses binaries instead of 11-min builds
+          use-public-rspm: true 
 
       - name: Set up Quarto
         uses: quarto-dev/quarto-actions/setup@v2
@@ -49,7 +49,8 @@ jobs:
 
       - name: Render Quarto Document
         run: |
-          # Render to a dedicated folder to separate HTML from your YAML code
+          # EFFICIENCY: Render specifically to a folder called _site
+          # This separates the dashboard from your raw code files
           quarto render index.qmd --to html --output-dir _site
 
       - name: Commit standings history
@@ -65,6 +66,5 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          # FIX: Change this from '.' to '_site'
-          # This ensures ONLY the dashboard is moved to the gh-pages branch
+          # CRITICAL FIX: Publish ONLY the _site folder, not the root '.'
           publish_dir: _site
