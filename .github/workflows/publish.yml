@@ -2,19 +2,11 @@ name: Render and Publish NBA Stats
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
   schedule:
-    - cron: '0 12 * * *'
-    - cron: '0 14 * * *'
-    - cron: '0 18 * * *'
-    - cron: '0 22 * * *'
-    - cron: '0 2 * * *'
-    - cron: '0 3 * * *'
-    - cron: '0 4 * * *'
-    - cron: '0 5 * * *'
-    - cron: '0 6 * * *'
+    - cron: '0 12,14,18,22 * * *'
+    - cron: '0 2,3,4,5,6 * * *'
 
 permissions:
   contents: write
@@ -24,6 +16,10 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # Added environment to match your screenshot
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
@@ -59,8 +55,8 @@ jobs:
 
       - name: Render Quarto Document
         run: |
-          # Render to a dedicated folder to keep YAML/QMD out of the web server
-          quarto render index.qmd --to html --output-dir _site
+          # Force output into a clean folder named 'public'
+          quarto render index.qmd --to html --output-dir public
 
       - name: Commit standings history
         run: |
@@ -74,7 +70,7 @@ jobs:
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
+          path: public
 
       - name: Deploy to GitHub Pages
         id: deployment
