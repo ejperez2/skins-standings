@@ -51,11 +51,16 @@ jobs:
 
       - name: Render Quarto Document
         run: |
-          # Render to _site
+          # 1. Render to a clean _site folder
           quarto render index.qmd --to html --output-dir _site
           
-          # CRITICAL FIX: Create a .nojekyll file to unhide the folder
+          # 2. Force a .nojekyll file to prevent 404s
           touch _site/.nojekyll
+          
+          # 3. DIAGNOSTIC: Print the files we are about to upload
+          # If index.html is not here, the render failed.
+          echo "CONTENTS OF _site:"
+          ls -la _site
 
       - name: Commit standings history
         run: |
@@ -69,6 +74,7 @@ jobs:
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
+          # We upload ONLY the _site folder
           path: _site
 
       - name: Deploy to GitHub Pages
