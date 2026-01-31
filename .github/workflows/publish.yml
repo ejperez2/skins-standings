@@ -10,6 +10,8 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
   publish:
@@ -49,7 +51,7 @@ jobs:
 
       - name: Render Quarto Document
         run: |
-          # Render to a dedicated folder to separate HTML from your YAML code
+          # Render to a dedicated folder to keep YAML/QMD out of the web server
           quarto render index.qmd --to html --output-dir _site
 
       - name: Commit standings history
@@ -61,9 +63,12 @@ jobs:
           git push
         continue-on-error: true
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          # CRITICAL: Publish ONLY the _site folder, not the root '.'
-          publish_dir: _site
+          # ONLY the content inside _site (index.html) is sent to the web
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
