@@ -49,10 +49,10 @@ jobs:
 
       - name: Render Quarto Document
         run: |
-          # 1. Render to _site
+          # Render to _site to keep the branch clean
           quarto render index.qmd --to html --output-dir _site
           
-          # 2. Add .nojekyll to ensure GitHub serves the folder
+          # Add .nojekyll to ensure folders load correctly
           touch _site/.nojekyll
 
       - name: Commit standings history
@@ -68,7 +68,7 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          # CRITICAL FIX: Upload ONLY the _site folder
-          # This makes _site/index.html become the "root" index.html on the branch
+          # CRITICAL: This MUST be _site. 
+          # If you change this to '.', you break the site.
           publish_dir: _site
-          force_orphan: true # OPTIONAL: Cleans the branch to remove old broken files
+          force_orphan: true
