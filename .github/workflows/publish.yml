@@ -5,8 +5,8 @@ on:
     branches: [main]
   workflow_dispatch:
   schedule:
-    - cron: '0 12,14,18,22 * * *'
-    - cron: '0 2,3,4,5,6 * * *'
+    - cron: '0,30 6-16 * * *'
+    - cron: '0 18,22 * * *'
 
 permissions:
   contents: write
