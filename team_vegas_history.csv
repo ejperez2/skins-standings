@@ -122,7 +122,7 @@
 "Atlanta Hawks",40,2026-02-27
 "Atlanta Hawks",40,2026-02-28
 "Atlanta Hawks",40,2026-03-01
-"Atlanta Hawks",41.3333333333333,2026-03-02
+"Atlanta Hawks",41.5,2026-03-02
 "Boston Celtics",42.125,2025-10-29
 "Boston Celtics",42.125,2025-10-30
 "Boston Celtics",40,2025-10-31
@@ -246,7 +246,7 @@
 "Boston Celtics",53.2,2026-02-27
 "Boston Celtics",54,2026-02-28
 "Boston Celtics",53.8333333333333,2026-03-01
-"Boston Celtics",54.3333333333333,2026-03-02
+"Boston Celtics",54.3,2026-03-02
 "Brooklyn Nets",17.5,2025-10-29
 "Brooklyn Nets",17.5,2025-10-30
 "Brooklyn Nets",17.5,2025-10-31
@@ -990,7 +990,7 @@
 "Denver Nuggets",52.1,2026-02-27
 "Denver Nuggets",51.875,2026-02-28
 "Denver Nuggets",52.5,2026-03-01
-"Denver Nuggets",51.3333333333333,2026-03-02
+"Denver Nuggets",51.3,2026-03-02
 "Detroit Pistons",44.3333333333333,2025-10-29
 "Detroit Pistons",44.6666666666667,2025-10-30
 "Detroit Pistons",44.6666666666667,2025-10-31
@@ -1114,7 +1114,7 @@
 "Detroit Pistons",59.4,2026-02-27
 "Detroit Pistons",60.125,2026-02-28
 "Detroit Pistons",60.125,2026-03-01
-"Detroit Pistons",60.25,2026-03-02
+"Detroit Pistons",60,2026-03-02
 "Golden State Warriors",52.1666666666667,2025-10-29
 "Golden State Warriors",52.8333333333333,2025-10-30
 "Golden State Warriors",52.25,2025-10-31
@@ -1238,7 +1238,7 @@
 "Golden State Warriors",42.5,2026-02-27
 "Golden State Warriors",43,2026-02-28
 "Golden State Warriors",42.8333333333333,2026-03-01
-"Golden State Warriors",42.875,2026-03-02
+"Golden State Warriors",43,2026-03-02
 "Houston Rockets",52,2025-10-29
 "Houston Rockets",52,2025-10-30
 "Houston Rockets",52,2025-10-31
@@ -1610,7 +1610,7 @@
 "Los Angeles Clippers",41.3,2026-02-27
 "Los Angeles Clippers",40,2026-02-28
 "Los Angeles Clippers",40,2026-03-01
-"Los Angeles Clippers",40.6666666666667,2026-03-02
+"Los Angeles Clippers",41.5,2026-03-02
 "Los Angeles Lakers",45.5,2025-10-29
 "Los Angeles Lakers",46.6666666666667,2025-10-30
 "Los Angeles Lakers",46.6666666666667,2025-10-31
@@ -1734,7 +1734,7 @@
 "Los Angeles Lakers",48.75,2026-02-27
 "Los Angeles Lakers",48.3333333333333,2026-02-28
 "Los Angeles Lakers",48,2026-03-01
-"Los Angeles Lakers",48.5,2026-03-02
+"Los Angeles Lakers",49,2026-03-02
 "Memphis Grizzlies",43.375,2025-10-29
 "Memphis Grizzlies",42.625,2025-10-30
 "Memphis Grizzlies",39.3333333333333,2025-10-31
@@ -1982,7 +1982,7 @@
 "Miami Heat",43.9,2026-02-27
 "Miami Heat",43.9,2026-02-28
 "Miami Heat",43.5,2026-03-01
-"Miami Heat",44.25,2026-03-02
+"Miami Heat",44.625,2026-03-02
 "Milwaukee Bucks",44.1666666666667,2025-10-29
 "Milwaukee Bucks",44.5,2025-10-30
 "Milwaukee Bucks",46.25,2025-10-31
@@ -2230,7 +2230,7 @@
 "Minnesota Timberwolves",49.8,2026-02-27
 "Minnesota Timberwolves",49.875,2026-02-28
 "Minnesota Timberwolves",50.25,2026-03-01
-"Minnesota Timberwolves",50.1666666666667,2026-03-02
+"Minnesota Timberwolves",50.3,2026-03-02
 "New Orleans Pelicans",29.625,2025-10-29
 "New Orleans Pelicans",29.6666666666667,2025-10-30
 "New Orleans Pelicans",29.5,2025-10-31
@@ -2602,7 +2602,7 @@
 "Oklahoma City Thunder",61.5,2026-02-27
 "Oklahoma City Thunder",62.25,2026-02-28
 "Oklahoma City Thunder",62.25,2026-03-01
-"Oklahoma City Thunder",62.375,2026-03-02
+"Oklahoma City Thunder",62.3,2026-03-02
 "Orlando Magic",48,2025-10-29
 "Orlando Magic",47,2025-10-30
 "Orlando Magic",47,2025-10-31
@@ -2850,7 +2850,7 @@
 "Philadelphia 76ers",45.7,2026-02-27
 "Philadelphia 76ers",46,2026-02-28
 "Philadelphia 76ers",46,2026-03-01
-"Philadelphia 76ers",45,2026-03-02
+"Philadelphia 76ers",44.5,2026-03-02
 "Phoenix Suns",29.875,2025-10-29
 "Phoenix Suns",29.75,2025-10-30
 "Phoenix Suns",29.375,2025-10-31
@@ -2974,7 +2974,7 @@
 "Phoenix Suns",45.5,2026-02-27
 "Phoenix Suns",45.5,2026-02-28
 "Phoenix Suns",46.25,2026-03-01
-"Phoenix Suns",46.25,2026-03-02
+"Phoenix Suns",46.4,2026-03-02
 "Portland Trail Blazers",35.125,2025-10-29
 "Portland Trail Blazers",35,2025-10-30
 "Portland Trail Blazers",35.375,2025-10-31
@@ -3346,7 +3346,7 @@
 "San Antonio Spurs",58.4,2026-02-27
 "San Antonio Spurs",58.375,2026-02-28
 "San Antonio Spurs",59,2026-03-01
-"San Antonio Spurs",58.375,2026-03-02
+"San Antonio Spurs",58.4,2026-03-02
 "Toronto Raptors",39.5,2025-10-29
 "Toronto Raptors",37.875,2025-10-30
 "Toronto Raptors",37.75,2025-10-31
@@ -3470,7 +3470,7 @@
 "Toronto Raptors",46.625,2026-02-27
 "Toronto Raptors",46.75,2026-02-28
 "Toronto Raptors",46.6666666666667,2026-03-01
-"Toronto Raptors",46.75,2026-03-02
+"Toronto Raptors",46.875,2026-03-02
 "Utah Jazz",22.8333333333333,2025-10-29
 "Utah Jazz",23.1666666666667,2025-10-30
 "Utah Jazz",23.1666666666667,2025-10-31
