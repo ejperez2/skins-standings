@@ -252,7 +252,7 @@
 "Boston Celtics",54.3,2026-03-02
 "Boston Celtics",53.75,2026-03-03
 "Boston Celtics",54,2026-03-04
-"Boston Celtics",53.25,2026-03-05
+"Boston Celtics",53.3333333333333,2026-03-05
 "Brooklyn Nets",17.5,2025-10-29
 "Brooklyn Nets",17.5,2025-10-30
 "Brooklyn Nets",17.5,2025-10-31
@@ -1014,7 +1014,7 @@
 "Denver Nuggets",51.3,2026-03-02
 "Denver Nuggets",51.75,2026-03-03
 "Denver Nuggets",51.3,2026-03-04
-"Denver Nuggets",51.5,2026-03-05
+"Denver Nuggets",51.125,2026-03-05
 "Detroit Pistons",44.3333333333333,2025-10-29
 "Detroit Pistons",44.6666666666667,2025-10-30
 "Detroit Pistons",44.6666666666667,2025-10-31
@@ -1141,7 +1141,7 @@
 "Detroit Pistons",60,2026-03-02
 "Detroit Pistons",60,2026-03-03
 "Detroit Pistons",60.3,2026-03-04
-"Detroit Pistons",60.125,2026-03-05
+"Detroit Pistons",60.5,2026-03-05
 "Golden State Warriors",52.1666666666667,2025-10-29
 "Golden State Warriors",52.8333333333333,2025-10-30
 "Golden State Warriors",52.25,2025-10-31
@@ -1395,7 +1395,7 @@
 "Houston Rockets",52.6,2026-03-02
 "Houston Rockets",52.75,2026-03-03
 "Houston Rockets",53.5,2026-03-04
-"Houston Rockets",53.375,2026-03-05
+"Houston Rockets",53.75,2026-03-05
 "Indiana Pacers",33.6666666666667,2025-10-29
 "Indiana Pacers",32.5,2025-10-30
 "Indiana Pacers",32.5,2025-10-31
@@ -2665,7 +2665,7 @@
 "Oklahoma City Thunder",62.3,2026-03-02
 "Oklahoma City Thunder",62.3,2026-03-03
 "Oklahoma City Thunder",62.3,2026-03-04
-"Oklahoma City Thunder",62.75,2026-03-05
+"Oklahoma City Thunder",63.1666666666667,2026-03-05
 "Orlando Magic",48,2025-10-29
 "Orlando Magic",47,2025-10-30
 "Orlando Magic",47,2025-10-31
@@ -3427,7 +3427,7 @@
 "San Antonio Spurs",58.4,2026-03-02
 "San Antonio Spurs",58.4,2026-03-03
 "San Antonio Spurs",58.4,2026-03-04
-"San Antonio Spurs",58.375,2026-03-05
+"San Antonio Spurs",58.3333333333333,2026-03-05
 "Toronto Raptors",39.5,2025-10-29
 "Toronto Raptors",37.875,2025-10-30
 "Toronto Raptors",37.75,2025-10-31
