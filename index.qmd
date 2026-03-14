@@ -692,7 +692,7 @@ player_scores_display <- player_scores %>%
     `Skins %` = sprintf("%.1f%%", `Skins %` * 100),
     `% Projected` = sprintf("%.1f", `% Projected`),
     `Weighted Average` = sprintf("%.1f", `Weighted Average`),
-    `Vegas Consensus*` = sprintf("%.1f", `Vegas Consensus`),
+    `Vegas Consensus` = sprintf("%.1f", `Vegas Consensus`),
     `TR` = sprintf("%.1f", `TR`),
     `ESPN` = sprintf("%.1f", `ESPN`),
     `CBS` = sprintf("%.1f", `CBS`),
