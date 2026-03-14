@@ -692,7 +692,7 @@ player_scores_display <- player_scores %>%
     `Skins %` = sprintf("%.1f%%", `Skins %` * 100),
     `% Projected` = sprintf("%.1f", `% Projected`),
     `Weighted Average` = sprintf("%.1f", `Weighted Average`),
-    `Vegas Consensus` = sprintf("%.1f", `Vegas Consensus`),
+    `Vegas Consensus*` = sprintf("%.1f", `Vegas Consensus`),
     `TR` = sprintf("%.1f", `TR`),
     `ESPN` = sprintf("%.1f", `ESPN`),
     `CBS` = sprintf("%.1f", `CBS`),
@@ -760,6 +760,7 @@ cat("<p style='font-size: 13px; margin-top: 5px; margin-bottom: 0; text-align: l
 cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Skins % 2023-25: <b>58%, 62%, 59%</b></p>")
 cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Winner's Skins 2023-25: <b>249, 280, 268</b></p>")
 cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>March Weighted Avg: TR 37%, ESPN 58%, CBS 5% (Last season's most accurate March weightings)</p>")
+cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>*No betting markets for ~10 tanking teams since ASB </p>")
 ```
 
 ## Standings and Projections by player
