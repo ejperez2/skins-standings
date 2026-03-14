@@ -270,7 +270,7 @@
 "Boston Celtics",54.2,2026-03-11
 "Boston Celtics",54.2,2026-03-12
 "Boston Celtics",54.6,2026-03-13
-"Boston Celtics",54.5,2026-03-14
+"Boston Celtics",54.6,2026-03-14
 "Brooklyn Nets",17.5,2025-10-29
 "Brooklyn Nets",17.5,2025-10-30
 "Brooklyn Nets",17.5,2025-10-31
@@ -814,7 +814,7 @@
 "Cleveland Cavaliers",52.6,2026-03-11
 "Cleveland Cavaliers",53,2026-03-12
 "Cleveland Cavaliers",53,2026-03-13
-"Cleveland Cavaliers",52.75,2026-03-14
+"Cleveland Cavaliers",52.6666666666667,2026-03-14
 "Dallas Mavericks",42.625,2025-10-29
 "Dallas Mavericks",43.3333333333333,2025-10-30
 "Dallas Mavericks",38.5,2025-10-31
@@ -1086,7 +1086,7 @@
 "Denver Nuggets",51,2026-03-11
 "Denver Nuggets",52.2,2026-03-12
 "Denver Nuggets",52.4,2026-03-13
-"Denver Nuggets",52.625,2026-03-14
+"Denver Nuggets",52.4,2026-03-14
 "Detroit Pistons",44.3333333333333,2025-10-29
 "Detroit Pistons",44.6666666666667,2025-10-30
 "Detroit Pistons",44.6666666666667,2025-10-31
@@ -1222,7 +1222,7 @@
 "Detroit Pistons",58.7,2026-03-11
 "Detroit Pistons",58.6,2026-03-12
 "Detroit Pistons",58.6,2026-03-13
-"Detroit Pistons",58.75,2026-03-14
+"Detroit Pistons",58.6666666666667,2026-03-14
 "Golden State Warriors",52.1666666666667,2025-10-29
 "Golden State Warriors",52.8333333333333,2025-10-30
 "Golden State Warriors",52.25,2025-10-31
@@ -1494,7 +1494,7 @@
 "Houston Rockets",53,2026-03-11
 "Houston Rockets",51.8,2026-03-12
 "Houston Rockets",51.8,2026-03-13
-"Houston Rockets",52.25,2026-03-14
+"Houston Rockets",52,2026-03-14
 "Indiana Pacers",33.6666666666667,2025-10-29
 "Indiana Pacers",32.5,2025-10-30
 "Indiana Pacers",32.5,2025-10-31
@@ -2854,7 +2854,7 @@
 "Oklahoma City Thunder",63.1,2026-03-11
 "Oklahoma City Thunder",63.1,2026-03-12
 "Oklahoma City Thunder",63.1,2026-03-13
-"Oklahoma City Thunder",63,2026-03-14
+"Oklahoma City Thunder",63.1,2026-03-14
 "Orlando Magic",48,2025-10-29
 "Orlando Magic",47,2025-10-30
 "Orlando Magic",47,2025-10-31
@@ -3670,7 +3670,7 @@
 "San Antonio Spurs",60,2026-03-11
 "San Antonio Spurs",60,2026-03-12
 "San Antonio Spurs",59.2,2026-03-13
-"San Antonio Spurs",59.125,2026-03-14
+"San Antonio Spurs",59.2,2026-03-14
 "Toronto Raptors",39.5,2025-10-29
 "Toronto Raptors",37.875,2025-10-30
 "Toronto Raptors",37.75,2025-10-31
