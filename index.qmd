@@ -27,6 +27,8 @@ pacman::p_load(httr, jsonlite, rvest, dplyr, tidyr, knitr, kableExtra, tibble, s
 # --- Step 2: Scrape and Process All Data Sources ---
 
 # A: Create Draft Data Frame FIRST (needed for W/L picks)
+# TODO 2026-27: Replace with this season's draft results (still 2025-26 picks)
+# Must match draft_data in Daily-Skins-Matchups/skins_today.qmd
 draft_data <- tribble(
   ~team, ~player, ~abbr, ~skins_pick, ~draft_pick,
   "Utah Jazz", "Eristeo", "UTA", "L", 1,
@@ -416,10 +418,11 @@ today <- Sys.Date()
 team_vegas_history_file <- "team_vegas_history.csv"
 
 # Hardcoded fallback values for teams that may be missing from scrape
-# These are reasonable estimates based on recent season performance
+# 2026-27: Cleared (2025-26 values were MIL 47.25, SAC 31.5). Add a team here
+# only if Rotowire drops it AND it has no history in team_vegas_history.csv yet.
 vegas_fallback <- tibble(
-  team = c("Milwaukee Bucks", "Sacramento Kings"),
-  vegas_proj_wins = c(47.25, 31.5)
+  team = character(),
+  vegas_proj_wins = numeric()
 )
 
 # Load existing team vegas history if it exists
