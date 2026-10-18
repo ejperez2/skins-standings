@@ -29,6 +29,7 @@ pacman::p_load(httr, jsonlite, rvest, dplyr, tidyr, knitr, kableExtra, tibble, s
 # A: League configuration (2026-27: 3 players x 10 teams each)
 PLAYERS <- c("Eristeo", "Brian", "Adam")
 TEAMS_PER_PLAYER <- 30 / length(PLAYERS)
+SEASON_START <- as.Date("2026-10-20")  # Opening night; ESPN shows preseason records before this
 
 # Create Draft Data Frame FIRST (needed for W/L picks)
 # DRAFTED: Sunday, October 18, 2026 (10-round snake; order Adam, Brian, Eristeo).
@@ -172,15 +173,35 @@ nba_standings <- tryCatch({
   )
 })
 
+# Before opening night ESPN lists preseason records - don't count those as skins
+if (Sys.Date() < SEASON_START) {
+  nba_standings <- nba_standings %>% mutate(actual_wins = 0, actual_losses = 0)
+}
+
 # Calculate season completion percentage
 season_total_games <- sum(nba_standings$actual_wins + nba_standings$actual_losses, na.rm = TRUE)
 season_completion_pct <- (season_total_games / 2460) * 100
 
+# Projection sources are optional: if a site fails (blocked, empty page, layout change) we
+# log it, use an empty table for that source, and note it on the page instead of failing the render.
+failed_sources <- character()
+safe_scrape <- function(source_name, expr, empty) {
+  tryCatch(expr, error = function(e) {
+    message(source_name, " scraping failed: ", conditionMessage(e))
+    failed_sources <<- c(failed_sources, source_name)
+    empty
+  })
+}
+
 # B: Scrape Rotowire (Vegas Odds)
 url_vegas <- "https://www.rotowire.com/betting/nba/tables/team-futures.php?future=Win%20Totals"
-resp_vegas <- GET(url_vegas, add_headers(`User-Agent` = "Mozilla/5.0"))
-raw_json <- content(resp_vegas, as = "text", encoding = "UTF-8")
-df_vegas <- fromJSON(raw_json, flatten = TRUE) %>% as_tibble()
+df_vegas <- safe_scrape("Vegas", {
+  resp_vegas <- GET(url_vegas, add_headers(`User-Agent` = "Mozilla/5.0"))
+  raw_json <- content(resp_vegas, as = "text", encoding = "UTF-8")
+  out <- fromJSON(raw_json, flatten = TRUE) %>% as_tibble()
+  if (!"name" %in% names(out)) stop("no team names in response")
+  out
+}, empty = tibble(name = character()))
 
 df_skins <- df_vegas %>%
   select(
@@ -240,6 +261,8 @@ for (col in required_cols) {
 # Now continue with the processing
 df_skins <- df_skins %>%
   mutate(across(ends_with(c("_total", "_under", "_over")), as.numeric)) %>%
+  # Some books occasionally send junk lines (e.g. 0.06) - ignore anything that isn't a plausible win total
+  mutate(across(ends_with("_total"), ~ if_else(.x >= 10 & .x <= 72, .x, NA_real_))) %>%
   rowwise() %>%
   mutate(
     # Adjust each total based on over/under odds - safely handle NA values
@@ -275,69 +298,77 @@ df_skins <- df_skins %>%
 
 # C: Scrape TeamRankings
 url_tr <- "https://www.teamrankings.com/nba/projections/standings/"
-webpage_tr <- read_html(url_tr)
-combined_proj <- bind_rows(webpage_tr %>% html_table() %>% .[[1]], webpage_tr %>% html_table() %>% .[[2]])
-tr_cleaned <- combined_proj %>%
-  select(team_tr = 1, filter_col = 2, tr_proj_w = 4, tr_proj_l = 5) %>%
-  filter(!grepl("overall", filter_col, ignore.case = TRUE)) %>%
-  mutate(
-    tr_proj_w = as.numeric(tr_proj_w),
-    tr_proj_l = as.numeric(tr_proj_l)
-  )
+tr_cleaned <- safe_scrape("TeamRankings", {
+  webpage_tr <- read_html(url_tr)
+  combined_proj <- bind_rows(webpage_tr %>% html_table() %>% .[[1]], webpage_tr %>% html_table() %>% .[[2]])
+  combined_proj %>%
+    select(team_tr = 1, filter_col = 2, tr_proj_w = 4, tr_proj_l = 5) %>%
+    filter(!grepl("overall", filter_col, ignore.case = TRUE)) %>%
+    mutate(
+      tr_proj_w = as.numeric(tr_proj_w),
+      tr_proj_l = as.numeric(tr_proj_l)
+    )
+}, empty = tibble(team_tr = character(), filter_col = character(), tr_proj_w = numeric(), tr_proj_l = numeric()))
 
 # D: Scrape ESPN BPI
 url_espn <- "https://www.espn.com/nba/bpi/_/view/projections"
-webpage_espn <- read_html(url_espn)
-espn_proj <- bind_cols(webpage_espn %>% html_table() %>% .[[1]], webpage_espn %>% html_table() %>% .[[2]])
-espn_cleaned <- espn_proj %>%
-  select(team = Team, ovr_wl = `OVR W-L`) %>%
-  separate(ovr_wl, into = c("espn_proj_w", "espn_proj_l"), sep = "-", convert = TRUE) %>%
-  mutate(team = case_when(team == "LA Clippers" ~ "Los Angeles Clippers", TRUE ~ team))
+espn_cleaned <- safe_scrape("ESPN BPI", {
+  webpage_espn <- read_html(url_espn)
+  espn_proj <- bind_cols(webpage_espn %>% html_table() %>% .[[1]], webpage_espn %>% html_table() %>% .[[2]])
+  espn_proj %>%
+    select(team = Team, ovr_wl = `OVR W-L`) %>%
+    separate(ovr_wl, into = c("espn_proj_w", "espn_proj_l"), sep = "-", convert = TRUE) %>%
+    mutate(team = case_when(team == "LA Clippers" ~ "Los Angeles Clippers", TRUE ~ team))
+}, empty = tibble(team = character(), espn_proj_w = numeric(), espn_proj_l = numeric()))
 
 # E: Scrape CBS Sports
 url_cbs <- "https://www.cbssports.com/nba/standings/"
-webpage_cbs <- read_html(url_cbs)
-tables_cbs <- webpage_cbs %>% html_table(fill = TRUE)
+cbs_proj <- safe_scrape("CBS", {
+  webpage_cbs <- read_html(url_cbs)
+  tables_cbs <- webpage_cbs %>% html_table(fill = TRUE)
 
-# Extract Eastern and Western conferences
-eastern_conf <- tables_cbs[[1]]
-western_conf <- tables_cbs[[2]]
+  # Extract Eastern and Western conferences
+  eastern_conf <- tables_cbs[[1]]
+  western_conf <- tables_cbs[[2]]
 
-# Combine both conferences
-cbs_proj <- bind_rows(eastern_conf, western_conf) %>%
-  select(team_cbs = 2, cbs_proj_w = 16) %>%
-  filter(team_cbs != "Team") %>%  # Remove header rows
-  mutate(cbs_proj_w = as.numeric(cbs_proj_w))
+  # Combine both conferences
+  bind_rows(eastern_conf, western_conf) %>%
+    select(team_cbs = 2, cbs_proj_w = 16) %>%
+    filter(team_cbs != "Team") %>%  # Remove header rows
+    mutate(cbs_proj_w = as.numeric(cbs_proj_w))
+}, empty = tibble(team_cbs = character(), cbs_proj_w = numeric()))
 
 # F: Scrape Basketball Reference
 url_br <- "https://www.basketball-reference.com/friv/playoff_prob.html"
-webpage_br <- read_html(url_br)
-tables_br <- webpage_br %>% html_table()
+br_proj <- safe_scrape("BB-Ref", {
+  webpage_br <- read_html(url_br)
+  tables_br <- webpage_br %>% html_table()
 
-# Fix Eastern Conference
-eastern_conf_br <- tables_br[[1]]
-names(eastern_conf_br) <- make.names(names(eastern_conf_br), unique = TRUE)
-eastern_conf_br <- eastern_conf_br %>%
-  slice(-1) %>%  # Remove header row
-  select(2, 3) %>%  # Team name, W
-  setNames(c("team_br", "br_proj_w"))
+  # Fix Eastern Conference
+  eastern_conf_br <- tables_br[[1]]
+  names(eastern_conf_br) <- make.names(names(eastern_conf_br), unique = TRUE)
+  eastern_conf_br <- eastern_conf_br %>%
+    slice(-1) %>%  # Remove header row
+    select(2, 3) %>%  # Team name, W
+    setNames(c("team_br", "br_proj_w"))
 
-# Fix Western Conference
-western_conf_br <- tables_br[[2]]
-names(western_conf_br) <- make.names(names(western_conf_br), unique = TRUE)
-western_conf_br <- western_conf_br %>%
-  slice(-1) %>%  # Remove header row
-  select(2, 3) %>%  # Team name, W
-  setNames(c("team_br", "br_proj_w"))
+  # Fix Western Conference
+  western_conf_br <- tables_br[[2]]
+  names(western_conf_br) <- make.names(names(western_conf_br), unique = TRUE)
+  western_conf_br <- western_conf_br %>%
+    slice(-1) %>%  # Remove header row
+    select(2, 3) %>%  # Team name, W
+    setNames(c("team_br", "br_proj_w"))
 
-# Combine both conferences
-br_proj <- bind_rows(eastern_conf_br, western_conf_br) %>%
-  filter(team_br != "") %>%  # Remove empty rows
-  mutate(
-    br_proj_w = as.numeric(br_proj_w),
-    team = team_br
-  ) %>%
-  select(team, br_proj_w)
+  # Combine both conferences
+  bind_rows(eastern_conf_br, western_conf_br) %>%
+    filter(team_br != "") %>%  # Remove empty rows
+    mutate(
+      br_proj_w = as.numeric(br_proj_w),
+      team = team_br
+    ) %>%
+    select(team, br_proj_w)
+}, empty = tibble(team = character(), br_proj_w = numeric()))
 
 # --- Step 3: Combine All Projections ---
 
@@ -557,8 +588,13 @@ df_final_projections <- all_teams %>%
     
     # Calculate weighted average using skins (which now correctly apply draft picks)
     # Updated formula to include Basketball Reference
-    weighted_average = 
-      (tr_skins * 0.50) + (espn_skins * 0.34) + (cbs_skins * 0.16) ,  # Fallback formula without Vegas
+    # Early-season weights; if a source is missing, re-weight across the sources that are available
+    wa_weight = 0.50 * (!is.na(tr_skins)) + 0.34 * (!is.na(espn_skins)) + 0.16 * (!is.na(cbs_skins)),
+    weighted_average = if_else(
+      wa_weight > 0,
+      (coalesce(tr_skins * 0.50, 0) + coalesce(espn_skins * 0.34, 0) + coalesce(cbs_skins * 0.16, 0)) / wa_weight,
+      NA_real_
+    ),
     
     # Calculate max projection for each team
     max_projection = pmax(weighted_average, vegas_consensus, tr_skins, espn_skins, cbs_skins, br_skins, na.rm = TRUE),
@@ -572,7 +608,7 @@ df_final_projections <- all_teams %>%
     pct_projected = skins_pct * 82
   ) %>%
   # Remove the temporary hardcoded column to keep data clean
-  select(-skins_pick_hardcoded, -source)
+  select(-skins_pick_hardcoded, -source, -wa_weight)
 
 # VERIFICATION: Ensure all W/L picks match the hardcoded draft values
 verification <- df_final_projections %>%
@@ -586,22 +622,30 @@ if(draft_complete && nrow(verification) > 0) {
 }
 
 # --- Step 5: Calculate Player Scores ---
+# A player's total for a source is shown only if every one of their teams has a value
+# (otherwise a partial sum looks like a real projection) - e.g. CBS before the season
+sum_or_na <- function(x) if (any(is.na(x))) NA_real_ else sum(x)
+# Table display: 1 decimal, dash for missing (tables are rendered with escape = FALSE)
+fmt_num <- function(x) if_else(is.na(x), "&ndash;", sprintf("%.1f", x))
+
 player_scores <- draft_data %>%
   left_join(df_final_projections, by = "team") %>%
   group_by(player) %>%
   summarise(
     `Actual Skins` = sum(actual_skins, na.rm = TRUE),
-    `Skins %` = sum(actual_skins, na.rm = TRUE) / sum(games_played, na.rm = TRUE),
+    `Skins %` = if_else(sum(games_played, na.rm = TRUE) > 0,
+                        sum(actual_skins, na.rm = TRUE) / sum(games_played, na.rm = TRUE), 0),
     `% Projected` = sum(pct_projected, na.rm = TRUE),  # Sum of team projections
-    `Weighted Average` = sum(weighted_average, na.rm = TRUE),
-    `Vegas Consensus` = sum(vegas_consensus, na.rm = TRUE),
-    `TR` = sum(tr_skins, na.rm = TRUE),
-    `ESPN` = sum(espn_skins, na.rm = TRUE),
-    `CBS` = sum(cbs_skins, na.rm = TRUE),
-    `BB-Ref` = sum(br_skins, na.rm = TRUE),
-    `Max Proj` = sum(max_projection, na.rm = TRUE)
+    `Weighted Average` = sum_or_na(weighted_average),
+    `Vegas Consensus` = sum_or_na(vegas_consensus),
+    `TR` = sum_or_na(tr_skins),
+    `ESPN` = sum_or_na(espn_skins),
+    `CBS` = sum_or_na(cbs_skins),
+    `BB-Ref` = sum_or_na(br_skins),
+    `Max Proj` = sum_or_na(max_projection)
   ) %>%
-  mutate(`Proj Avg` = rowMeans(select(., `Vegas Consensus`, `TR`, `ESPN`, `CBS`))) %>%
+  mutate(`Proj Avg` = rowMeans(select(., `Vegas Consensus`, `TR`, `ESPN`, `CBS`), na.rm = TRUE),
+         `Proj Avg` = if_else(is.nan(`Proj Avg`), NA_real_, `Proj Avg`)) %>%
   select(player, `Actual Skins`, `Skins %`, `% Projected`, `Weighted Average`, 
          `Vegas Consensus`, `TR`, `ESPN`, `CBS`, `BB-Ref`, `Proj Avg`, `Max Proj`) %>%
   arrange(desc(`Actual Skins`))
@@ -696,6 +740,12 @@ cat(sprintf(
    <strong>Season completion:</strong> %.1f%% (%d of 2,460 games played)</p>", 
   season_completion_pct, season_total_games)
 )
+if (length(failed_sources) > 0) {
+  cat(sprintf(
+    "<p style='font-size:14px; color:#B00020; margin-top:0px; margin-bottom:16px;'>
+     <strong>Unavailable this update:</strong> %s (shown blank; weighted average uses the remaining sources)</p>",
+    paste(unique(failed_sources), collapse = ", ")))
+}
 ```
 
 ```{r explain-display, echo=FALSE, results='asis'}
@@ -776,15 +826,15 @@ player_scores_display <- player_scores %>%
   mutate(
     `Actual Skins` = as.integer(`Actual Skins`),
     `Skins %` = sprintf("%.1f%%", `Skins %` * 100),
-    `% Projected` = sprintf("%.1f", `% Projected`),
-    `Weighted Average` = sprintf("%.1f", `Weighted Average`),
-    `Vegas Consensus` = sprintf("%.1f", `Vegas Consensus`),
-    `TR` = sprintf("%.1f", `TR`),
-    `ESPN` = sprintf("%.1f", `ESPN`),
-    `CBS` = sprintf("%.1f", `CBS`),
-    `BB-Ref` = sprintf("%.1f", `BB-Ref`),
-    `Proj Avg` = sprintf("%.1f", `Proj Avg`),
-    `Max Proj` = sprintf("%.1f", `Max Proj`)
+    `% Projected` = fmt_num(`% Projected`),
+    `Weighted Average` = fmt_num(`Weighted Average`),
+    `Vegas Consensus` = fmt_num(`Vegas Consensus`),
+    `TR` = fmt_num(`TR`),
+    `ESPN` = fmt_num(`ESPN`),
+    `CBS` = fmt_num(`CBS`),
+    `BB-Ref` = fmt_num(`BB-Ref`),
+    `Proj Avg` = fmt_num(`Proj Avg`),
+    `Max Proj` = fmt_num(`Max Proj`)
   )
 
 # Calculate global averages (across all teams in league, not player averages)
@@ -801,14 +851,14 @@ global_avg_row <- tibble(
   `Actual Skins` = as.integer(league_total_skins / length(PLAYERS)),  # Average per player
   `Skins %` = sprintf("%.1f%%", league_skins_pct * 100),
   `% Projected` = sprintf("%.1f", league_pct_projected_avg),
-  `Weighted Average` = sprintf("%.1f", mean(player_scores$`Weighted Average`, na.rm = TRUE)),
-  `Vegas Consensus` = sprintf("%.1f", mean(player_scores$`Vegas Consensus`, na.rm = TRUE)),
-  `TR` = sprintf("%.1f", mean(player_scores$`TR`, na.rm = TRUE)),
-  `ESPN` = sprintf("%.1f", mean(player_scores$`ESPN`, na.rm = TRUE)),
-  `CBS` = sprintf("%.1f", mean(player_scores$`CBS`, na.rm = TRUE)),
-  `BB-Ref` = sprintf("%.1f", mean(player_scores$`BB-Ref`, na.rm = TRUE)),
-  `Proj Avg` = sprintf("%.1f", mean(player_scores$`Proj Avg`, na.rm = TRUE)),
-  `Max Proj` = sprintf("%.1f", mean(player_scores$`Max Proj`, na.rm = TRUE))
+  `Weighted Average` = fmt_num(mean(player_scores$`Weighted Average`, na.rm = TRUE)),
+  `Vegas Consensus` = fmt_num(mean(player_scores$`Vegas Consensus`, na.rm = TRUE)),
+  `TR` = fmt_num(mean(player_scores$`TR`, na.rm = TRUE)),
+  `ESPN` = fmt_num(mean(player_scores$`ESPN`, na.rm = TRUE)),
+  `CBS` = fmt_num(mean(player_scores$`CBS`, na.rm = TRUE)),
+  `BB-Ref` = fmt_num(mean(player_scores$`BB-Ref`, na.rm = TRUE)),
+  `Proj Avg` = fmt_num(mean(player_scores$`Proj Avg`, na.rm = TRUE)),
+  `Max Proj` = fmt_num(mean(player_scores$`Max Proj`, na.rm = TRUE))
 )
 
 # Combine player data with global average
@@ -847,6 +897,7 @@ cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: l
 cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Skins % 2023-26: <b>58%, 62%, 59%, 59%</b></p>")
 cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Winner's Skins 2023-26 (&times;2): <b>498, 560, 536, 540</b></p>")
 cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Early-Season Weighted Avg: TR 50%, ESPN 34%, CBS 16% (Most accurate Nov weightings, used to open 2025-26)</p>")
+cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>&ndash; = no projection from that source for at least one of the player's teams (CBS and BB-Ref publish once the season starts)</p>")
 ```
 
 ```{r by-player-heading, echo=FALSE, results='asis'}
@@ -903,15 +954,15 @@ standings_table <- draft_data %>%
   mutate(
     `Actual Skins` = as.integer(`Actual Skins`),
     `Skins %` = sprintf("%.1f%%", `Skins %` * 100),
-    `% Projected` = sprintf("%.1f", `% Projected`),
-    `Weighted Average` = sprintf("%.1f", `Weighted Average`),
-    `Vegas Consensus` = sprintf("%.1f", `Vegas Consensus`),
-    `TR` = sprintf("%.1f", `TR`),
-    `ESPN` = sprintf("%.1f", `ESPN`),
-    `CBS` = sprintf("%.1f", `CBS`),
-    `BB-Ref` = sprintf("%.1f", `BB-Ref`),
-    `Proj Avg` = sprintf("%.1f", `Proj Avg`),
-    `Max Proj` = sprintf("%.1f", `Max Proj`)
+    `% Projected` = fmt_num(`% Projected`),
+    `Weighted Average` = fmt_num(`Weighted Average`),
+    `Vegas Consensus` = fmt_num(`Vegas Consensus`),
+    `TR` = fmt_num(`TR`),
+    `ESPN` = fmt_num(`ESPN`),
+    `CBS` = fmt_num(`CBS`),
+    `BB-Ref` = fmt_num(`BB-Ref`),
+    `Proj Avg` = fmt_num(`Proj Avg`),
+    `Max Proj` = fmt_num(`Max Proj`)
   )
 
 # Column names with hyperlinks for by-player tables (light colored links for blue background)
@@ -993,15 +1044,15 @@ team_projections_table <- df_final_projections %>%
   mutate(
     `Actual Skins` = as.integer(`Actual Skins`),
     `Skins %` = sprintf("%.1f%%", `Skins %` * 100),
-    `% Projected` = sprintf("%.1f", `% Projected`),
-    `Weighted Average` = sprintf("%.1f", `Weighted Average`),
-    `Vegas Consensus` = sprintf("%.1f", `Vegas Consensus`),
-    `TR` = sprintf("%.1f", `TR`),
-    `ESPN` = sprintf("%.1f", `ESPN`),
-    `CBS` = sprintf("%.1f", `CBS`),
-    `BB-Ref` = sprintf("%.1f", `BB-Ref`),
-    `Proj Avg` = sprintf("%.1f", `Proj Avg`),
-    `Max Proj` = sprintf("%.1f", `Max Proj`)
+    `% Projected` = fmt_num(`% Projected`),
+    `Weighted Average` = fmt_num(`Weighted Average`),
+    `Vegas Consensus` = fmt_num(`Vegas Consensus`),
+    `TR` = fmt_num(`TR`),
+    `ESPN` = fmt_num(`ESPN`),
+    `CBS` = fmt_num(`CBS`),
+    `BB-Ref` = fmt_num(`BB-Ref`),
+    `Proj Avg` = fmt_num(`Proj Avg`),
+    `Max Proj` = fmt_num(`Max Proj`)
   )
 
 # Column names with hyperlinks for team table (light colored links for dark background)
