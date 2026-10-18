@@ -4,9 +4,9 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-#  schedule:
-#    - cron: '0,30 6-16 * * *'
- #   - cron: '0 18,22 * * *'
+  schedule:
+    - cron: '0,30 6-16 * * *'
+    - cron: '0 18,22 * * *'
 
 permissions:
   contents: write
@@ -55,6 +55,13 @@ jobs:
           
           # SAFETY: Ensure GitHub doesn't ignore the folder
           touch _site/.nojekyll
+
+          # Past seasons: publish each archive/<season>/index.html at /<season>/
+          for d in archive/*/; do
+            if [ -f "${d}index.html" ]; then
+              mkdir -p "_site/$(basename "$d")" && cp "${d}index.html" "_site/$(basename "$d")/index.html"
+            fi
+          done
 
       - name: Commit standings history
         run: |

@@ -13,7 +13,7 @@ ts <- format(Sys.time(), "%A, %B %d, %Y at %I:%M %p %Z", tz = "America/Chicago")
 
 cat(sprintf(
   "<p style='font-size:14px; color:#555; margin-top:2px;margin-bottom: 0; '>
-   <strong>Last updated:</strong> %s</p>", ts)
+   <strong>Last updated:</strong> %s &middot; <a href='2025-26/'>2025-26 final standings</a></p>", ts)
 )
 ```
 
@@ -31,41 +31,40 @@ PLAYERS <- c("Eristeo", "Brian", "Adam")
 TEAMS_PER_PLAYER <- 30 / length(PLAYERS)
 
 # Create Draft Data Frame FIRST (needed for W/L picks)
-# DRAFT: Sunday, October 18, 2026 (season opens Tuesday, October 20).
-# After the draft, fill in player ("Eristeo"/"Brian"/"Adam"), skins_pick ("W"/"L") and draft_pick (1-30)
-# for every team. Until all 30 teams are filled in, the page renders in pre-draft mode (draft board only).
+# DRAFTED: Sunday, October 18, 2026 (10-round snake; order Adam, Brian, Eristeo).
+# If draft_data is ever incomplete, the page renders in pre-draft mode (draft board only).
 draft_data <- tribble(
   ~team, ~player, ~abbr, ~skins_pick, ~draft_pick,
-  "Atlanta Hawks",          NA_character_, "ATL", NA_character_, NA_integer_,
-  "Boston Celtics",         NA_character_, "BOS", NA_character_, NA_integer_,
-  "Brooklyn Nets",          NA_character_, "BKN", NA_character_, NA_integer_,
-  "Charlotte Hornets",      NA_character_, "CHA", NA_character_, NA_integer_,
-  "Chicago Bulls",          NA_character_, "CHI", NA_character_, NA_integer_,
-  "Cleveland Cavaliers",    NA_character_, "CLE", NA_character_, NA_integer_,
-  "Dallas Mavericks",       NA_character_, "DAL", NA_character_, NA_integer_,
-  "Denver Nuggets",         NA_character_, "DEN", NA_character_, NA_integer_,
-  "Detroit Pistons",        NA_character_, "DET", NA_character_, NA_integer_,
-  "Golden State Warriors",  NA_character_, "GSW", NA_character_, NA_integer_,
-  "Houston Rockets",        NA_character_, "HOU", NA_character_, NA_integer_,
-  "Indiana Pacers",         NA_character_, "IND", NA_character_, NA_integer_,
-  "Los Angeles Clippers",   NA_character_, "LAC", NA_character_, NA_integer_,
-  "Los Angeles Lakers",     NA_character_, "LAL", NA_character_, NA_integer_,
-  "Memphis Grizzlies",      NA_character_, "MEM", NA_character_, NA_integer_,
-  "Miami Heat",             NA_character_, "MIA", NA_character_, NA_integer_,
-  "Milwaukee Bucks",        NA_character_, "MIL", NA_character_, NA_integer_,
-  "Minnesota Timberwolves", NA_character_, "MIN", NA_character_, NA_integer_,
-  "New Orleans Pelicans",   NA_character_, "NOP", NA_character_, NA_integer_,
-  "New York Knicks",        NA_character_, "NYK", NA_character_, NA_integer_,
-  "Oklahoma City Thunder",  NA_character_, "OKC", NA_character_, NA_integer_,
-  "Orlando Magic",          NA_character_, "ORL", NA_character_, NA_integer_,
-  "Philadelphia 76ers",     NA_character_, "PHI", NA_character_, NA_integer_,
-  "Phoenix Suns",           NA_character_, "PHX", NA_character_, NA_integer_,
-  "Portland Trail Blazers", NA_character_, "POR", NA_character_, NA_integer_,
-  "Sacramento Kings",       NA_character_, "SAC", NA_character_, NA_integer_,
-  "San Antonio Spurs",      NA_character_, "SAS", NA_character_, NA_integer_,
-  "Toronto Raptors",        NA_character_, "TOR", NA_character_, NA_integer_,
-  "Utah Jazz",              NA_character_, "UTA", NA_character_, NA_integer_,
-  "Washington Wizards",     NA_character_, "WAS", NA_character_, NA_integer_
+  "Atlanta Hawks",          "Brian",       "ATL", "W", 26L,
+  "Boston Celtics",         "Adam",        "BOS", "W", 7L,
+  "Brooklyn Nets",          "Eristeo",     "BKN", "L", 4L,
+  "Charlotte Hornets",      "Eristeo",     "CHA", "L", 28L,
+  "Chicago Bulls",          "Eristeo",     "CHI", "L", 10L,
+  "Cleveland Cavaliers",    "Eristeo",     "CLE", "W", 21L,
+  "Dallas Mavericks",       "Brian",       "DAL", "L", 14L,
+  "Denver Nuggets",         "Adam",        "DEN", "W", 6L,
+  "Detroit Pistons",        "Eristeo",     "DET", "W", 16L,
+  "Golden State Warriors",  "Brian",       "GSW", "L", 23L,
+  "Houston Rockets",        "Adam",        "HOU", "W", 13L,
+  "Indiana Pacers",         "Brian",       "IND", "W", 17L,
+  "Los Angeles Clippers",   "Brian",       "LAC", "L", 5L,
+  "Los Angeles Lakers",     "Eristeo",     "LAL", "W", 22L,
+  "Memphis Grizzlies",      "Eristeo",     "MEM", "L", 15L,
+  "Miami Heat",             "Adam",        "MIA", "W", 24L,
+  "Milwaukee Bucks",        "Brian",       "MIL", "L", 8L,
+  "Minnesota Timberwolves", "Adam",        "MIN", "W", 18L,
+  "New Orleans Pelicans",   "Eristeo",     "NOP", "L", 9L,
+  "New York Knicks",        "Brian",       "NYK", "W", 11L,
+  "Oklahoma City Thunder",  "Adam",        "OKC", "W", 1L,
+  "Orlando Magic",          "Brian",       "ORL", "L", 29L,
+  "Philadelphia 76ers",     "Adam",        "PHI", "W", 12L,
+  "Phoenix Suns",           "Adam",        "PHX", "L", 25L,
+  "Portland Trail Blazers", "Adam",        "POR", "L", 30L,
+  "Sacramento Kings",       "Eristeo",     "SAC", "L", 3L,
+  "San Antonio Spurs",      "Brian",       "SAS", "W", 2L,
+  "Toronto Raptors",        "Adam",        "TOR", "W", 19L,
+  "Utah Jazz",              "Eristeo",     "UTA", "L", 27L,
+  "Washington Wizards",     "Brian",       "WAS", "L", 20L
 )
 
 draft_complete <- all(!is.na(draft_data$player) & draft_data$skins_pick %in% c("W", "L"))
