@@ -313,7 +313,18 @@ tr_cleaned <- safe_scrape("TeamRankings", {
 # D: Scrape ESPN BPI
 url_espn <- "https://www.espn.com/nba/bpi/_/view/projections"
 espn_cleaned <- safe_scrape("ESPN BPI", {
-  webpage_espn <- read_html(url_espn)
+  # ESPN can answer with an empty 202 (bot check) - try a few user agents with a short pause
+  espn_uas <- c("Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)", "Mozilla/5.0", "")
+  espn_html <- ""
+  for (attempt in seq_len(6)) {
+    ua <- espn_uas[(attempt - 1) %% length(espn_uas) + 1]
+    resp_espn <- if (nzchar(ua)) GET(url_espn, user_agent(ua)) else GET(url_espn)
+    espn_html <- content(resp_espn, as = "text", encoding = "UTF-8")
+    if (status_code(resp_espn) == 200 && !is.na(espn_html) && nchar(espn_html) > 1000) break
+    Sys.sleep(5)
+  }
+  if (is.na(espn_html) || nchar(espn_html) <= 1000) stop("empty response (HTTP ", status_code(resp_espn), ")")
+  webpage_espn <- read_html(espn_html)
   espn_proj <- bind_cols(webpage_espn %>% html_table() %>% .[[1]], webpage_espn %>% html_table() %>% .[[2]])
   espn_proj %>%
     select(team = Team, ovr_wl = `OVR W-L`) %>%
