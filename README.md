@@ -1,6 +1,6 @@
 # NBA Skins Standings Tracker - Comprehensive Documentation
 
-An automated NBA fantasy league tracking system that scrapes live standings and multiple projection sources to track a 6-player "skins" draft league throughout the 2024-25 season.
+An automated NBA fantasy league tracking system that scrapes live standings and multiple projection sources to track a 3-player "skins" draft league throughout the 2026-27 season.
 
 ## 📊 Table of Contents
 
@@ -45,19 +45,28 @@ Players draft NBA teams and earn "skins" based on either wins (W pick) or losses
 
 ## 🏀 League Setup
 
-### Players
+### Players (2026-27)
 1. Eristeo
-2. Matt
-3. Brian
-4. Adam
-5. Thomas
-6. Kenneth
+2. Brian
+3. Adam
+
+Players are configured once in `PLAYERS` at the top of `index.qmd`; player order, the league-average divisor
+and per-player tables all derive from it. (2023-24 through 2025-26 were a 6-player league with 5 teams each;
+that data is archived in `archive/2025-26/`.)
 
 ### Draft Format
-- **Total Teams**: 30 NBA teams (6 players × 5 teams each)
+- **Draft Date**: Sunday, October 18, 2026 (season opens Tuesday, October 20, 2026)
+- **Total Teams**: 30 NBA teams (3 players × 10 teams each)
 - **Draft Type**: Snake draft
 - **Pick Range**: Picks 1-30
 - **Skins Assignment**: Each team is assigned either "W" (wins) or "L" (losses) as the skins source
+
+### Pre-Draft Mode
+`draft_data` ships with all 30 teams but blank `player`, `skins_pick` and `draft_pick` values. Until every team
+has a player and a W/L pick, the page renders a **Draft Board** instead of the standings: projected wins from
+every source, the average, the better side (W if avg ≥ 41, else L) and that side's projected skins, plus who
+drafted each team so far. In this mode `standings_history.csv` is not written; `team_vegas_history.csv`
+(team-level, pick-independent) still is. Once all 30 picks are entered, the full dashboard turns on automatically.
 
 ### Critical: Hardcoded W/L Picks
 The W/L pick for each team is **hardcoded** in the `draft_data` tibble and stored in `HARDCODED_PICKS`. This prevents any logic from inferring picks based on projections (which would be circular logic). The system verifies picks match the draft on every run.
@@ -306,13 +315,13 @@ season_completion_pct = (total_games_played / 2460) × 100
 - Skins %: Percentage with 1 decimal (e.g., "76.5%")
 - All projections: 1 decimal place (e.g., "253.8")
 
-### Table 2: Standings by Player (6 Separate Tables)
+### Table 2: Standings by Player (One Table per Player)
 
-**Purpose**: Detailed breakdown of each player's 5 teams
+**Purpose**: Detailed breakdown of each player's 10 teams
 
-**Structure**: 6 seamless tables with gray headers showing player names
+**Structure**: 3 seamless tables with gray headers showing player names
 
-**Player Order**: Eristeo → Matt → Brian → Adam → Thomas → Kenneth
+**Player Order**: Eristeo → Brian → Adam (from `PLAYERS`)
 
 **Columns**: 
 - Abbr (team abbreviation)
@@ -356,10 +365,7 @@ All charts use a **colorblind-friendly palette** (Paul Tol's vibrant scheme):
 ```r
 Eristeo:  #0077BB (Blue)
 Brian:    #CC3311 (Red)
-Adam:     #33BBEE (Cyan)
-Thomas:   #009988 (Teal)
-Kenneth:  #EE7733 (Orange)
-Matt:     #EE3377 (Magenta)
+Adam:     #009988 (Teal)
 ```
 
 #### Chart 1: Skins Over Time
@@ -387,7 +393,7 @@ Matt:     #EE3377 (Magenta)
 10. **Projection Average** (Y-axis: 220 to max) - Simple mean
 11. **Max Projection** (Y-axis: 220 to max) ⭐ NEW - Best-case scenarios
 
-- **Y-axis**: 220 to max (200 for BB-Ref)
+- **Y-axis**: Auto-scaled to the data (fixed lower bounds were removed in 2026-27 because 10-team rosters project roughly 2× the old totals)
 - **Format**: 1 decimal place
 - **Purpose**: Track how different models project the season
 
@@ -635,9 +641,7 @@ df_vegas %>%
 
 **Solution** (already implemented in latest code):
 1. **Historical backfill**: System checks `team_vegas_history.csv` for most recent value
-2. **Hardcoded fallback**: If no history, uses reasonable estimates:
-   - Milwaukee Bucks: 47.25 wins
-   - Sacramento Kings: 31.5 wins
+2. **Hardcoded fallback**: If no history, uses `vegas_fallback` (empty for 2026-27; the 2025-26 MIL/SAC values were removed)
 3. **Prevent pollution**: Only non-NA values saved to history
 
 **Manual Override** (if needed):
@@ -982,9 +986,9 @@ colorblind_colors <- c(
 )
 ```
 
-4. **Reset historical files** (optional but recommended for new season):
+4. **Archive historical files** (recommended for new season):
 ```bash
-rm standings_history.csv team_vegas_history.csv
+mkdir -p archive/<season> && git mv standings_history.csv team_vegas_history.csv archive/<season>/
 ```
 
 5. **Update all_teams** if league expands/contracts:
@@ -1334,6 +1338,13 @@ Pull requests welcome for bug fixes and enhancements!
 - ✅ **Updated documentation**: Complete README overhaul reflecting current formula
 - ✅ **Added Skins Game explanation**: Hyperlinked description on dashboard
 
+### v3.0.0 (October 2026) - Three-player league
+- ✅ League changed to 3 players (Eristeo, Brian, Adam) × 10 teams each; `PLAYERS` config drives everything
+- ✅ Draft data reset to blanks for the October 18, 2026 draft; pre-draft Draft Board mode
+- ✅ 2025-26 history archived to `archive/2025-26/`; stale Vegas fallback values removed
+- ✅ Historical benchmarks shown ×2 for 10-team rosters and 2025-26 added
+- ✅ Chart Y-axes auto-scale; workflow tolerates missing history files
+
 ### v2.1.0 (November 2024)
 - ✅ Added Basketball Reference projections (6th source)
 - ✅ Updated weighted average formula (with Vegas/BB-Ref)
@@ -1357,7 +1368,7 @@ Pull requests welcome for bug fixes and enhancements!
 
 ---
 
-**Current Season**: 2024-25 NBA Season  
+**Current Season**: 2026-27 NBA Season  
 **Last Major Update**: November 2024 (v2.2.0)  
 **Maintained by**: League Commissioner  
 **Repository**: [Your GitHub URL Here]  
