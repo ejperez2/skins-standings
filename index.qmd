@@ -33,6 +33,13 @@ pacman::p_load(httr, jsonlite, rvest, dplyr, tidyr, knitr, kableExtra, tibble, s
 PLAYERS <- c("Eristeo", "Brian", "Adam")
 TEAMS_PER_PLAYER <- 30 / length(PLAYERS)
 SEASON_START <- as.Date("2026-10-20")  # Opening night; ESPN shows preseason records before this
+# Colorblind-friendly palette (Paul Tol's vibrant scheme)
+colorblind_colors <- c(
+  "Eristeo" = "#0077BB",   # Blue
+  "Brian" = "#CC3311",     # Red
+  "Adam" = "#009988"       # Teal
+)
+
 # Weighted average weights (early-season; the Projection Accuracy section suggests updates)
 WEIGHTS <- c(tr = 0.50, espn = 0.34, cbs = 0.16)
 
@@ -653,6 +660,76 @@ player_scores <- draft_data %>%
          `Vegas Consensus`, `TR`, `ESPN`, `CBS`, `BB-Ref`, `Proj Avg`, `Max Proj`) %>%
   arrange(desc(`Actual Skins`))
 
+# --- Step 5.5: Projection uncertainty (likely ranges and chance to win) ---
+# Each team's final wins = projected wins +/- a miss with two parts, fit on 2025-26 (see README):
+#   luck in the games left:                   left * p * (1 - p)        (p = projected win rate the rest of the way)
+#   the projection misjudging the team:       TALENT_SD * (left / 82)^1.5, shrinking as the season goes
+# Season outcomes are simulated from those team misses and summed into each player's skins.
+TALENT_SD_2526 <- 8.6   # 2025-26: 9.7-win preseason miss = 4.5 luck + 8.6 misjudged teams
+N_SIMS <- 10000
+talent_sd_now <- TALENT_SD_2526
+uncertainty_note <- "last season's projection misses"
+
+# Re-fit from this season once teams have played ~12 games since opening night, blending toward
+# this season's own misses until midseason (method of moments on the opening-night snapshot)
+if (!is.null(proj_history) && n_distinct(proj_history$date) > 1) {
+  open_dates <- proj_history$date[proj_history$date <= SEASON_START]
+  open_date <- if (length(open_dates) > 0) max(open_dates) else min(proj_history$date)
+  last_date <- max(proj_history$date)
+  if (open_date < last_date) {
+    fit <- proj_history %>% filter(date == open_date) %>%
+      inner_join(proj_history %>% filter(date == last_date) %>% select(team, w1 = wins, l1 = losses), by = "team") %>%
+      mutate(g0 = wins + losses, left0 = 82 - g0, played = w1 + l1 - g0, won = w1 - wins,
+             rate = pmin(pmax((weighted - wins) / left0, 0.01), 0.99),
+             resid = won - rate * played,
+             luck = played * rate * (1 - rate),
+             talent_scale = ((left0 / 82)^1.5 * played / left0)^2) %>%
+      filter(!is.na(weighted), played > 0, left0 > 0)
+    if (nrow(fit) >= 20 && mean(fit$played) >= 12) {
+      t_hat <- sqrt(max(0, (sum(fit$resid^2) - sum(fit$luck)) / sum(fit$talent_scale)))
+      t_hat <- min(max(t_hat, 4), 14)
+      blend <- min(1, mean(fit$played) / 41)
+      talent_sd_now <- (1 - blend) * TALENT_SD_2526 + blend * t_hat
+      uncertainty_note <- sprintf("%.0f%% this season's projection misses (%.0f games per team so far), %.0f%% last season's",
+                                  100 * blend, mean(fit$played), 100 * (1 - blend))
+    }
+  }
+}
+
+uncertainty <- NULL
+if (draft_complete) {
+  unc_teams <- df_final_projections %>%
+    inner_join(draft_data %>% select(team, player), by = "team") %>%
+    mutate(left = pmax(82 - (actual_wins + actual_losses), 0),
+           proj_w = coalesce(if_else(skins_pick == "W", weighted_average, 82 - weighted_average),
+                             vegas_proj_wins, actual_wins + 0.5 * left),
+           proj_w = pmin(pmax(proj_w, actual_wins), actual_wins + left),
+           rate = if_else(left > 0, pmin(pmax((proj_w - actual_wins) / left, 0.01), 0.99), 0.5),
+           sd = sqrt(left * rate * (1 - rate) + (talent_sd_now * (left / 82)^1.5)^2))
+
+  set.seed(as.integer(Sys.Date()))  # same numbers for every run on a given day
+  z <- matrix(rnorm(nrow(unc_teams) * N_SIMS), nrow = nrow(unc_teams))
+  final_w <- pmin(pmax(unc_teams$proj_w + unc_teams$sd * z, unc_teams$actual_wins), unc_teams$actual_wins + unc_teams$left)
+  final_skins <- final_w
+  l_rows <- unc_teams$skins_pick == "L"
+  final_skins[l_rows, ] <- 82 - final_w[l_rows, ]   # L picks earn skins on losses
+  sim_player <- rowsum(final_skins, unc_teams$player)   # players x simulated seasons
+  sim_winner <- rownames(sim_player)[apply(sim_player, 2, which.max)]
+
+  uncertainty <- tibble(
+    player = rownames(sim_player),
+    win_prob = as.numeric(table(factor(sim_winner, levels = rownames(sim_player)))) / N_SIMS,
+    lo80 = apply(sim_player, 1, quantile, 0.10),
+    lo50 = apply(sim_player, 1, quantile, 0.25),
+    hi50 = apply(sim_player, 1, quantile, 0.75),
+    hi80 = apply(sim_player, 1, quantile, 0.90)
+  )
+  player_scores <- player_scores %>%
+    left_join(uncertainty %>% select(player, `Chance to Win` = win_prob, range_lo = lo80, range_hi = hi80), by = "player")
+} else {
+  player_scores <- player_scores %>% mutate(`Chance to Win` = NA_real_, range_lo = NA_real_, range_hi = NA_real_)
+}
+
 # --- Step 6: Prepare Standings Table Data ---
 draft_table_data <- df_final_projections %>% 
   select(team, abbr, skins_pick) %>%
@@ -677,7 +754,10 @@ current_standings <- player_scores %>%
     cbs_sports = `CBS`,
     basketball_reference = `BB-Ref`,
     projection_average = `Proj Avg`,
-    max_projection = `Max Proj`
+    max_projection = `Max Proj`,
+    win_prob = `Chance to Win`,
+    range_lo,
+    range_hi
   ) %>%
   mutate(date = today)
 
@@ -825,6 +905,8 @@ player_scores_display <- player_scores %>%
     `Skins %` = sprintf("%.1f%%", `Skins %` * 100),
     `% Projected` = fmt_num(`% Projected`),
     `Weighted Average` = fmt_num(`Weighted Average`),
+    `Chance to Win` = if_else(is.na(`Chance to Win`), "&ndash;", sprintf("%.0f%%", 100 * `Chance to Win`)),
+    `Likely Range` = if_else(is.na(range_lo), "&ndash;", sprintf("%.0f&ndash;%.0f", range_lo, range_hi)),
     `Vegas Consensus` = fmt_num(`Vegas Consensus`),
     `TR` = fmt_num(`TR`),
     `ESPN` = fmt_num(`ESPN`),
@@ -832,7 +914,9 @@ player_scores_display <- player_scores %>%
     `BB-Ref` = fmt_num(`BB-Ref`),
     `Proj Avg` = fmt_num(`Proj Avg`),
     `Max Proj` = fmt_num(`Max Proj`)
-  )
+  ) %>%
+  select(player, `Actual Skins`, `Skins %`, `% Projected`, `Weighted Average`, `Chance to Win`, `Likely Range`,
+         `Vegas Consensus`, `TR`, `ESPN`, `CBS`, `BB-Ref`, `Proj Avg`, `Max Proj`)
 
 # Calculate global averages (across all teams in league, not player averages)
 league_total_skins <- sum(df_final_projections$actual_skins, na.rm = TRUE)
@@ -849,6 +933,8 @@ global_avg_row <- tibble(
   `Skins %` = sprintf("%.1f%%", league_skins_pct * 100),
   `% Projected` = sprintf("%.1f", league_pct_projected_avg),
   `Weighted Average` = fmt_num(mean(player_scores$`Weighted Average`, na.rm = TRUE)),
+  `Chance to Win` = "",
+  `Likely Range` = "",
   `Vegas Consensus` = fmt_num(mean(player_scores$`Vegas Consensus`, na.rm = TRUE)),
   `TR` = fmt_num(mean(player_scores$`TR`, na.rm = TRUE)),
   `ESPN` = fmt_num(mean(player_scores$`ESPN`, na.rm = TRUE)),
@@ -862,7 +948,8 @@ global_avg_row <- tibble(
 player_scores_with_avg <- bind_rows(player_scores_display, global_avg_row)
 
 # Add column names with hyperlinks (with light colored links for dark background)
-col_names <- c("Player", "Actual Skins", "Skins %", "% Projected", "Weighted Average", 
+col_names <- c("Player", "Actual Skins", "Skins %", "% Projected", "Weighted Average",
+               "Chance to Win", "Likely Range (80%)",
                "Vegas Consensus", 
                "<a href='https://www.teamrankings.com/nba/projections/standings/' target='_blank' style='color: #66B2FF;'>TR</a>",
                "<a href='https://www.espn.com/nba/bpi/_/view/projections' target='_blank' style='color: #66B2FF;'>ESPN</a>",
@@ -870,14 +957,15 @@ col_names <- c("Player", "Actual Skins", "Skins %", "% Projected", "Weighted Ave
                "<a href='https://www.basketball-reference.com/friv/playoff_prob.html' target='_blank' style='color: #66B2FF;'>BB-Ref</a>",
                "Proj Avg", "Max Proj")
 
-table_output <- kable(player_scores_with_avg, align = c("l", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r"),
+table_output <- kable(player_scores_with_avg, align = c("l", "r", "r", "r", "r", "r", "c", "r", "r", "r", "r", "r", "r", "r"),
       col.names = col_names, escape = FALSE, format = "html") %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, position = "center") %>%
   row_spec(nrow(player_scores_with_avg), bold = TRUE, background = "#F0F0F0") %>%  # Highlight average row
   column_spec(1, bold = TRUE) %>%
   column_spec(2, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
   column_spec(3, bold = TRUE, background = "#FFF9C4") %>%  # Highlight skins %
-  column_spec(5, bold = TRUE, background = "#DFF0D8")  # Highlight weighted average
+  column_spec(5, bold = TRUE, background = "#DFF0D8") %>%  # Highlight weighted average
+  column_spec(6, bold = TRUE, background = "#E3F2FD")      # Highlight chance to win
 
 # Add header styling via CSS
 table_html <- as.character(table_output)
@@ -892,6 +980,34 @@ cat(table_html)
 cat("<p style='font-size: 13px; margin-top: 5px; margin-bottom: 0; text-align: left;'>Skins % 2023-26: <b>58%, 62%, 59%, 59%</b></p>")
 cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Winner's Skins % 2023-26: <b>61%, 68%, 65%, 66%</b> (6-player leagues; with 3 players each roster is a third of the league, so expect this year's winner to finish with a lower %)</p>")
 cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Early-Season Weighted Avg: TR 50%, ESPN 34%, CBS 16% (Most accurate Nov weightings, used to open 2025-26)</p>")
+cat(sprintf("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Chance to Win and Likely Range come from %s simulated seasons around the weighted average. The likely range is where a player's final total lands 4 times in 5; it narrows as games are played. Uncertainty is based on %s.</p>",
+            format(N_SIMS, big.mark = ","), uncertainty_note))
+```
+
+```{r range-strip, echo=FALSE, fig.width=12, fig.height=3.4, warning=FALSE}
+# Range strip: dot = weighted average, thick bar = 50% likely range, thin bar = 80% likely range
+if (!is.null(uncertainty)) {
+  strip <- uncertainty %>%
+    left_join(player_scores %>% select(player, proj = `Weighted Average`), by = "player") %>%
+    arrange(desc(proj)) %>%
+    mutate(label = sprintf("%s  \u00b7  %.0f%% to win", player, 100 * win_prob),
+           label = factor(label, levels = rev(label)))
+  print(
+    ggplot(strip, aes(y = label, color = player)) +
+      geom_linerange(aes(xmin = lo80, xmax = hi80), linewidth = 3, alpha = 0.35) +
+      geom_linerange(aes(xmin = lo50, xmax = hi50), linewidth = 7, alpha = 0.6) +
+      geom_point(aes(x = proj), size = 4.5, color = "white") +
+      geom_point(aes(x = proj), size = 3) +
+      geom_text(aes(x = proj, label = sprintf("%.0f", proj)), vjust = -1.6, size = 4, color = "#333333") +
+      scale_color_manual(values = colorblind_colors, guide = "none") +
+      labs(title = "Projected final skins",
+           subtitle = "Dot = weighted average   thick bar = 50% likely range   thin bar = 80% likely range",
+           x = "Final skins", y = NULL) +
+      theme_minimal() +
+      theme(plot.title = element_text(size = 16, face = "bold"), axis.text = element_text(size = 12),
+            panel.grid.minor = element_blank(), panel.grid.major.y = element_blank())
+  )
+}
 ```
 
 ```{r by-player-heading, echo=FALSE, results='asis'}
@@ -1222,12 +1338,6 @@ cat("\n## Season Charts\n\n")
 ```{r skins-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
 library(ggplot2)
 
-# Colorblind-friendly palette (Paul Tol's vibrant scheme)
-colorblind_colors <- c(
-  "Eristeo" = "#0077BB",   # Blue
-  "Brian" = "#CC3311",     # Red
-  "Adam" = "#009988"       # Teal
-)
 
 # Find the first date with actual games (non-zero skins)
 first_game_date <- history %>%
