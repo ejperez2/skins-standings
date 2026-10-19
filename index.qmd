@@ -33,6 +33,7 @@ pacman::p_load(httr, jsonlite, rvest, dplyr, tidyr, knitr, kableExtra, tibble, s
 PLAYERS <- c("Eristeo", "Brian", "Adam")
 TEAMS_PER_PLAYER <- 30 / length(PLAYERS)
 SEASON_START <- as.Date("2026-10-20")  # Opening night; ESPN shows preseason records before this
+SEASON_END <- as.Date("2027-04-11")    # Last day of the regular season
 # Colorblind-friendly palette (Paul Tol's vibrant scheme)
 colorblind_colors <- c(
   "Eristeo" = "#0077BB",   # Blue
@@ -1334,6 +1335,61 @@ if (is.null(h) || nrow(h) == 0) {
 ```{r charts-heading, echo=FALSE, results='asis'}
 cat("\n## Season Charts\n\n")
 ```
+
+```{r narrowing-band-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
+# Projection with 80% likely range over the season.
+#   Solid line + darker band: each day's weighted average and likely range as tracked (standings_history.csv)
+#   Dashed line + lighter band: how today's range narrows to the end of the season if projections hold
+#     (same team-level miss model as Chance to Win, with games left shrinking on schedule)
+band_hist <- history %>%
+  filter(!is.na(range_lo), !is.na(weighted_average)) %>%
+  select(player, date, proj = weighted_average, lo = range_lo, hi = range_hi)
+
+if (!is.null(uncertainty) && nrow(band_hist) > 0) {
+  now_d <- max(band_hist$date)
+  latest_band <- band_hist %>% filter(date == now_d)
+
+  # Expected narrowing: shrink each team's games left on schedule and recompute its miss
+  start_d <- max(now_d, SEASON_START)
+  ahead <- unique(c(now_d, seq(start_d, SEASON_END, by = "week"), SEASON_END))
+  ahead <- ahead[ahead >= now_d & ahead <= SEASON_END]
+  team_sd_at <- function(d) {
+    frac <- if (SEASON_END > start_d) min(1, max(0, as.numeric(d - start_d) / as.numeric(SEASON_END - start_d))) else 1
+    left_d <- unc_teams$left * (1 - frac)
+    sqrt(left_d * unc_teams$rate * (1 - unc_teams$rate) + (talent_sd_now * (left_d / 82)^1.5)^2)
+  }
+  sd_now <- sqrt(rowsum(team_sd_at(now_d)^2, unc_teams$player))
+  band_ahead <- bind_rows(lapply(ahead, function(d) {
+    ratio <- as.vector(sqrt(rowsum(team_sd_at(d)^2, unc_teams$player)) / sd_now)
+    tibble(player = rownames(sd_now), date = d, ratio = ratio)
+  })) %>%
+    inner_join(latest_band %>% select(player, proj, lo0 = lo, hi0 = hi), by = "player") %>%
+    mutate(lo = proj - (proj - lo0) * ratio, hi = proj + (hi0 - proj) * ratio)
+
+  print(
+    ggplot() +
+      geom_ribbon(data = band_ahead, aes(date, ymin = lo, ymax = hi, fill = player), alpha = 0.08) +
+      geom_line(data = band_ahead, aes(date, proj, color = player), linewidth = 0.9, linetype = "dashed") +
+      geom_ribbon(data = band_hist, aes(date, ymin = lo, ymax = hi, fill = player), alpha = 0.22) +
+      geom_line(data = band_hist, aes(date, proj, color = player), linewidth = 1.2) +
+      geom_linerange(data = latest_band, aes(x = date, ymin = lo, ymax = hi, color = player), linewidth = 3, alpha = 0.5) +
+      geom_point(data = latest_band, aes(date, proj, color = player), size = 2.5) +
+      geom_vline(xintercept = now_d, linetype = "dotted", color = "gray50") +
+      scale_color_manual(values = colorblind_colors) +
+      scale_fill_manual(values = colorblind_colors) +
+      labs(title = "Projected final skins with 80% likely range",
+           subtitle = "Solid: tracked each day   Dashed: how today's range narrows by April if projections hold",
+           x = NULL, y = "Projected final skins", color = NULL, fill = NULL) +
+      theme_minimal() +
+      theme(legend.position = "right", plot.title = element_text(size = 16, face = "bold"),
+            axis.text = element_text(size = 11), axis.title = element_text(size = 12),
+            panel.grid.minor = element_blank(), panel.grid.major = element_line(color = "gray90"),
+            legend.text = element_text(size = 11))
+  )
+}
+```
+
+## 
 
 ```{r skins-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
 library(ggplot2)
