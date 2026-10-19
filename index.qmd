@@ -240,9 +240,6 @@ vegas_lines <- vegas_lines %>%
   ) %>%
   filter(!is.na(adj_line))
 
-# Which books contributed this update (shown under the standings table)
-vegas_book_counts <- vegas_lines %>% count(book, name = "teams") %>% arrange(desc(teams), book)
-
 # Store as projected WINS - we'll apply draft picks later
 df_skins <- vegas_lines %>%
   group_by(team) %>%
@@ -900,21 +897,9 @@ cat(table_html)
 ```{r player-footnotes, echo=FALSE, results='asis'}
 # Manually print the footnotes as HTML <p> tags
 # This divorces them from the table's column widths
-cat("<p style='font-size: 13px; margin-top: 5px; margin-bottom: 0; text-align: left;'>Prior seasons were 6 players &times; 5 teams; skin totals below are doubled (&times;2) to match 10-team rosters.</p>")
-cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Avg Skins 2023-26 (&times;2): <b>472, 506, 480, 487</b></p>")
-cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Skins % 2023-26: <b>58%, 62%, 59%, 59%</b></p>")
-cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Winner's Skins 2023-26 (&times;2): <b>498, 560, 536, 540</b></p>")
+cat("<p style='font-size: 13px; margin-top: 5px; margin-bottom: 0; text-align: left;'>Skins % 2023-26: <b>58%, 62%, 59%, 59%</b></p>")
+cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Winner's Skins % 2023-26: <b>61%, 68%, 65%, 66%</b> (6-player leagues; with 3 players each roster is a third of the league, so expect this year's winner to finish with a lower %)</p>")
 cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Early-Season Weighted Avg: TR 50%, ESPN 34%, CBS 16% (Most accurate Nov weightings, used to open 2025-26)</p>")
-book_names <- c(betrivers = "BetRivers", caesars = "Caesars", draftkings = "DraftKings", fanduel = "FanDuel",
-                mgm = "BetMGM", hardrock = "Hard Rock", thescore = "theScore", circasports = "Circa",
-                betr = "Betr", espnbet = "ESPN Bet")
-if (nrow(vegas_book_counts) > 0) {
-  books_txt <- paste(sprintf("%s (%d)", ifelse(vegas_book_counts$book %in% names(book_names),
-                                                book_names[vegas_book_counts$book], vegas_book_counts$book),
-                             vegas_book_counts$teams), collapse = ", ")
-  cat(sprintf("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Vegas consensus this update (teams with a line): %s</p>", books_txt))
-}
-cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>&ndash; = no projection from that source for at least one of the player's teams (CBS and BB-Ref publish once the season starts)</p>")
 ```
 
 ```{r by-player-heading, echo=FALSE, results='asis'}
