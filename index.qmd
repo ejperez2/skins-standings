@@ -3,6 +3,9 @@ title: "Skins Standings and Projections Dashboard"
 format: 
   html:
     self-contained: true
+    include-before-body:
+      text: |
+        <nav style='font-size:15px; margin:0 0 6px 0; padding:6px 0; border-bottom:1px solid rgba(128,128,128,0.35);'><strong style='margin-right:14px;'>Standings</strong><a href='https://ejperez2.github.io/Daily-Skins-Matchups/' style='margin-right:14px;'>Daily Matchups</a><span style='opacity:0.75;'>2025-26: <a href='https://ejperez2.github.io/skins-standings/2025-26/'>Standings</a> &middot; <a href='https://ejperez2.github.io/Daily-Skins-Matchups/2025-26/'>Matchups</a></span></nav>
     grid:
       body-width: 1200px
 editor: visual
@@ -13,7 +16,7 @@ ts <- format(Sys.time(), "%A, %B %d, %Y at %I:%M %p %Z", tz = "America/Chicago")
 
 cat(sprintf(
   "<p style='font-size:14px; color:#555; margin-top:2px;margin-bottom: 0; '>
-   <strong>Last updated:</strong> %s &middot; <a href='2025-26/'>2025-26 final standings</a></p>", ts)
+   <strong>Last updated:</strong> %s</p>", ts)
 )
 ```
 
