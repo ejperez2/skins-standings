@@ -204,100 +204,45 @@ df_vegas <- safe_scrape("Vegas", {
   out
 }, empty = tibble(name = character()))
 
-df_skins <- df_vegas %>%
-  select(
-    team = name,
-    any_of(c(
-      "mgm_line", "mgm_odds_under", "mgm_odds",
-      "draftkings_line", "draftkings_odds_under", "draftkings_odds",
-      "caesars_line", "caesars_odds_under", "caesars_odds",
-      "betrivers_line", "betrivers_odds_under", "betrivers_odds",
-      "hardrock_line", "hardrock_odds_under", "hardrock_odds",
-      "fanduel_line", "fanduel_odds_under", "fanduel_odds",
-      "espnbet_line", "espnbet_odds_under", "espnbet_odds"
-    ))
-  ) %>%
-  rename_with(
-    ~ case_when(
-      . == "mgm_line" ~ "mgm_total",
-      . == "mgm_odds_under" ~ "mgm_under",
-      . == "mgm_odds" ~ "mgm_over",
-      . == "draftkings_line" ~ "draftkings_total",
-      . == "draftkings_odds_under" ~ "draftkings_under",
-      . == "draftkings_odds" ~ "draftkings_over",
-      . == "caesars_line" ~ "caesars_total",
-      . == "caesars_odds_under" ~ "caesars_under",
-      . == "caesars_odds" ~ "caesars_over",
-      . == "betrivers_line" ~ "betrivers_total",
-      . == "betrivers_odds_under" ~ "betrivers_under",
-      . == "betrivers_odds" ~ "betrivers_over",
-      . == "hardrock_line" ~ "hardrock_total",
-      . == "hardrock_odds_under" ~ "hardrock_under",
-      . == "hardrock_odds" ~ "hardrock_over",
-      . == "fanduel_line" ~ "fanduel_total",
-      . == "fanduel_odds_under" ~ "fanduel_under",
-      . == "fanduel_odds" ~ "fanduel_over",
-      . == "espnbet_line" ~ "espnbet_total",
-      . == "espnbet_odds_under" ~ "espnbet_under",
-      . == "espnbet_odds" ~ "espnbet_over",
-      TRUE ~ .
-    )
-  )
+# Vegas consensus: every sportsbook in Rotowire's feed (any "<book>_line" column), so books that are
+# added, renamed or go silent never break the page. Each book's line is nudged 0.5 win toward the side
+# its odds favor, then the books available for a team are averaged.
+american_to_prob <- function(odds) case_when(odds < 0 ~ -odds / (-odds + 100), odds > 0 ~ 100 / (odds + 100), TRUE ~ NA_real_)
+book_col <- function(df, col) if (col %in% names(df)) suppressWarnings(as.numeric(df[[col]])) else rep(NA_real_, nrow(df))
 
-# CRITICAL FIX: Create missing columns with NA values for sportsbooks that don't have data
-required_cols <- c("mgm_total", "mgm_under", "mgm_over",
-                   "draftkings_total", "draftkings_under", "draftkings_over",
-                   "caesars_total", "caesars_under", "caesars_over",
-                   "betrivers_total", "betrivers_under", "betrivers_over",
-                   "hardrock_total", "hardrock_under", "hardrock_over",
-                   "fanduel_total", "fanduel_under", "fanduel_over",
-                   "espnbet_total", "espnbet_under", "espnbet_over")
+vegas_books <- setdiff(sub("_line$", "", grep("_line$", names(df_vegas), value = TRUE)), "best")  # best_line repeats one book
+vegas_lines <- bind_rows(lapply(vegas_books, function(bk) {
+  line_v <- book_col(df_vegas, paste0(bk, "_line"))
+  over_v <- book_col(df_vegas, paste0(bk, "_odds"))
+  under_v <- book_col(df_vegas, paste0(bk, "_odds_under"))
+  tibble(team = df_vegas$name, book = bk, line = line_v, over = over_v, under = under_v)
+}))
+if (nrow(vegas_lines) == 0) vegas_lines <- tibble(team = character(), book = character(), line = numeric(), over = numeric(), under = numeric())
 
-for (col in required_cols) {
-  if (!col %in% names(df_skins)) {
-    df_skins[[col]] <- NA_real_
-  }
-}
-
-# Now continue with the processing
-df_skins <- df_skins %>%
-  mutate(across(ends_with(c("_total", "_under", "_over")), as.numeric)) %>%
-  # Rotowire stores some books' lines divided by 1,000 (e.g. BetRivers 0.0435 = 43.5 wins) - rescale them,
-  # then ignore anything that still isn't a plausible win total
-  mutate(across(ends_with("_total"), ~ if_else(!is.na(.x) & .x > 0.004 & .x < 0.078, .x * 1000, .x))) %>%
-  mutate(across(ends_with("_total"), ~ if_else(.x >= 10 & .x <= 72, .x, NA_real_))) %>%
-  rowwise() %>%
+vegas_lines <- vegas_lines %>%
   mutate(
-    # Adjust each total based on over/under odds - safely handle NA values
-    mgm_adj = if_else(!is.na(mgm_total), 
-                      mgm_total + if_else(mgm_total > 41, 0.5 * (mgm_over > mgm_under), -0.5 * (mgm_under > mgm_over)),
-                      NA_real_),
-    draftkings_adj = if_else(!is.na(draftkings_total),
-                             draftkings_total + if_else(draftkings_total > 41, 0.5 * (draftkings_over > draftkings_under), -0.5 * (draftkings_under > draftkings_over)),
-                             NA_real_),
-    caesars_adj = if_else(!is.na(caesars_total),
-                          caesars_total + if_else(caesars_total > 41, 0.5 * (caesars_over > caesars_under), -0.5 * (caesars_under > caesars_over)),
-                          NA_real_),
-    betrivers_adj = if_else(!is.na(betrivers_total),
-                            betrivers_total + if_else(betrivers_total > 41, 0.5 * (betrivers_over > betrivers_under), -0.5 * (betrivers_under > betrivers_over)),
-                            NA_real_),
-    hardrock_adj = if_else(!is.na(hardrock_total),
-                           hardrock_total + if_else(hardrock_total > 41, 0.5 * (hardrock_over > hardrock_under), -0.5 * (hardrock_under > hardrock_over)),
-                           NA_real_),
-    fanduel_adj = if_else(!is.na(fanduel_total),
-                          fanduel_total + if_else(fanduel_total > 41, 0.5 * (fanduel_over > fanduel_under), -0.5 * (fanduel_under > fanduel_over)),
-                          NA_real_),
-    espnbet_adj = if_else(!is.na(espnbet_total),
-                          espnbet_total + if_else(espnbet_total > 41, 0.5 * (espnbet_over > espnbet_under), -0.5 * (espnbet_under > espnbet_over)),
-                          NA_real_),
-    # Calculate composite projection as mean of adjusted totals (PROJECTED WINS, not skins)
-    composite_projection = mean(c(mgm_adj, draftkings_adj, caesars_adj, betrivers_adj, hardrock_adj, fanduel_adj, espnbet_adj), na.rm = TRUE)
+    # Rotowire stores some books' lines divided by 1,000 (e.g. BetRivers 0.0435 = 43.5 wins)
+    line = if_else(!is.na(line) & line > 0.004 & line < 0.078, line * 1000, line),
+    # Books show 0 / junk when they have no line - keep only plausible win totals
+    line = if_else(!is.na(line) & line >= 10 & line <= 72, line, NA_real_),
+    p_over = american_to_prob(over),
+    p_under = american_to_prob(under),
+    shift = case_when(is.na(p_over) | is.na(p_under) ~ 0,
+                      p_over > p_under ~ 0.5,     # over is favored -> true number a bit higher
+                      p_under > p_over ~ -0.5,
+                      TRUE ~ 0),
+    adj_line = line + shift
   ) %>%
-  ungroup() %>%
-  # Store as projected WINS - we'll apply draft picks later
-  mutate(
-    vegas_proj_wins = composite_projection
-  )
+  filter(!is.na(adj_line))
+
+# Which books contributed this update (shown under the standings table)
+vegas_book_counts <- vegas_lines %>% count(book, name = "teams") %>% arrange(desc(teams), book)
+
+# Store as projected WINS - we'll apply draft picks later
+df_skins <- vegas_lines %>%
+  group_by(team) %>%
+  summarise(vegas_proj_wins = mean(adj_line), vegas_books = n(), .groups = "drop")
+if (nrow(df_skins) == 0) failed_sources <- c(failed_sources, "Vegas")
 
 # C: Scrape TeamRankings
 url_tr <- "https://www.teamrankings.com/nba/projections/standings/"
@@ -934,6 +879,15 @@ cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: l
 cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Skins % 2023-26: <b>58%, 62%, 59%, 59%</b></p>")
 cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Winner's Skins 2023-26 (&times;2): <b>498, 560, 536, 540</b></p>")
 cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Early-Season Weighted Avg: TR 50%, ESPN 34%, CBS 16% (Most accurate Nov weightings, used to open 2025-26)</p>")
+book_names <- c(betrivers = "BetRivers", caesars = "Caesars", draftkings = "DraftKings", fanduel = "FanDuel",
+                mgm = "BetMGM", hardrock = "Hard Rock", thescore = "theScore", circasports = "Circa",
+                betr = "Betr", espnbet = "ESPN Bet")
+if (nrow(vegas_book_counts) > 0) {
+  books_txt <- paste(sprintf("%s (%d)", ifelse(vegas_book_counts$book %in% names(book_names),
+                                                book_names[vegas_book_counts$book], vegas_book_counts$book),
+                             vegas_book_counts$teams), collapse = ", ")
+  cat(sprintf("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Vegas consensus this update (teams with a line): %s</p>", books_txt))
+}
 cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>&ndash; = no projection from that source for at least one of the player's teams (CBS and BB-Ref publish once the season starts)</p>")
 ```
 
