@@ -94,6 +94,10 @@ average 12+ games since opening night, `TALENT_SD` is re-estimated from this sea
 are seeded by date so every run on a given day shows the same numbers. `win_prob`, `range_lo` and
 `range_hi` are saved to `standings_history.csv`.
 
+The first Season Chart, "Projected final skins with 80% likely range", shows each player's tracked weighted
+average and likely range by day (solid line, darker band) and, from today to `SEASON_END`, how today's range
+is expected to narrow if projections hold (dashed line, lighter band) using the same team-level miss model.
+
 ### Pre-Draft Mode
 `draft_data` ships with all 30 teams but blank `player`, `skins_pick` and `draft_pick` values. Until every team
 has a player and a W/L pick, the page renders a **Draft Board** instead of the standings: projected wins from
