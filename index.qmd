@@ -262,7 +262,9 @@ for (col in required_cols) {
 # Now continue with the processing
 df_skins <- df_skins %>%
   mutate(across(ends_with(c("_total", "_under", "_over")), as.numeric)) %>%
-  # Some books occasionally send junk lines (e.g. 0.06) - ignore anything that isn't a plausible win total
+  # Rotowire stores some books' lines divided by 1,000 (e.g. BetRivers 0.0435 = 43.5 wins) - rescale them,
+  # then ignore anything that still isn't a plausible win total
+  mutate(across(ends_with("_total"), ~ if_else(!is.na(.x) & .x > 0.004 & .x < 0.078, .x * 1000, .x))) %>%
   mutate(across(ends_with("_total"), ~ if_else(.x >= 10 & .x <= 72, .x, NA_real_))) %>%
   rowwise() %>%
   mutate(
