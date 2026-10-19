@@ -188,6 +188,7 @@ failed_sources <- character()
 safe_scrape <- function(source_name, expr, empty) {
   tryCatch(expr, error = function(e) {
     message(source_name, " scraping failed: ", conditionMessage(e))
+    cat(source_name, "scraping failed:", conditionMessage(e), "\n", file = stderr())  # visible in Actions log
     failed_sources <<- c(failed_sources, source_name)
     empty
   })
@@ -312,24 +313,47 @@ tr_cleaned <- safe_scrape("TeamRankings", {
 
 # D: Scrape ESPN BPI
 url_espn <- "https://www.espn.com/nba/bpi/_/view/projections"
+url_espn_api <- "https://site.web.api.espn.com/apis/fitt/v3/sports/basketball/nba/powerindex?region=us&lang=en&limit=50"
 espn_cleaned <- safe_scrape("ESPN BPI", {
-  # ESPN can answer with an empty 202 (bot check) - try a few user agents with a short pause
-  espn_uas <- c("Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)", "Mozilla/5.0", "")
-  espn_html <- ""
-  for (attempt in seq_len(6)) {
-    ua <- espn_uas[(attempt - 1) %% length(espn_uas) + 1]
-    resp_espn <- if (nzchar(ua)) GET(url_espn, user_agent(ua)) else GET(url_espn)
-    espn_html <- content(resp_espn, as = "text", encoding = "UTF-8")
-    if (status_code(resp_espn) == 200 && !is.na(espn_html) && nchar(espn_html) > 1000) break
-    Sys.sleep(5)
+  # Primary: ESPN's JSON API (the HTML page is often an empty 202 bot check from GitHub's runners)
+  espn_api <- tryCatch({
+    bpi_json <- fromJSON(content(GET(url_espn_api, user_agent("Mozilla/5.0")), as = "text", encoding = "UTF-8"),
+                         simplifyVector = FALSE)
+    out <- bind_rows(lapply(bpi_json$teams, function(t) {
+      proj <- Filter(function(cat) cat$name == "projections", t$categories)[[1]]
+      tibble(team = t$team$displayName,
+             espn_proj_w = as.numeric(proj$values[[1]]),
+             espn_proj_l = as.numeric(proj$values[[2]]))
+    }))
+    if (nrow(out) < 30 || any(is.na(out$espn_proj_w))) stop("incomplete API data")
+    out
+  }, error = function(e) {
+    cat("ESPN BPI API failed, trying HTML page:", conditionMessage(e), "\n", file = stderr())
+    NULL
+  })
+
+  if (!is.null(espn_api)) {
+    espn_api %>% mutate(team = case_when(team == "LA Clippers" ~ "Los Angeles Clippers", TRUE ~ team))
+  } else {
+    # Fallback: scrape the HTML projections page
+    # ESPN can answer with an empty 202 (bot check) - try a few user agents with a short pause
+    espn_uas <- c("Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)", "Mozilla/5.0", "")
+    espn_html <- ""
+    for (attempt in seq_len(6)) {
+      ua <- espn_uas[(attempt - 1) %% length(espn_uas) + 1]
+      resp_espn <- if (nzchar(ua)) GET(url_espn, user_agent(ua)) else GET(url_espn)
+      espn_html <- content(resp_espn, as = "text", encoding = "UTF-8")
+      if (status_code(resp_espn) == 200 && !is.na(espn_html) && nchar(espn_html) > 1000) break
+      Sys.sleep(5)
+    }
+    if (is.na(espn_html) || nchar(espn_html) <= 1000) stop("empty response (HTTP ", status_code(resp_espn), ")")
+    webpage_espn <- read_html(espn_html)
+    espn_proj <- bind_cols(webpage_espn %>% html_table() %>% .[[1]], webpage_espn %>% html_table() %>% .[[2]])
+    espn_proj %>%
+      select(team = Team, ovr_wl = `OVR W-L`) %>%
+      separate(ovr_wl, into = c("espn_proj_w", "espn_proj_l"), sep = "-", convert = TRUE) %>%
+      mutate(team = case_when(team == "LA Clippers" ~ "Los Angeles Clippers", TRUE ~ team))
   }
-  if (is.na(espn_html) || nchar(espn_html) <= 1000) stop("empty response (HTTP ", status_code(resp_espn), ")")
-  webpage_espn <- read_html(espn_html)
-  espn_proj <- bind_cols(webpage_espn %>% html_table() %>% .[[1]], webpage_espn %>% html_table() %>% .[[2]])
-  espn_proj %>%
-    select(team = Team, ovr_wl = `OVR W-L`) %>%
-    separate(ovr_wl, into = c("espn_proj_w", "espn_proj_l"), sep = "-", convert = TRUE) %>%
-    mutate(team = case_when(team == "LA Clippers" ~ "Los Angeles Clippers", TRUE ~ team))
 }, empty = tibble(team = character(), espn_proj_w = numeric(), espn_proj_l = numeric()))
 
 # E: Scrape CBS Sports
