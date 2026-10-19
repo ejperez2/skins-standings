@@ -188,13 +188,11 @@ season_total_games <- sum(nba_standings$actual_wins + nba_standings$actual_losse
 season_completion_pct <- (season_total_games / 2460) * 100
 
 # Projection sources are optional: if a site fails (blocked, empty page, layout change) we
-# log it, use an empty table for that source, and note it on the page instead of failing the render.
-failed_sources <- character()
+# log it to the Actions log and use an empty table for that source instead of failing the render.
 safe_scrape <- function(source_name, expr, empty) {
   tryCatch(expr, error = function(e) {
     message(source_name, " scraping failed: ", conditionMessage(e))
     cat(source_name, "scraping failed:", conditionMessage(e), "\n", file = stderr())  # visible in Actions log
-    failed_sources <<- c(failed_sources, source_name)
     empty
   })
 }
@@ -244,7 +242,7 @@ vegas_lines <- vegas_lines %>%
 df_skins <- vegas_lines %>%
   group_by(team) %>%
   summarise(vegas_proj_wins = mean(adj_line), vegas_books = n(), .groups = "drop")
-if (nrow(df_skins) == 0) failed_sources <- c(failed_sources, "Vegas")
+if (nrow(df_skins) == 0) cat("Vegas: no sportsbook lines in the feed\n", file = stderr())
 
 # C: Scrape TeamRankings
 url_tr <- "https://www.teamrankings.com/nba/projections/standings/"
@@ -745,12 +743,6 @@ cat(sprintf(
    <strong>Season completion:</strong> %.1f%% (%d of 2,460 games played)</p>", 
   season_completion_pct, season_total_games)
 )
-if (length(failed_sources) > 0) {
-  cat(sprintf(
-    "<p style='font-size:14px; color:#B00020; margin-top:0px; margin-bottom:16px;'>
-     <strong>Unavailable this update:</strong> %s (shown blank; weighted average uses the remaining sources)</p>",
-    paste(unique(failed_sources), collapse = ", ")))
-}
 ```
 
 ```{r explain-display, echo=FALSE, results='asis'}
