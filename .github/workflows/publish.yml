@@ -4,15 +4,41 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # Central time: every 4 hours at 6 AM, 10 AM, 2 PM, 6 PM, then hourly 8 PM - 2 AM
   schedule:
-    - cron: '0,30 6-16 * * *'
-    - cron: '0 18,22 * * *'
+    - cron: '0 1-7,11,15,19,23 * * *'   # CDT (UTC-5)
+    - cron: '0 0,2-8,12,16,20 * * *'    # CST (UTC-6)
 
 permissions:
   contents: write
 
 jobs:
+  # GitHub schedules run on UTC; Chicago is UTC-5 (CDT) or UTC-6 (CST). Each Central time has a CDT
+  # and a CST cron line above - this job lets through only the one that matches today's clock.
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - id: check
+        env:
+          EVENT: ${{ github.event_name }}
+          CRON: ${{ github.event.schedule }}
+        run: |
+          run=true
+          zone=$(TZ=America/Chicago date +%Z)
+          if [ "$EVENT" = "schedule" ]; then
+            case "$CRON" in
+              "0 1-7,11,15,19,23 * * *") [ "$zone" = "CDT" ] || run=false ;;
+              "0 0,2-8,12,16,20 * * *") [ "$zone" = "CST" ] || run=false ;;
+            esac
+          fi
+          echo "event=$EVENT cron='$CRON' chicago=$zone -> run=$run"
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+
   publish:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Check out repo

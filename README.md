@@ -61,6 +61,16 @@ that data is archived in `archive/2025-26/`.)
 - **Pick Range**: Picks 1-30
 - **Skins Assignment**: Each team is assigned either "W" (wins) or "L" (losses) as the skins source
 
+### Update Schedule (2026-27, Central time)
+Every 4 hours at 6 AM, 10 AM, 2 PM and 6 PM, then hourly 8 PM - 2 AM, plus every push to `main`.
+GitHub schedules run on UTC, so `publish.yml` has one cron line for CDT and one for CST; a small `gate`
+job lets through only the line that matches Chicago's current offset.
+
+### Vegas Consensus
+Uses every sportsbook in Rotowire's win-totals feed (any `<book>_line` column). Each line is nudged 0.5 win
+toward the side its odds favor, then averaged across the books that have a line for that team. Books that go
+silent are skipped; if none have lines, Vegas is marked unavailable. The footnote lists the books used.
+
 ### Pre-Draft Mode
 `draft_data` ships with all 30 teams but blank `player`, `skins_pick` and `draft_pick` values. Until every team
 has a player and a W/L pick, the page renders a **Draft Board** instead of the standings: projected wins from
