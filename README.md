@@ -80,6 +80,20 @@ since opening night and over the last 30 days, a .500 baseline, the TR/ESPN/CBS 
 have missed least, and a rolling 30-day trend chart. A window is graded once teams average 12+ games in it
 (about mid-November). Weights live in `WEIGHTS` near the top of `index.qmd`.
 
+### Chance to Win and Likely Range
+Each team's final wins are simulated (10,000 seasons) around its weighted-average projection with a miss
+made of two parts, fit on 2025-26 team projections vs final records:
+- luck in the games left: `left * p * (1 - p)`
+- the projection misjudging the team: `TALENT_SD * (left / 82)^1.5` (8.6 wins preseason in 2025-26)
+
+Together they reproduce last season's typical miss at every stage (9.7 wins preseason, 6.2 with ~57 games
+left, 3.1 with ~27 left). Player totals are summed from their teams in each simulated season. The standings
+table shows Chance to Win and the 80% Likely Range; the range strip below it adds the 50% range. Once teams
+average 12+ games since opening night, `TALENT_SD` is re-estimated from this season's own misses
+(`team_projection_history.csv`) and blended in, reaching 100% this season's data by midseason. Simulations
+are seeded by date so every run on a given day shows the same numbers. `win_prob`, `range_lo` and
+`range_hi` are saved to `standings_history.csv`.
+
 ### Pre-Draft Mode
 `draft_data` ships with all 30 teams but blank `player`, `skins_pick` and `draft_pick` values. Until every team
 has a player and a W/L pick, the page renders a **Draft Board** instead of the standings: projected wins from
