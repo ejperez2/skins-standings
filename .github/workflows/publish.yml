@@ -94,7 +94,7 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           # Files may not exist yet (standings_history.csv is only written after the draft)
-          for f in standings_history.csv team_vegas_history.csv; do
+          for f in standings_history.csv team_vegas_history.csv team_projection_history.csv; do
             if [ -f "$f" ]; then git add "$f"; fi
           done
           git diff --quiet && git diff --staged --quiet || git commit -m "Update standings history [skip ci]"

@@ -33,6 +33,8 @@ pacman::p_load(httr, jsonlite, rvest, dplyr, tidyr, knitr, kableExtra, tibble, s
 PLAYERS <- c("Eristeo", "Brian", "Adam")
 TEAMS_PER_PLAYER <- 30 / length(PLAYERS)
 SEASON_START <- as.Date("2026-10-20")  # Opening night; ESPN shows preseason records before this
+# Weighted average weights (early-season; the Projection Accuracy section suggests updates)
+WEIGHTS <- c(tr = 0.50, espn = 0.34, cbs = 0.16)
 
 # Create Draft Data Frame FIRST (needed for W/L picks)
 # DRAFTED: Sunday, October 18, 2026 (10-round snake; order Adam, Brian, Eristeo).
@@ -574,10 +576,11 @@ df_final_projections <- all_teams %>%
     # Calculate weighted average using skins (which now correctly apply draft picks)
     # Updated formula to include Basketball Reference
     # Early-season weights; if a source is missing, re-weight across the sources that are available
-    wa_weight = 0.50 * (!is.na(tr_skins)) + 0.34 * (!is.na(espn_skins)) + 0.16 * (!is.na(cbs_skins)),
+    wa_weight = WEIGHTS[["tr"]] * (!is.na(tr_skins)) + WEIGHTS[["espn"]] * (!is.na(espn_skins)) + WEIGHTS[["cbs"]] * (!is.na(cbs_skins)),
     weighted_average = if_else(
       wa_weight > 0,
-      (coalesce(tr_skins * 0.50, 0) + coalesce(espn_skins * 0.34, 0) + coalesce(cbs_skins * 0.16, 0)) / wa_weight,
+      (coalesce(tr_skins * WEIGHTS[["tr"]], 0) + coalesce(espn_skins * WEIGHTS[["espn"]], 0) +
+         coalesce(cbs_skins * WEIGHTS[["cbs"]], 0)) / wa_weight,
       NA_real_
     ),
     
@@ -604,6 +607,26 @@ verification <- df_final_projections %>%
 if(draft_complete && nrow(verification) > 0) {
   warning("W/L PICKS DO NOT MATCH DRAFT! Mismatched teams: ", 
           paste(verification$team, collapse = ", "))
+}
+
+# --- Step 4.6: Daily team-level projection snapshot (feeds the Projection Accuracy section) ---
+# One row per team per Chicago date: every source's projected WINS plus the team's record at that moment.
+# Taken on the first run at/after 5 AM Central, when last night's games are final and sources have updated.
+proj_history_file <- "team_projection_history.csv"
+now_ct <- as.POSIXlt(Sys.time(), tz = "America/Chicago")
+snapshot_date <- as.Date(format(now_ct, "%Y-%m-%d"))
+proj_history <- if (file.exists(proj_history_file)) {
+  read.csv(proj_history_file, stringsAsFactors = FALSE) %>% mutate(date = as.Date(date))
+} else {
+  NULL
+}
+if (now_ct$hour >= 5 && (is.null(proj_history) || !any(proj_history$date == snapshot_date))) {
+  snapshot <- df_final_projections %>%
+    transmute(date = snapshot_date, team, wins = actual_wins, losses = actual_losses,
+              vegas = vegas_proj_wins, tr = tr_proj_w, espn = espn_proj_w, cbs = cbs_proj_w, br = br_proj_w,
+              weighted = if_else(skins_pick == "W", weighted_average, 82 - weighted_average))
+  proj_history <- bind_rows(proj_history, snapshot) %>% arrange(date, team)
+  write.csv(proj_history, proj_history_file, row.names = FALSE)
 }
 
 # --- Step 5: Calculate Player Scores ---
@@ -1069,6 +1092,150 @@ table_output <- kable(team_projections_table, align = c("l", "l", "c", "r", "r",
 table_html <- as.character(table_output)
 table_html <- gsub("<thead>", "<thead style='background-color: #444444; color: white; font-weight: bold;'>", table_html)
 cat(table_html)
+```
+
+```{r accuracy-heading, echo=FALSE, results='asis'}
+cat("\n## Projection Accuracy\n\n")
+```
+
+```{r projection-accuracy, echo=FALSE, results='asis', fig.width=12, fig.height=5, warning=FALSE, message=FALSE}
+# How well did each source's projection on date D predict what teams did AFTER D?
+# Sources already include results to date, so we only grade games played after the projection was saved:
+#   expected wins since D = (projected wins - wins at D) / (games left at D) * games played since D
+#   miss = |actual wins since D - expected wins since D|, averaged over teams (in wins)
+ACC_SOURCES <- c(tr = "TeamRankings", espn = "ESPN BPI", cbs = "CBS", vegas = "Vegas", br = "BB-Ref",
+                 weighted = "Weighted Average", baseline = "Baseline: .500 rest of season")
+MIN_GAMES <- 12   # average games per team since the projection before a window is graded (~4 weeks)
+acc_p <- function(txt, size = 14) cat(sprintf("<p style='font-size:%dpx; margin-top:4px; margin-bottom:6px;'>%s</p>\n", size, txt))
+
+h <- if (is.null(proj_history)) NULL else proj_history %>% mutate(baseline = wins + 0.5 * (82 - wins - losses))
+
+# Per-team expected vs actual wins between two snapshots
+window_detail <- function(from_date, to_date) {
+  end <- h %>% filter(date == to_date) %>% select(team, wins_end = wins, losses_end = losses)
+  h %>% filter(date == from_date) %>%
+    inner_join(end, by = "team") %>%
+    mutate(g0 = wins + losses, played = wins_end + losses_end - g0, won = wins_end - wins) %>%
+    filter(played > 0, g0 < 82)
+}
+score_window <- function(from_date, to_date) {
+  d <- window_detail(from_date, to_date)
+  if (nrow(d) == 0) return(NULL)
+  d %>%
+    pivot_longer(any_of(names(ACC_SOURCES)), names_to = "source", values_to = "proj") %>%
+    filter(!is.na(proj)) %>%
+    mutate(expected = (proj - wins) / (82 - g0) * played, miss = abs(won - expected)) %>%
+    group_by(source) %>%
+    summarise(miss = mean(miss), teams = n(), .groups = "drop") %>%
+    mutate(games = mean(d$played))
+}
+pick_start <- function(on_or_before) {
+  d <- h$date[h$date <= on_or_before]
+  if (length(d) == 0) NA else max(d)
+}
+
+if (is.null(h) || nrow(h) == 0) {
+  acc_p("Tracking starts with the first daily snapshot of every source's team projections.")
+} else {
+  latest <- max(h$date)
+  opening <- pick_start(SEASON_START)
+  if (is.na(opening)) opening <- min(h$date)
+  last30 <- pick_start(latest - 30)
+
+  windows <- list(opening = opening, last30 = last30)
+  scores <- lapply(windows, function(d) if (is.na(d) || d >= latest) NULL else score_window(d, latest))
+  enough <- sapply(scores, function(x) !is.null(x) && x$games[1] >= MIN_GAMES)
+  games_txt <- sapply(scores, function(x) if (is.null(x)) "0" else sprintf("%.0f", x$games[1]))
+
+  if (!any(enough)) {
+    acc_p(sprintf(paste0("Daily snapshots since %s (%d so far). Scores appear once teams have played about %d games ",
+                         "since a saved projection &mdash; currently %s per team since opening night (around mid-November)."),
+                  format(min(h$date), "%b %d"), n_distinct(h$date), MIN_GAMES, games_txt[["opening"]]))
+  } else {
+    col_for <- function(key) {
+      x <- scores[[key]]
+      if (!enough[[key]]) return(setNames(rep(NA_real_, length(ACC_SOURCES)), names(ACC_SOURCES)))
+      setNames(x$miss[match(names(ACC_SOURCES), x$source)], names(ACC_SOURCES))
+    }
+    acc <- tibble(key = names(ACC_SOURCES), Source = unname(ACC_SOURCES),
+                  opening = col_for("opening"), last30 = col_for("last30"),
+                  weight = case_when(key %in% names(WEIGHTS) ~ sprintf("%.0f%%", 100 * WEIGHTS[key]),
+                                     TRUE ~ "&ndash;")) %>%
+      filter(!(is.na(opening) & is.na(last30))) %>%
+      arrange(coalesce(last30, opening))
+
+    # Bold the best source (baseline excluded) in each column
+    fmt_col <- function(x, keys) {
+      real <- !(keys %in% c("baseline"))
+      best <- if (any(!is.na(x[real]))) min(x[real], na.rm = TRUE) else NA
+      ifelse(is.na(x), "&ndash;", ifelse(!is.na(best) & x == best & real, sprintf("<b>%.2f</b>", x), sprintf("%.2f", x)))
+    }
+    acc_display <- acc %>%
+      transmute(Source,
+                `Miss since opening night` = fmt_col(opening, key),
+                `Miss last 30 days` = fmt_col(last30, key),
+                `Current weight` = weight)
+
+    out <- kable(acc_display, align = c("l", "r", "r", "r"), escape = FALSE, format = "html") %>%
+      kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, position = "center")
+    out <- gsub("<thead>", "<thead style='background-color: #444444; color: white; font-weight: bold;'>", as.character(out))
+    cat(out)
+    acc_p(sprintf(paste0("Average miss in wins per team, grading only games played <i>after</i> each projection was saved ",
+                         "(opening night: %s, %s games per team; last 30 days: %s). Lower is better; best source in bold. ",
+                         "The .500 baseline shows how much the projections beat a coin flip."),
+                  format(opening, "%b %d"), games_txt[["opening"]],
+                  if (enough[["last30"]]) sprintf("since %s, %s games per team", format(last30, "%b %d"), games_txt[["last30"]])
+                  else "not enough games yet"), 13)
+
+    # Suggested weights: TR/ESPN/CBS mix (5% steps) with the smallest miss over the most recent graded window
+    key_w <- if (enough[["last30"]]) "last30" else "opening"
+    d <- window_detail(windows[[key_w]], latest)
+    avail <- names(WEIGHTS)[sapply(names(WEIGHTS), function(k) k %in% names(d) && any(!is.na(d[[k]])))]
+    d <- d %>% filter(if_all(all_of(avail), ~ !is.na(.x)))
+    if (length(avail) >= 2 && nrow(d) >= 20) {
+      grid <- expand.grid(rep(list(seq(0, 1, by = 0.05)), length(avail)))
+      names(grid) <- avail
+      grid <- grid[abs(rowSums(grid) - 1) < 1e-9, , drop = FALSE]
+      P <- as.matrix(d[, avail])
+      miss_for <- function(w) {
+        proj <- as.vector(P %*% w)
+        mean(abs(d$won - (proj - d$wins) / (82 - d$g0) * d$played))
+      }
+      grid_miss <- apply(grid, 1, function(w) miss_for(as.numeric(w)))
+      best_w <- unlist(grid[which.min(grid_miss), , drop = FALSE])
+      cur_w <- WEIGHTS[avail] / sum(WEIGHTS[avail])
+      lbl <- c(tr = "TR", espn = "ESPN", cbs = "CBS")
+      fmt_w <- function(w) paste(sprintf("%s %.0f%%", lbl[names(w)], 100 * w), collapse = ", ")
+      acc_p(sprintf("<b>Suggested weights</b> (best fit over the %s): %s &mdash; miss %.2f vs %.2f with current weights (%s).",
+                    if (key_w == "last30") "last 30 days" else "season so far",
+                    fmt_w(best_w), min(grid_miss), miss_for(as.numeric(cur_w)), fmt_w(cur_w)), 13)
+    }
+
+    # Trend: rolling 30-day miss for each source, as of each snapshot date
+    trend <- bind_rows(lapply(sort(unique(h$date)), function(a) {
+      d0 <- pick_start(a - 30)
+      if (is.na(d0) || d0 >= a) return(NULL)
+      x <- score_window(d0, a)
+      if (is.null(x) || x$games[1] < MIN_GAMES) return(NULL)
+      x %>% mutate(date = a)
+    }))
+    if (nrow(trend) > 1) {
+      trend <- trend %>% mutate(Source = factor(ACC_SOURCES[source], levels = ACC_SOURCES))
+      print(
+        ggplot(trend, aes(date, miss, color = Source, linetype = source == "baseline")) +
+          geom_line(linewidth = 1.1) +
+          scale_linetype_manual(values = c(`FALSE` = "solid", `TRUE` = "dashed"), guide = "none") +
+          scale_color_manual(values = c("TeamRankings" = "#0077BB", "ESPN BPI" = "#CC3311", "CBS" = "#009988",
+                                        "Vegas" = "#EE7733", "BB-Ref" = "#AA3377", "Weighted Average" = "#222222",
+                                        "Baseline: .500 rest of season" = "#999999")) +
+          labs(title = "Rolling 30-day miss by source (lower is better)", x = NULL, y = "Average miss (wins per team)", color = NULL) +
+          theme_minimal() +
+          theme(legend.position = "right", plot.title = element_text(size = 16, face = "bold"),
+                axis.text = element_text(size = 11), panel.grid.minor = element_blank())
+      )
+    }
+  }
+}
 ```
 
 ```{r charts-heading, echo=FALSE, results='asis'}

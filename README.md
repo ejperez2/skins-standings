@@ -71,6 +71,15 @@ Uses every sportsbook in Rotowire's win-totals feed (any `<book>_line` column). 
 toward the side its odds favor, then averaged across the books that have a line for that team. Books that go
 silent are skipped; if none have lines, Vegas is marked unavailable. The footnote lists the books used.
 
+### Projection Accuracy
+Once a day (first run at/after 5 AM Central) the page saves every source's projected wins for every team, plus
+each team's record, to `team_projection_history.csv`. The Projection Accuracy section grades each source only
+on games played *after* a saved projection: expected wins since then = (projected wins - wins at the time) /
+games left x games played since, compared with actual wins since. It shows the average miss (wins per team)
+since opening night and over the last 30 days, a .500 baseline, the TR/ESPN/CBS weights (5% steps) that would
+have missed least, and a rolling 30-day trend chart. A window is graded once teams average 12+ games in it
+(about mid-November). Weights live in `WEIGHTS` near the top of `index.qmd`.
+
 ### Pre-Draft Mode
 `draft_data` ships with all 30 teams but blank `player`, `skins_pick` and `draft_pick` values. Until every team
 has a player and a W/L pick, the page renders a **Draft Board** instead of the standings: projected wins from
