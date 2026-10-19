@@ -69,7 +69,7 @@ job lets through only the line that matches Chicago's current offset.
 ### Vegas Consensus
 Uses every sportsbook in Rotowire's win-totals feed (any `<book>_line` column). Each line is nudged 0.5 win
 toward the side its odds favor, then averaged across the books that have a line for that team. Books that go
-silent are skipped; if none have lines, Vegas is marked unavailable. The footnote lists the books used.
+silent are skipped; if none have lines, Vegas is marked unavailable.
 
 ### Projection Accuracy
 Once a day (first run at/after 5 AM Central) the page saves every source's projected wins for every team, plus
