@@ -94,9 +94,10 @@ average 12+ games since opening night, `TALENT_SD` is re-estimated from this sea
 are seeded by date so every run on a given day shows the same numbers. `win_prob`, `range_lo` and
 `range_hi` are saved to `standings_history.csv`.
 
-The first Season Chart, "Projected final skins with 80% likely range", shows each player's tracked weighted
-average and likely range by day (solid line, darker band) and, from today to `SEASON_END`, how today's range
-is expected to narrow if projections hold (dashed line, lighter band) using the same team-level miss model.
+The first Season Charts show each player's weighted average with its 80% likely range by day, and Chance to
+Win over time, both from `standings_history.csv`. (An earlier version also drew a forward-looking cone of how
+the range would narrow if projections held; it was removed because flat lines with a closing cone read as a
+prediction of the final order.)
 
 ### Pre-Draft Mode
 `draft_data` ships with all 30 teams but blank `player`, `skins_pick` and `draft_pick` values. Until every team
@@ -150,7 +151,7 @@ The W/L pick for each team is **hardcoded** in the `draft_data` tibble and store
 ## 🔄 Data Sources
 
 ### 1. ESPN Standings (Actual Results)
-- **URL**: `https://www.espn.com/nba/standings`
+- **URL**: `https://www.espn.com/nba/standings/_/seasontype/2` (regular season only, so preseason records never count)
 - **Method**: HTML scraping (rvest)
 - **Data Extracted**: Live wins and losses for all 30 teams
 - **Frequency**: Every render (9x daily)
@@ -262,28 +263,24 @@ pct_projected = skins_pct × 82
 - **Player level**: Sum of all 5 team projections (not pace × 82)
 - Example: If a team is 10-2 (83.3%), % Projected = 68.3 skins
 
-### 5. Weighted Average ⭐ UPDATED
-The composite projection now uses **last season's most accurate November weightings**, excluding Vegas and Basketball Reference:
+### 5. Weighted Average ⭐ UPDATED (2026-27)
+`WEIGHTS` near the top of `index.qmd`: **Vegas 40%, TR 20%, ESPN 20%, CBS 20%**. Sources that are missing for a
+team are re-weighted away, so until CBS publishes (once the season starts) it is Vegas 50 / TR 25 / ESPN 25.
 
-```r
-weighted_average = (tr_skins × 0.50) + 
-                   (espn_skins × 0.34) + 
-                   (cbs_skins × 0.16)
-```
+How it was chosen (2025-26 data, RMSE vs final results):
 
-**Weight Rationale** (Based on 2023-24 November Performance):
-- **TeamRankings** (50%): Proved most accurate in early season last year
-- **ESPN BPI** (34%): Strong statistical model with good early-season accuracy
-- **CBS Sports** (16%): Simpler model but provides diversification
+| Blend | Oct, 30 teams (wins) | Nov, 6 players (skins) |
+|---|---|---|
+| Old: TR 50 / ESPN 34 / CBS 16 | 9.72 | 17.06 |
+| Equal V/TR/ESPN/CBS | 9.65 | 16.65 |
+| **V 40 / TR 20 / ESPN 20 / CBS 20** | **9.62** | **16.63** |
+| V 50 / CBS 50 (Nov grid best) | 9.58 | 16.24 |
+| Vegas only | 9.58 | 16.87 |
 
-**Why Vegas and BB-Ref Are Excluded**:
-- Vegas lines can be influenced by betting activity rather than pure prediction
-- BB-Ref historically less accurate in early season
-- The 50/34/16 split proved most accurate for November projections in 2023-24
-
-**Historical Note**: Previous versions used different formulas:
-- v2.1.0: 20% Vegas, 30% TR, 20% ESPN, 10% CBS, 20% BB-Ref
-- v2.2.0 (current): 50% TR, 34% ESPN, 16% CBS (optimized for November)
+A 5% grid search's November optimum (V 50 / CBS 50) did worse than every simple blend on held-out players
+(20.1), i.e. it fit noise from only 6 players, so a simple Vegas-led blend was used instead. October team-level
+data (Oct 11-25, Vegas/TR/ESPN) favored Vegas; every blend including Vegas beat the old formula in both months.
+The Projection Accuracy section re-checks this on 2026-27 data as the season goes.
 
 ### 6. Projection Average
 ```r
