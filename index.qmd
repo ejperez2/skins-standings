@@ -5,7 +5,10 @@ format:
     self-contained: true
     include-before-body:
       text: |
-        <nav style='font-size:15px; margin:0 0 6px 0; padding:6px 0; border-bottom:1px solid rgba(128,128,128,0.35);'><strong style='margin-right:14px;'>Standings</strong><a href='https://ejperez2.github.io/Daily-Skins-Matchups/' style='margin-right:14px;'>Daily Matchups</a><span style='opacity:0.75;'>2025-26: <a href='https://ejperez2.github.io/skins-standings/2025-26/'>Standings</a> &middot; <a href='https://ejperez2.github.io/Daily-Skins-Matchups/2025-26/'>Matchups</a></span></nav>
+        <nav style='font-size:15px; margin:0 0 6px 0; padding:6px 0; border-bottom:1px solid rgba(128,128,128,0.35);'><strong style='margin-right:14px;'>Standings</strong><a href='https://ejperez2.github.io/Daily-Skins-Matchups/' style='margin-right:14px;'>Daily Matchups</a></nav>
+    include-after-body:
+      text: |
+        <footer style='font-size:14px; margin:28px 0 12px 0; padding-top:8px; border-top:1px solid rgba(128,128,128,0.35); opacity:0.85;'>Past seasons &middot; 2025-26: <a href='https://ejperez2.github.io/skins-standings/2025-26/'>Standings</a> &middot; <a href='https://ejperez2.github.io/Daily-Skins-Matchups/2025-26/'>Matchups</a></footer>
     grid:
       body-width: 1200px
 editor: visual
@@ -32,8 +35,7 @@ pacman::p_load(httr, jsonlite, rvest, dplyr, tidyr, knitr, kableExtra, tibble, s
 # A: League configuration (2026-27: 3 players x 10 teams each)
 PLAYERS <- c("Eristeo", "Brian", "Adam")
 TEAMS_PER_PLAYER <- 30 / length(PLAYERS)
-SEASON_START <- as.Date("2026-10-20")  # Opening night; ESPN shows preseason records before this
-SEASON_END <- as.Date("2027-04-11")    # Last day of the regular season
+SEASON_START <- as.Date("2026-10-20")  # Opening night
 # Colorblind-friendly palette (Paul Tol's vibrant scheme)
 colorblind_colors <- c(
   "Eristeo" = "#0077BB",   # Blue
@@ -42,7 +44,9 @@ colorblind_colors <- c(
 )
 
 # Weighted average weights (early-season; the Projection Accuracy section suggests updates)
-WEIGHTS <- c(tr = 0.50, espn = 0.34, cbs = 0.16)
+# Oct-Nov blend chosen from 2025-26 data (see README); sources that are missing are re-weighted away,
+# so before CBS publishes this is Vegas 50 / TR 25 / ESPN 25
+WEIGHTS <- c(vegas = 0.40, tr = 0.20, espn = 0.20, cbs = 0.20)
 
 # Create Draft Data Frame FIRST (needed for W/L picks)
 # DRAFTED: Sunday, October 18, 2026 (10-round snake; order Adam, Brian, Eristeo).
@@ -104,7 +108,7 @@ season_completion_pct <- 0
 
 # B: Get current NBA standings using ESPN HTML scraping
 nba_standings <- tryCatch({
-  espn_url <- "https://www.espn.com/nba/standings"
+  espn_url <- "https://www.espn.com/nba/standings/_/seasontype/2"  # regular season only (no preseason records)
   espn_page <- read_html(espn_url)
   all_tables <- espn_page %>% html_table(fill = TRUE)
   
@@ -185,11 +189,6 @@ nba_standings <- tryCatch({
     actual_losses = 0
   )
 })
-
-# Before opening night ESPN lists preseason records - don't count those as skins
-if (Sys.Date() < SEASON_START) {
-  nba_standings <- nba_standings %>% mutate(actual_wins = 0, actual_losses = 0)
-}
 
 # Calculate season completion percentage
 season_total_games <- sum(nba_standings$actual_wins + nba_standings$actual_losses, na.rm = TRUE)
@@ -579,11 +578,12 @@ df_final_projections <- all_teams %>%
     # Calculate weighted average using skins (which now correctly apply draft picks)
     # Updated formula to include Basketball Reference
     # Early-season weights; if a source is missing, re-weight across the sources that are available
-    wa_weight = WEIGHTS[["tr"]] * (!is.na(tr_skins)) + WEIGHTS[["espn"]] * (!is.na(espn_skins)) + WEIGHTS[["cbs"]] * (!is.na(cbs_skins)),
+    wa_weight = WEIGHTS[["vegas"]] * (!is.na(vegas_consensus)) + WEIGHTS[["tr"]] * (!is.na(tr_skins)) +
+      WEIGHTS[["espn"]] * (!is.na(espn_skins)) + WEIGHTS[["cbs"]] * (!is.na(cbs_skins)),
     weighted_average = if_else(
       wa_weight > 0,
-      (coalesce(tr_skins * WEIGHTS[["tr"]], 0) + coalesce(espn_skins * WEIGHTS[["espn"]], 0) +
-         coalesce(cbs_skins * WEIGHTS[["cbs"]], 0)) / wa_weight,
+      (coalesce(vegas_consensus * WEIGHTS[["vegas"]], 0) + coalesce(tr_skins * WEIGHTS[["tr"]], 0) +
+         coalesce(espn_skins * WEIGHTS[["espn"]], 0) + coalesce(cbs_skins * WEIGHTS[["cbs"]], 0)) / wa_weight,
       NA_real_
     ),
     
@@ -980,7 +980,7 @@ cat(table_html)
 # This divorces them from the table's column widths
 cat("<p style='font-size: 13px; margin-top: 5px; margin-bottom: 0; text-align: left;'>Skins % 2023-26: <b>58%, 62%, 59%, 59%</b></p>")
 cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Winner's Skins % 2023-26: <b>61%, 68%, 65%, 66%</b> (6-player leagues; with 3 players each roster is a third of the league, so expect this year's winner to finish with a lower %)</p>")
-cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Early-Season Weighted Avg: TR 50%, ESPN 34%, CBS 16% (Most accurate Nov weightings, used to open 2025-26)</p>")
+cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Oct-Nov Weighted Avg: Vegas 40%, TR 20%, ESPN 20%, CBS 20% (most accurate robust blend on 2025-26 Oct-Nov data; until CBS publishes: Vegas 50%, TR 25%, ESPN 25%)</p>")
 cat(sprintf("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Chance to Win and Likely Range come from %s simulated seasons around the weighted average. The likely range is where a player's final total lands 4 times in 5; it narrows as games are played. Uncertainty is based on %s.</p>",
             format(N_SIMS, big.mark = ","), uncertainty_note))
 ```
@@ -1298,7 +1298,7 @@ if (is.null(h) || nrow(h) == 0) {
       grid_miss <- apply(grid, 1, function(w) miss_for(as.numeric(w)))
       best_w <- unlist(grid[which.min(grid_miss), , drop = FALSE])
       cur_w <- WEIGHTS[avail] / sum(WEIGHTS[avail])
-      lbl <- c(tr = "TR", espn = "ESPN", cbs = "CBS")
+      lbl <- c(vegas = "Vegas", tr = "TR", espn = "ESPN", cbs = "CBS")
       fmt_w <- function(w) paste(sprintf("%s %.0f%%", lbl[names(w)], 100 * w), collapse = ", ")
       acc_p(sprintf("<b>Suggested weights</b> (best fit over the %s): %s &mdash; miss %.2f vs %.2f with current weights (%s).",
                     if (key_w == "last30") "last 30 days" else "season so far",
@@ -1336,50 +1336,48 @@ if (is.null(h) || nrow(h) == 0) {
 cat("\n## Season Charts\n\n")
 ```
 
-```{r narrowing-band-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
-# Projection with 80% likely range over the season.
-#   Solid line + darker band: each day's weighted average and likely range as tracked (standings_history.csv)
-#   Dashed line + lighter band: how today's range narrows to the end of the season if projections hold
-#     (same team-level miss model as Chance to Win, with games left shrinking on schedule)
+```{r likely-range-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
+# Projection with 80% likely range, as tracked each day (standings_history.csv). The band narrows on its own
+# as games are played; the lines move only as projections change.
 band_hist <- history %>%
   filter(!is.na(range_lo), !is.na(weighted_average)) %>%
-  select(player, date, proj = weighted_average, lo = range_lo, hi = range_hi)
+  select(player, date, proj = weighted_average, lo = range_lo, hi = range_hi, win_prob)
 
-if (!is.null(uncertainty) && nrow(band_hist) > 0) {
-  now_d <- max(band_hist$date)
-  latest_band <- band_hist %>% filter(date == now_d)
-
-  # Expected narrowing: shrink each team's games left on schedule and recompute its miss
-  start_d <- max(now_d, SEASON_START)
-  ahead <- unique(c(now_d, seq(start_d, SEASON_END, by = "week"), SEASON_END))
-  ahead <- ahead[ahead >= now_d & ahead <= SEASON_END]
-  team_sd_at <- function(d) {
-    frac <- if (SEASON_END > start_d) min(1, max(0, as.numeric(d - start_d) / as.numeric(SEASON_END - start_d))) else 1
-    left_d <- unc_teams$left * (1 - frac)
-    sqrt(left_d * unc_teams$rate * (1 - unc_teams$rate) + (talent_sd_now * (left_d / 82)^1.5)^2)
-  }
-  sd_now <- sqrt(rowsum(team_sd_at(now_d)^2, unc_teams$player))
-  band_ahead <- bind_rows(lapply(ahead, function(d) {
-    ratio <- as.vector(sqrt(rowsum(team_sd_at(d)^2, unc_teams$player)) / sd_now)
-    tibble(player = rownames(sd_now), date = d, ratio = ratio)
-  })) %>%
-    inner_join(latest_band %>% select(player, proj, lo0 = lo, hi0 = hi), by = "player") %>%
-    mutate(lo = proj - (proj - lo0) * ratio, hi = proj + (hi0 - proj) * ratio)
-
+if (nrow(band_hist) > 0) {
+  latest_band <- band_hist %>% filter(date == max(date))
   print(
-    ggplot() +
-      geom_ribbon(data = band_ahead, aes(date, ymin = lo, ymax = hi, fill = player), alpha = 0.08) +
-      geom_line(data = band_ahead, aes(date, proj, color = player), linewidth = 0.9, linetype = "dashed") +
-      geom_ribbon(data = band_hist, aes(date, ymin = lo, ymax = hi, fill = player), alpha = 0.22) +
-      geom_line(data = band_hist, aes(date, proj, color = player), linewidth = 1.2) +
-      geom_linerange(data = latest_band, aes(x = date, ymin = lo, ymax = hi, color = player), linewidth = 3, alpha = 0.5) +
-      geom_point(data = latest_band, aes(date, proj, color = player), size = 2.5) +
-      geom_vline(xintercept = now_d, linetype = "dotted", color = "gray50") +
+    ggplot(band_hist, aes(date, proj, color = player, fill = player)) +
+      geom_ribbon(aes(ymin = lo, ymax = hi), alpha = 0.18, color = NA) +
+      geom_line(linewidth = 1.2) +
+      geom_linerange(data = latest_band, aes(ymin = lo, ymax = hi), linewidth = 3, alpha = 0.5) +
+      geom_point(data = latest_band, size = 2.5) +
       scale_color_manual(values = colorblind_colors) +
       scale_fill_manual(values = colorblind_colors) +
+      scale_x_date(limits = c(min(band_hist$date, SEASON_START), max(max(band_hist$date), SEASON_START + 14))) +
       labs(title = "Projected final skins with 80% likely range",
-           subtitle = "Solid: tracked each day   Dashed: how today's range narrows by April if projections hold",
+           subtitle = "Line = weighted average each day   band = range the final total lands in 4 times in 5",
            x = NULL, y = "Projected final skins", color = NULL, fill = NULL) +
+      theme_minimal() +
+      theme(legend.position = "right", plot.title = element_text(size = 16, face = "bold"),
+            axis.text = element_text(size = 11), axis.title = element_text(size = 12),
+            panel.grid.minor = element_blank(), panel.grid.major = element_line(color = "gray90"),
+            legend.text = element_text(size = 11))
+  )
+}
+```
+
+## 
+
+```{r chance-to-win-chart, echo=FALSE, fig.width=12, fig.height=5, warning=FALSE}
+if (nrow(band_hist) > 0) {
+  print(
+    ggplot(band_hist %>% filter(!is.na(win_prob)), aes(date, win_prob, color = player)) +
+      geom_line(linewidth = 1.2) +
+      geom_point(size = 2.5) +
+      scale_color_manual(values = colorblind_colors) +
+      scale_y_continuous(labels = function(x) sprintf("%.0f%%", 100 * x), limits = c(0, 1)) +
+      scale_x_date(limits = c(min(band_hist$date, SEASON_START), max(max(band_hist$date), SEASON_START + 14))) +
+      labs(title = "Chance to win over time", x = NULL, y = "Chance to win", color = NULL) +
       theme_minimal() +
       theme(legend.position = "right", plot.title = element_text(size = 16, face = "bold"),
             axis.text = element_text(size = 11), axis.title = element_text(size = 12),
