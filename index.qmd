@@ -41,7 +41,7 @@ editor: visual
 .sk-track { height: 6px; background: var(--sk-bar); border-radius: 3px; overflow: hidden; }
 .sk-track span { display: block; height: 100%; background: var(--sk-muted); border-radius: 3px; }
 
-.sk-caveat { font-size: 13.5px; line-height: 1.45; background: var(--sk-mine); border: 1px solid var(--sk-accent); border-radius: 10px; padding: 9px 12px; margin: 10px 0 0 0; }
+.sk-caveat { font-size: 13.5px; line-height: 1.45; background: var(--sk-mine); border: 1px solid var(--sk-accent); border-radius: 10px; padding: 9px 12px; margin: 0 0 8px 0; }
 .sk-caveat strong { color: var(--sk-accent); }
 
 details.sk-fold { background: var(--sk-surface); border: 1px solid var(--sk-line); border-radius: 10px; margin: 10px 0 0 0; }
@@ -71,7 +71,10 @@ table.sk-table { width: 100% !important; margin: 0; border-collapse: collapse; f
 .sk-table a { color: inherit; text-decoration: underline dotted rgba(170,170,170,.6); text-underline-offset: 3px; }
 .sk-table th button { all: unset; cursor: pointer; }
 .sk-table th button[aria-sort]::after { content: " \25BE"; }
+.sk-table th button[aria-sort="ascending"]::after { content: " \25B4"; }
 .sk-table .sk-pname { display: inline-flex; align-items: center; gap: 6px; }
+#sk-all th:nth-child(-n+3), #sk-all td:nth-child(-n+3) { text-align: left; }
+#sk-all td:first-child { color: var(--sk-muted); }
 
 .sk-odds { background: var(--sk-surface); border: 1px solid var(--sk-line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
 .sk-odds .sk-k { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--sk-muted); margin-bottom: 6px; }
@@ -152,6 +155,10 @@ details[open] > .sk-rrow .sk-chev { transform: rotate(90deg); }
   .sk-table th, .sk-table td { padding: 7px 6px; }
   table.sk-table { font-size: 14px; }
   #sk-standings .sk-avg { display: none; }
+  #sk-all th, #sk-all td { padding: 7px 4px; }
+  #sk-all th:first-child, #sk-all td:first-child { padding-left: 8px; }
+  #sk-all th:last-child, #sk-all td:last-child { padding-right: 8px; }
+  #sk-all th { letter-spacing: .03em; }
   .sk-rhead, .sk-rrow { grid-template-columns: minmax(0, 1fr) 54px 48px 52px 12px; gap: 6px; padding: 8px 10px; }
 }
 @media (prefers-reduced-motion: reduce) { .sk-chev { transition: none; } }
@@ -988,14 +995,13 @@ raw_html(
   "<dt>Winner's skins %</dt><dd><b>61%, 68%, 65%, 66%</b> (6-player leagues; with 3 players each roster is a third of the league, so expect this year's winner to finish with a lower %)</dd>",
   "<dt>Skins % projection</dt><dd>Each team's current skins % &times; 82, added up: where a player finishes if every team keeps its current rate.</dd>",
   "<dt>Weighted avg</dt><dd>Vegas 40%, TR 20%, ESPN 20%, CBS 20% (most accurate robust blend on 2025-26 Oct-Nov data; until CBS publishes: Vegas 50%, TR 25%, ESPN 25%)</dd>",
-  sprintf("<dt>Chance to win</dt><dd>%s simulated seasons around the weighted average. The likely range is where a player's final total lands 4 times in 5 (thick bar: 1 in 2); it narrows as games are played. Uncertainty is based on %s.</dd>",
-          format(N_SIMS, big.mark = ","), uncertainty_note),
-  "<dt>Updates</dt><dd>Every 4 hours from 6 AM to 6 PM, then hourly 8 PM to 2 AM (Central).</dd>",
-  "</dl></div></details>",
-  "<div class=\"sk-caveat\" role=\"note\"><strong>Take the projections with a grain of salt.</strong> ",
-  "The model behind the weighted average, likely ranges and chance to win is built on just one season of data (2025-26): ",
-  "both the source weights and the size of a typical projection miss come from that single year. ",
-  "Expect it to be inaccurate, especially early in the season.</div>"
+  sprintf(paste0("<dt>Chance to win</dt><dd>%s simulated seasons around the weighted average. It narrows as more games are played. ",
+                 "Uncertainty is based on %s. Each simulated season draws every team's final wins from a normal distribution ",
+                 "around its weighted-average projection, with a spread that combines game-to-game luck in the games left ",
+                 "and the chance the projection misjudges the team (currently %.1f wins over a full season, shrinking as games are played); ",
+                 "player totals are then summed across their %d teams.</dd>"),
+          format(N_SIMS, big.mark = ","), uncertainty_note, talent_sd_now, TEAMS_PER_PLAYER),
+  "</dl></div></details>"
 )
 ```
 
@@ -1165,10 +1171,13 @@ if (!is.null(uncertainty)) {
     xp(cw$lo80), xp(cw$hi80), xp(cw$lo80), xp(cw$lo50), xp(cw$hi50), xp(cw$lo50), xp(cw$proj)), collapse = "")
 
   raw_html(
-    "<h2 class=\"sk-h\">Chance to win</h2>", odds,
+    "<h2 class=\"sk-h\">Chance to win</h2>",
+    "<div class=\"sk-caveat\" role=\"note\">The model behind these probabilities is built on just one season of data (2025-26). ",
+    "Expect it to be inaccurate, especially early in the season.</div>",
+    odds,
     "<div class=\"sk-cards\">", cards, "</div>",
     "<div class=\"sk-axis\">", paste(sprintf("<span style=\"left:%s\">%d</span>", xp(ticks), as.integer(ticks)), collapse = ""), "</div>",
-    sprintf("<p class=\"sk-note\">Projected final skins: dot = weighted average, thick bar = 1-in-2 range, thin bar = 4-in-5 range, from %s simulated seasons. Fit on one season of data, so expect misses.</p>",
+    sprintf("<p class=\"sk-note\">Projected final skins: dot = weighted average, thick bar = 1-in-2 range, thin bar = 4-in-5 range, from %s simulated seasons.</p>",
             format(N_SIMS, big.mark = ","))
   )
 }
@@ -1218,12 +1227,12 @@ raw_html(
 ```
 
 ```{r all-teams, echo=FALSE, results='asis'}
-# All 30 teams, sortable by tapping a header (sort keys live in data-v)
+# All 30 teams with draft order, sortable by tapping a header (sort keys live in data-v)
 all_t <- roster_teams %>% arrange(desc(actual_skins), desc(weighted_average))
 all_rows <- sprintf(paste0(
-  "<tr data-player=\"%s\"><td data-v=\"%s\" title=\"%s\"><b>%s</b></td><td data-v=\"%s\"><span class=\"sk-pname\">%s%s</span></td>",
+  "<tr data-player=\"%s\"><td data-v=\"%d\">%d</td><td data-v=\"%s\" title=\"%s\"><b>%s</b></td><td data-v=\"%s\"><span class=\"sk-pname\">%s%s</span></td>",
   "<td data-v=\"%s\">%s</td><td data-v=\"%d\">%d&ndash;%d</td><td data-v=\"%.4f\">%s</td><td data-v=\"%.2f\">%s</td></tr>"),
-  all_t$player, all_t$abbr, all_t$team, all_t$abbr, all_t$player, vapply(all_t$player, sk_dot, ""), all_t$player,
+  all_t$player, all_t$draft_pick, all_t$draft_pick, all_t$abbr, all_t$team, all_t$abbr, all_t$player, vapply(all_t$player, sk_dot, ""), all_t$player,
   all_t$skins_pick, all_t$skins_pick, as.integer(all_t$actual_skins), as.integer(all_t$actual_skins),
   as.integer(all_t$games_played - all_t$actual_skins),
   if_else(all_t$games_played > 0, all_t$skins_pct, -1), if_else(all_t$games_played > 0, sk_pct(all_t$skins_pct), "&ndash;"),
@@ -1233,7 +1242,7 @@ sort_th <- function(i, label, num, active = FALSE) sprintf("<th><button type=\"b
 raw_html(
   "<details class=\"sk-fold\"><summary>All 30 teams<small>tap a header to sort</small></summary>",
   "<div class=\"sk-tablewrap\"><table class=\"sk-table\" id=\"sk-all\" data-quarto-disable-processing=\"true\"><thead><tr>",
-  sort_th(0, "Team", 0), sort_th(1, "Player", 0), sort_th(2, "Pick", 0), sort_th(3, "Skins", 1, TRUE), sort_th(4, "Skins %", 1), sort_th(5, "Proj", 1),
+  sort_th(0, "#", 2), sort_th(1, "Team", 0), sort_th(2, "Player", 0), sort_th(3, "W/L", 0), sort_th(4, "Skins", 1, TRUE), sort_th(5, "Skins %", 1), sort_th(6, "Proj", 1),
   "</tr></thead><tbody>", paste(all_rows, collapse = ""), "</tbody></table></div></details>"
 )
 ```
@@ -1440,15 +1449,15 @@ raw_html("</div></details>")
   var all = document.getElementById("sk-all");
   if (all) all.tHead.addEventListener("click", function (e) {
     var b = e.target.closest("button[data-col]"); if (!b) return;
-    var c = +b.getAttribute("data-col"), num = b.getAttribute("data-num") === "1", tb = all.tBodies[0];
+    var c = +b.getAttribute("data-col"), mode = b.getAttribute("data-num"), tb = all.tBodies[0];   // 0 text, 1 high-first, 2 low-first
     var rows = Array.prototype.slice.call(tb.rows);
     rows.sort(function (x, y) {
       var a = x.cells[c].getAttribute("data-v"), z = y.cells[c].getAttribute("data-v");
-      return num ? (+z) - (+a) : a.localeCompare(z);
+      return mode === "1" ? (+z) - (+a) : mode === "2" ? (+a) - (+z) : a.localeCompare(z);
     });
     rows.forEach(function (r) { tb.appendChild(r); });
     all.tHead.querySelectorAll("button").forEach(function (x) { x.removeAttribute("aria-sort"); });
-    b.setAttribute("aria-sort", "descending");
+    b.setAttribute("aria-sort", mode === "1" ? "descending" : "ascending");
   });
 
   // --- season charts ---
