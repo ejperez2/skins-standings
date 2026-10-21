@@ -78,8 +78,8 @@ on games played *after* a saved projection: expected wins since then = (projecte
 games left x games played since, compared with actual wins since. It shows the average miss (wins per team)
 since opening night and over the last 30 days, a .500 baseline, the TR/ESPN/CBS weights (5% steps) that would
 have missed least, and a rolling 30-day trend chart. A window is graded once teams average 12+ games in it
-(about mid-November). Weights live in `WEIGHTS` near the top of `index.qmd`. Opta (added Oct 21, 2026, after
-opening night) is graded "since opening" from its first saved snapshot and marked with `*`.
+(about mid-November). Weights live in `WEIGHTS` near the top of `index.qmd`. Opta, DARKO and Dunks & Threes (added Oct 21, 2026,
+after opening night) are graded "since opening" from their first saved snapshot and marked with `*`.
 
 ### Chance to Win and Likely Range
 Each team's final wins are simulated (10,000 seasons) around its weighted-average projection with a miss
@@ -244,6 +244,19 @@ The W/L pick for each team is **hardcoded** in the `draft_data` tibble and store
 - **Note**: Shown everywhere BB-Ref is (standings row, rosters, chart, Max) and graded in Projection Accuracy,
   but **NOT** in the weighted average or Source avg. Candidate for next season's blend if it grades well.
 - **Columns**: `opta` in `team_projection_history.csv` (projected wins) and `standings_history.csv` (player skins)
+
+### 8. DARKO (trial, 2026-27)
+- **Page**: `https://beta.darko.app/standings` (SvelteKit; the HTML only renders one conference)
+- **Method**: `https://beta.darko.app/standings/__data.json`, which holds `eastStandings` and `westStandings` in
+  SvelteKit's compact format (each object/array stores indices into one flat list; `darko_resolve` decodes it).
+  Projected wins = `W`.
+- **Columns**: `darko` in both history CSVs. Not in the weighted average.
+
+### 9. Dunks & Threes (trial, 2026-27)
+- **Page**: `https://dunksandthrees.com/playoff-probabilities` (server-rendered)
+- **Method**: the table whose header includes "Win Totals"; column 1 = team abbreviation (same as `draft_data$abbr`),
+  column 3 = average projected wins.
+- **Columns**: `dnt` in both history CSVs (label "D&T" on the page). Not in the weighted average.
 
 ---
 
