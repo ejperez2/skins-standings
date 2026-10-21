@@ -1,26 +1,166 @@
 ---
-title: "Skins Standings and Projections Dashboard"
-format: 
+title: "Skins Standings"
+format:
   html:
+    theme: darkly
     self-contained: true
     include-before-body:
       text: |
-        <nav style='font-size:15px; margin:0 0 6px 0; padding:6px 0; border-bottom:1px solid rgba(128,128,128,0.35);'><strong style='margin-right:14px;'>Standings</strong><a href='https://ejperez2.github.io/Daily-Skins-Matchups/' style='margin-right:14px;'>Daily Matchups</a></nav>
+        <nav class='sk-nav'><strong>Standings</strong><a href='https://ejperez2.github.io/Daily-Skins-Matchups/'>Daily Matchups</a><span class='sk-who' hidden>I'm <span class='sk-seg' id='sk-me'></span></span></nav>
     include-after-body:
       text: |
-        <footer style='font-size:14px; margin:28px 0 12px 0; padding-top:8px; border-top:1px solid rgba(128,128,128,0.35); opacity:0.85;'>Past seasons &middot; 2025-26: <a href='https://ejperez2.github.io/skins-standings/2025-26/'>Standings</a> &middot; <a href='https://ejperez2.github.io/Daily-Skins-Matchups/2025-26/'>Matchups</a></footer>
+        <footer class='sk-footer'>Past seasons &middot; 2025-26: <a href='https://ejperez2.github.io/skins-standings/2025-26/'>Standings</a> &middot; <a href='https://ejperez2.github.io/Daily-Skins-Matchups/2025-26/'>Matchups</a></footer>
     grid:
-      body-width: 1200px
+      body-width: 800px
 editor: visual
 ---
 
+```{=html}
+<style>
+/* Mobile-first layout shared with Daily Matchups (same tokens, nav and "I'm" picker) */
+:root {
+  --sk-surface: #2b2b2b; --sk-line: #444; --sk-muted: #aaa; --sk-accent: #f2a541; --sk-mine: #3a3121; --sk-bar: #444;
+  --sk-good: #6fd497; --sk-good-bg: #173726; --sk-bad: #ff8a92; --sk-bad-bg: #3d1d21;
+}
+.sk-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 15px; margin: 0 0 6px 0; padding: 6px 0; border-bottom: 1px solid rgba(128,128,128,0.35); }
+.sk-nav .sk-who { margin: 0 0 0 auto; }
+.sk-meta { font-size: 14px; color: #999; margin: 0; }
+.sk-who { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; color: var(--sk-muted); margin: 12px 0; }
+.sk-who[hidden] { display: none; }
+.sk-seg { display: inline-flex; border: 1px solid var(--sk-line); border-radius: 8px; overflow: hidden; flex: none; }
+.sk-seg button { font: inherit; font-size: 14px; color: inherit; background: transparent; border: 0; padding: 5px 12px; cursor: pointer; white-space: nowrap; }
+.sk-seg button + button { border-left: 1px solid var(--sk-line); }
+.sk-seg button[aria-pressed="true"] { background: var(--sk-accent); color: #1b1b1b; font-weight: 600; }
+.sk-h { font-size: 15px; text-transform: uppercase; letter-spacing: .08em; color: var(--sk-muted); margin: 26px 0 10px 0; font-weight: 700; }
+.sk-note { font-size: 12.5px; color: var(--sk-muted); margin: 8px 0 0 0; }
+.sk-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--c); flex: none; }
+.sk-num { font-variant-numeric: tabular-nums; }
+
+.sk-progress { margin: 10px 0 4px 0; }
+.sk-progress .sk-lbl { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--sk-muted); margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+.sk-track { height: 6px; background: var(--sk-bar); border-radius: 3px; overflow: hidden; }
+.sk-track span { display: block; height: 100%; background: var(--sk-muted); border-radius: 3px; }
+
+.sk-caveat { font-size: 13.5px; line-height: 1.45; background: var(--sk-mine); border: 1px solid var(--sk-accent); border-radius: 10px; padding: 9px 12px; margin: 10px 0 0 0; }
+.sk-caveat strong { color: var(--sk-accent); }
+
+details.sk-fold { background: var(--sk-surface); border: 1px solid var(--sk-line); border-radius: 10px; margin: 10px 0 0 0; }
+details.sk-fold > summary { cursor: pointer; padding: 10px 12px; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--sk-muted); }
+details.sk-fold > summary small { font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 12.5px; margin-left: 6px; }
+details.sk-fold[open] > summary { border-bottom: 1px solid var(--sk-line); }
+details.sk-fold > .sk-inner { padding: 10px 12px; font-size: 14px; }
+details.sk-fold > .sk-inner p { margin: 0 0 8px 0; }
+details.sk-fold .sk-tablewrap { border: 0; border-radius: 0 0 10px 10px; }
+details.sk-fold img { max-width: 100%; height: auto; }
+dl.sk-facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; margin: 0; font-size: 13.5px; }
+dl.sk-facts dt { color: var(--sk-muted); font-weight: 400; }
+dl.sk-facts dd { margin: 0; }
+@media (max-width: 480px) { dl.sk-facts { grid-template-columns: 1fr; gap: 0; } dl.sk-facts dd { margin-bottom: 6px; } }
+
+.sk-tablewrap { overflow-x: auto; background: var(--sk-surface); border: 1px solid var(--sk-line); border-radius: 10px; }
+table.sk-table { width: 100% !important; margin: 0; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 15px; }
+.sk-table th, .sk-table td { padding: 8px 10px; text-align: right; white-space: nowrap; }
+.sk-table th:first-child, .sk-table td:first-child { text-align: left; }
+.sk-table th { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--sk-muted); font-weight: 600; border-bottom: 1px solid var(--sk-line); }
+.sk-table th .sk-dot { width: 8px; height: 8px; margin-right: 5px; }
+.sk-table tbody tr + tr td, .sk-table tbody tr + tr th { border-top: 1px solid var(--sk-line); }
+.sk-table td.sk-top { font-weight: 700; }
+.sk-table tr.sk-key td { font-weight: 700; }
+.sk-table tr.sk-grp th { text-align: left; padding-top: 12px; border-bottom: 0; }
+.sk-table .sk-me, .sk-table tr.sk-me td { background: var(--sk-mine); }
+.sk-table a { color: inherit; text-decoration: underline dotted rgba(170,170,170,.6); text-underline-offset: 3px; }
+.sk-table th button { all: unset; cursor: pointer; }
+.sk-table th button[aria-sort]::after { content: " \25BE"; }
+.sk-table .sk-pname { display: inline-flex; align-items: center; gap: 6px; }
+
+.sk-odds { background: var(--sk-surface); border: 1px solid var(--sk-line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+.sk-odds .sk-k { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--sk-muted); margin-bottom: 6px; }
+.sk-odds .sk-bar { display: flex; height: 14px; border-radius: 4px; overflow: hidden; gap: 2px; }
+.sk-odds .sk-bar span { background: var(--c); }
+.sk-odds .sk-leg { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; font-size: 14px; }
+.sk-odds .sk-leg span { display: inline-flex; align-items: center; gap: 6px; }
+.sk-cards { display: flex; flex-direction: column; gap: 8px; }
+.sk-pc { background: var(--sk-surface); border: 1px solid var(--sk-line); border-radius: 10px; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+.sk-pc.sk-me { background: var(--sk-mine); border-color: var(--sk-accent); }
+.sk-pc-top { display: flex; align-items: center; gap: 8px; }
+.sk-pc-top .sk-rank { font-size: 13px; font-weight: 700; color: var(--sk-muted); width: 16px; font-variant-numeric: tabular-nums; }
+.sk-pc-top .sk-nm { font-size: 19px; font-weight: 700; }
+.sk-pc-top .sk-win { margin-left: auto; text-align: right; line-height: 1.1; }
+.sk-pc-top .sk-win b { font-size: 22px; font-variant-numeric: tabular-nums; }
+.sk-pc-top .sk-win small { display: block; font-size: 11px; color: var(--sk-muted); }
+.sk-pc-sub { font-size: 13.5px; color: var(--sk-muted); font-variant-numeric: tabular-nums; }
+.sk-pc-sub b { color: var(--bs-body-color, #fff); }
+.sk-range { position: relative; height: 18px; }
+.sk-range i { position: absolute; display: block; }
+.sk-range .sk-grid { top: 0; bottom: 0; width: 1px; background: var(--sk-line); }
+.sk-range .sk-r80, .sk-range .sk-r50 { border-radius: 3px; background: var(--c); }
+.sk-range .sk-r80 { top: 7px; height: 4px; opacity: .45; }
+.sk-range .sk-r50 { top: 4px; height: 10px; opacity: .8; }
+.sk-range .sk-pt { top: 2px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 2px var(--sk-surface); }
+.sk-pc.sk-me .sk-range .sk-pt { box-shadow: 0 0 0 2px var(--sk-mine); }
+.sk-axis { position: relative; height: 16px; margin: 3px 13px 0 13px; }
+.sk-axis span { position: absolute; font-size: 11px; color: var(--sk-muted); transform: translateX(-50%); font-variant-numeric: tabular-nums; }
+
+.sk-rname { font-weight: 700; padding: 8px 12px 0 12px; }
+.sk-js .sk-rname { display: none; }
+.sk-roster { background: var(--sk-surface); border: 1px solid var(--sk-line); border-radius: 10px; overflow: hidden; margin-bottom: 8px; }
+.sk-roster[hidden] { display: none; }
+.sk-rhead, .sk-rrow { display: grid; grid-template-columns: minmax(0, 1fr) 60px 54px 58px 14px; align-items: center; gap: 8px; padding: 8px 12px; }
+.sk-rhead { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--sk-muted); font-weight: 600; border-bottom: 1px solid var(--sk-line); }
+.sk-rhead span:not(:first-child), .sk-rrow > span:not(:first-child) { text-align: right; }
+.sk-roster details + details { border-top: 1px solid var(--sk-line); }
+.sk-rrow { cursor: pointer; list-style: none; font-variant-numeric: tabular-nums; color: var(--bs-body-color, #fff); line-height: 1.25; }
+.sk-rrow::-webkit-details-marker { display: none; }
+.sk-rrow .sk-tm { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; }
+.sk-pick { font-size: 11px; font-weight: 600; color: var(--sk-muted); border: 1px solid var(--sk-line); border-radius: 4px; padding: 0 4px; }
+.sk-chev { color: var(--sk-muted); font-size: 11px; transition: transform .15s; }
+details[open] > .sk-rrow .sk-chev { transform: rotate(90deg); }
+.sk-pill { border-radius: 4px; padding: 1px 5px; }
+.sk-pill.pos { background: var(--sk-good-bg); color: var(--sk-good); }
+.sk-pill.neg { background: var(--sk-bad-bg); color: var(--sk-bad); }
+.sk-mini { height: 4px; background: var(--sk-bar); border-radius: 2px; overflow: hidden; margin-top: 3px; }
+.sk-mini span { display: block; height: 100%; background: var(--sk-muted); }
+.sk-roster.sk-me .sk-mini span { background: var(--sk-accent); }
+.sk-srcs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 12px; padding: 0 12px 12px 12px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.sk-srcs .sk-tfull { grid-column: 1 / -1; color: var(--sk-muted); font-size: 12.5px; }
+.sk-srcs div { display: flex; justify-content: space-between; gap: 6px; border-bottom: 1px dotted var(--sk-line); padding: 3px 0; }
+.sk-srcs div.sk-tfull { border: 0; }
+.sk-srcs span { color: var(--sk-muted); }
+
+.sk-chart { background: var(--sk-surface); border: 1px solid var(--sk-line); border-radius: 10px; padding: 10px 12px 8px 12px; }
+.sk-ctabs { display: flex; overflow-x: auto; margin-bottom: 8px; }
+.sk-crow { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 6px 10px; }
+.sk-crow > div { min-width: 0; flex: 1 1 220px; }
+.sk-cttl { font-size: 15px; font-weight: 700; }
+.sk-cdsc { font-size: 12.5px; color: var(--sk-muted); margin: 0 0 6px 0; }
+.sk-chart select { font-size: 14px; color: inherit; background: var(--sk-surface); border: 1px solid var(--sk-line); border-radius: 6px; padding: 4px 8px; }
+.sk-chart select[hidden] { display: none; }
+.sk-cleg { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; margin-bottom: 4px; }
+.sk-cleg span { display: inline-flex; align-items: center; gap: 6px; }
+.sk-plot { position: relative; touch-action: pan-y; }
+.sk-plot svg { display: block; width: 100%; }
+.sk-plot svg text { fill: var(--sk-muted); font-size: 11px; }
+.sk-plot svg text.sk-end { fill: var(--bs-body-color, #fff); font-size: 12px; font-weight: 600; }
+.sk-tip { position: absolute; top: 0; pointer-events: none; background: #111; border: 1px solid var(--sk-line); border-radius: 6px; padding: 6px 8px; font-size: 12.5px; white-space: nowrap; font-variant-numeric: tabular-nums; z-index: 2; }
+.sk-tip div { display: flex; align-items: center; gap: 6px; }
+.sk-tip b { margin-left: auto; padding-left: 10px; }
+.sk-tip[hidden] { display: none; }
+.sk-empty { padding: 36px 8px; text-align: center; color: var(--sk-muted); font-size: 14px; }
+.sk-footer { font-size: 14px; margin: 28px 0 12px 0; padding: 8px 16px 0 16px; border-top: 1px solid rgba(128,128,128,0.35); opacity: 0.85; }
+
+@media (max-width: 480px) {
+  .sk-table th, .sk-table td { padding: 7px 6px; }
+  table.sk-table { font-size: 14px; }
+  #sk-standings .sk-avg { display: none; }
+  .sk-rhead, .sk-rrow { grid-template-columns: minmax(0, 1fr) 54px 48px 52px 12px; gap: 6px; padding: 8px 10px; }
+}
+@media (prefers-reduced-motion: reduce) { .sk-chev { transition: none; } }
+</style>
+```
+
 ```{r timestamp, echo=FALSE, results='asis'}
 ts <- format(Sys.time(), "%A, %B %d, %Y at %I:%M %p %Z", tz = "America/Chicago")
-
-cat(sprintf(
-  "<p style='font-size:14px; color:#555; margin-top:2px;margin-bottom: 0; '>
-   <strong>Last updated:</strong> %s</p>", ts)
-)
+cat(sprintf("<p class='sk-meta'><strong>Last updated:</strong> %s</p>", ts))
 ```
 
 ```{r main-processing, echo=FALSE, message=FALSE, warning=FALSE, cache=FALSE}
@@ -36,11 +176,12 @@ pacman::p_load(httr, jsonlite, rvest, dplyr, tidyr, knitr, kableExtra, tibble, s
 PLAYERS <- c("Eristeo", "Brian", "Adam")
 TEAMS_PER_PLAYER <- 30 / length(PLAYERS)
 SEASON_START <- as.Date("2026-10-20")  # Opening night
-# Colorblind-friendly palette (Paul Tol's vibrant scheme)
+# Colorblind-friendly palette (Paul Tol's vibrant hues, lightened to read on the dark page;
+# checked for lightness, color-blind separation and contrast against the #2b2b2b card surface)
 colorblind_colors <- c(
-  "Eristeo" = "#0077BB",   # Blue
-  "Brian" = "#CC3311",     # Red
-  "Adam" = "#009988"       # Teal
+  "Eristeo" = "#3E97D6",   # Blue
+  "Brian" = "#E26A54",     # Red
+  "Adam" = "#22A794"       # Teal
 )
 
 # Weighted average weights (early-season; the Projection Accuracy section suggests updates)
@@ -817,22 +958,44 @@ if(draft_complete) {
 }
 ```
 
-```{r season-completion-display, echo=FALSE, results='asis'}
-# Display season completion percentage
-cat(sprintf(
-  "<p style='font-size:14px; color:#555; margin-top:0px; margin-bottom:16px;'>
-   <strong>Season completion:</strong> %.1f%% (%d of 2,460 games played)</p>", 
-  season_completion_pct, season_total_games)
-)
+```{r display-helpers, echo=FALSE}
+# Display helpers: every section below is emitted as raw HTML (sk-* classes, styled at the top of the page)
+raw_html <- function(...) cat("\n```{=html}\n", paste0(...), "\n```\n\n", sep = "")
+sk_dot <- function(p) sprintf("<i class=\"sk-dot\" style=\"--c:%s\"></i>", colorblind_colors[[p]])
+sk_f1 <- function(x) if_else(is.na(x), "&ndash;", sprintf("%.1f", x))
+sk_f0 <- function(x) if_else(is.na(x), "&ndash;", sprintf("%.0f", x))
+sk_pct <- function(x) if_else(is.na(x), "&ndash;", sprintf("%.1f%%", 100 * x))
+SK_LINKS <- c(TR = "https://www.teamrankings.com/nba/projections/standings/",
+              ESPN = "https://www.espn.com/nba/bpi/_/view/projections",
+              CBS = "https://www.cbssports.com/nba/standings/",
+              `BB-Ref` = "https://www.basketball-reference.com/friv/playoff_prob.html")
+sk_src_label <- function(l) if (l %in% names(SK_LINKS)) sprintf("<a href='%s' target='_blank' rel='noopener'>%s</a>", SK_LINKS[[l]], l) else l
 ```
 
-```{r explain-display, echo=FALSE, results='asis'}
-# Display season completion percentage
-cat(sprintf(
-  "<p style='font-size:14px; color:#555; margin-top:0px; margin-bottom:16px;'>
-   <strong><a href='https://bdubcodes.net/posts/the-nba-skins-game'>Skins Game</a>:</strong> In this fantasy NBA game, players draft all 30 NBA teams. For each team, you must choose to root for their WINS or their LOSSES. If your chosen outcome happens (e.g., you picked 'losses' for the Spurs and they lose), you get a 'skin,' or a point. Whoever accumulates the most skins wins. This season is a three-player league (%s) with %d teams each.</p>",
-  paste(PLAYERS, collapse = ", "), TEAMS_PER_PLAYER
-  )
+```{r season-completion-display, echo=FALSE, results='asis'}
+raw_html(sprintf(
+  "<div class=\"sk-progress\"><div class=\"sk-lbl\"><span>Season %.1f%% complete</span><span>%s of 2,460 games played</span></div><div class=\"sk-track\"><span style=\"width:%.2f%%\"></span></div></div>",
+  season_completion_pct, format(season_total_games, big.mark = ","), min(100, season_completion_pct)))
+```
+
+```{r how-it-works, echo=FALSE, results='asis'}
+raw_html(
+  "<details class=\"sk-fold\"><summary>How it works</summary><div class=\"sk-inner\">",
+  sprintf("<p><strong><a href='https://bdubcodes.net/posts/the-nba-skins-game'>Skins Game</a>:</strong> players draft all 30 NBA teams and root for each team's WINS or its LOSSES. Every time your chosen outcome happens (e.g. you picked losses for the Spurs and they lose), you get a skin. Whoever has the most skins at the end of the regular season wins. This season is a three-player league (%s) with %d teams each.</p>",
+          paste(PLAYERS, collapse = ", "), TEAMS_PER_PLAYER),
+  "<dl class=\"sk-facts\">",
+  "<dt>Skins % 2023-26</dt><dd><b>58%, 62%, 59%, 59%</b></dd>",
+  "<dt>Winner's skins %</dt><dd><b>61%, 68%, 65%, 66%</b> (6-player leagues; with 3 players each roster is a third of the league, so expect this year's winner to finish with a lower %)</dd>",
+  "<dt>Skins % projection</dt><dd>Each team's current skins % &times; 82, added up: where a player finishes if every team keeps its current rate.</dd>",
+  "<dt>Weighted avg</dt><dd>Vegas 40%, TR 20%, ESPN 20%, CBS 20% (most accurate robust blend on 2025-26 Oct-Nov data; until CBS publishes: Vegas 50%, TR 25%, ESPN 25%)</dd>",
+  sprintf("<dt>Chance to win</dt><dd>%s simulated seasons around the weighted average. The likely range is where a player's final total lands 4 times in 5 (thick bar: 1 in 2); it narrows as games are played. Uncertainty is based on %s.</dd>",
+          format(N_SIMS, big.mark = ","), uncertainty_note),
+  "<dt>Updates</dt><dd>Every 4 hours from 6 AM to 6 PM, then hourly 8 PM to 2 AM (Central).</dd>",
+  "</dl></div></details>",
+  "<div class=\"sk-caveat\" role=\"note\"><strong>Take the projections with a grain of salt.</strong> ",
+  "The model behind the weighted average, likely ranges and chance to win is built on just one season of data (2025-26): ",
+  "both the source weights and the size of a typical projection miss come from that single year. ",
+  "Expect it to be inaccurate, especially early in the season.</div>"
 )
 ```
 
@@ -842,7 +1005,7 @@ cat(sprintf(
 if (!draft_complete) {
   n_drafted <- sum(!is.na(draft_data$player))
   cat(sprintf(
-    "<p style='font-size:14px; color:#B00020; margin-top:0px; margin-bottom:16px;'>
+    "<p style='font-size:14px; color:#ff8a92; margin-top:12px; margin-bottom:16px;'>
      <strong>Pre-draft mode:</strong> %d of 30 teams drafted. Standings, player tables and charts appear once all 30 picks are entered in <code>draft_data</code>.</p>",
     n_drafted))
 
@@ -881,318 +1044,205 @@ if (!draft_complete) {
                         format = "html", escape = FALSE) %>%
     kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, position = "center") %>%
     column_spec(1, bold = TRUE) %>%
-    column_spec(8, bold = TRUE, background = "#DFF0D8") %>%
-    column_spec(10, bold = TRUE, background = "#E8F5E9")
+    column_spec(8, bold = TRUE) %>%
+    column_spec(10, bold = TRUE)
 
-  table_html <- as.character(table_output)
-  table_html <- gsub("<thead>", "<thead style='background-color: #444444; color: white; font-weight: bold;'>", table_html)
-  cat(table_html)
-  cat("<p style='font-size: 13px; margin-top: 5px; text-align: left;'>Avg Proj W = mean of available sources (projected wins). Best Side = W if Avg Proj W &ge; 41, else L. Proj Skins = projected skins for the best side.</p>")
+  cat("<div class='sk-tablewrap'>", as.character(table_output), "</div>")
+  cat("<p class='sk-note'>Avg Proj W = mean of available sources (projected wins). Best Side = W if Avg Proj W &ge; 41, else L. Proj Skins = projected skins for the best side.</p>")
 }
 
 # Everything below needs a completed draft - skip those chunks until then
 knitr::opts_chunk$set(eval = draft_complete)
 ```
 
-```{r standings-heading, echo=FALSE, results='asis'}
-cat("\n## Skins Standings and Live Projections\n\n")
-```
+```{r standings, echo=FALSE, results='asis'}
+# Standings: players across (leader first), stats and projection sources down - fits a phone without scrolling
+standing_order <- player_scores %>% arrange(desc(`Actual Skins`), desc(`Weighted Average`)) %>% pull(player)
+ps <- player_scores[match(standing_order, player_scores$player), ]
 
-```{r player-scores, echo=FALSE, results='asis'}
-# Format the player scores for display
-player_scores_display <- player_scores %>%
-  mutate(
-    `Actual Skins` = as.integer(`Actual Skins`),
-    `Skins %` = sprintf("%.1f%%", `Skins %` * 100),
-    `% Projected` = fmt_num(`% Projected`),
-    `Weighted Average` = fmt_num(`Weighted Average`),
-    `Chance to Win` = if_else(is.na(`Chance to Win`), "&ndash;", sprintf("%.0f%%", 100 * `Chance to Win`)),
-    `Likely Range` = if_else(is.na(range_lo), "&ndash;", sprintf("%.0f&ndash;%.0f", range_lo, range_hi)),
-    `Vegas Consensus` = fmt_num(`Vegas Consensus`),
-    `TR` = fmt_num(`TR`),
-    `ESPN` = fmt_num(`ESPN`),
-    `CBS` = fmt_num(`CBS`),
-    `BB-Ref` = fmt_num(`BB-Ref`),
-    `Proj Avg` = fmt_num(`Proj Avg`),
-    `Max Proj` = fmt_num(`Max Proj`)
-  ) %>%
-  select(player, `Actual Skins`, `Skins %`, `% Projected`, `Weighted Average`, `Chance to Win`, `Likely Range`,
-         `Vegas Consensus`, `TR`, `ESPN`, `CBS`, `BB-Ref`, `Proj Avg`, `Max Proj`)
-
-# Calculate global averages (across all teams in league, not player averages)
 league_total_skins <- sum(df_final_projections$actual_skins, na.rm = TRUE)
 league_total_games <- sum(df_final_projections$games_played, na.rm = TRUE)
 league_skins_pct <- if_else(league_total_games > 0, league_total_skins / league_total_games, 0)
+col_mean <- function(x) if (all(is.na(x))) NA_real_ else mean(x, na.rm = TRUE)
 
-# For % Projected, use mean of player values (not pace-based calculation)
-# since player % Projected is sum of team projections, not pace × 82
-league_pct_projected_avg <- mean(player_scores$`% Projected`, na.rm = TRUE)
-
-global_avg_row <- tibble(
-  player = "League Average",
-  `Actual Skins` = as.integer(league_total_skins / length(PLAYERS)),  # Average per player
-  `Skins %` = sprintf("%.1f%%", league_skins_pct * 100),
-  `% Projected` = sprintf("%.1f", league_pct_projected_avg),
-  `Weighted Average` = fmt_num(mean(player_scores$`Weighted Average`, na.rm = TRUE)),
-  `Chance to Win` = "",
-  `Likely Range` = "",
-  `Vegas Consensus` = fmt_num(mean(player_scores$`Vegas Consensus`, na.rm = TRUE)),
-  `TR` = fmt_num(mean(player_scores$`TR`, na.rm = TRUE)),
-  `ESPN` = fmt_num(mean(player_scores$`ESPN`, na.rm = TRUE)),
-  `CBS` = fmt_num(mean(player_scores$`CBS`, na.rm = TRUE)),
-  `BB-Ref` = fmt_num(mean(player_scores$`BB-Ref`, na.rm = TRUE)),
-  `Proj Avg` = fmt_num(mean(player_scores$`Proj Avg`, na.rm = TRUE)),
-  `Max Proj` = fmt_num(mean(player_scores$`Max Proj`, na.rm = TRUE))
+# label, per-player values, league average, formatter, row class
+st_rows <- list(
+  list("Skins", ps$`Actual Skins`, league_total_skins / length(PLAYERS), sk_f0, "sk-key"),
+  list("Skins %", ps$`Skins %`, league_skins_pct, sk_pct, ""),
+  list("Skins % projection", ps$`% Projected`, col_mean(ps$`% Projected`), sk_f1, ""),
+  "Projected final skins",
+  list("Weighted avg", ps$`Weighted Average`, col_mean(ps$`Weighted Average`), sk_f1, "sk-key"),
+  list("Vegas", ps$`Vegas Consensus`, col_mean(ps$`Vegas Consensus`), sk_f1, ""),
+  list("TR", ps$TR, col_mean(ps$TR), sk_f1, ""),
+  list("ESPN", ps$ESPN, col_mean(ps$ESPN), sk_f1, ""),
+  list("CBS", ps$CBS, col_mean(ps$CBS), sk_f1, ""),
+  list("BB-Ref", ps$`BB-Ref`, col_mean(ps$`BB-Ref`), sk_f1, ""),
+  list("Source avg", ps$`Proj Avg`, col_mean(ps$`Proj Avg`), sk_f1, ""),
+  list("Max", ps$`Max Proj`, col_mean(ps$`Max Proj`), sk_f1, "")
 )
+n_cols <- length(standing_order) + 2
+st_body <- vapply(st_rows, function(r) {
+  if (is.character(r)) return(sprintf("<tr class=\"sk-grp\"><th colspan=\"%d\">%s</th></tr>", n_cols, r))
+  vals <- r[[2]]
+  best <- if (all(is.na(vals)) || max(vals, na.rm = TRUE) == min(vals, na.rm = TRUE)) NA else max(vals, na.rm = TRUE)
+  cells <- sprintf("<td data-player=\"%s\"%s>%s</td>", standing_order,
+                   if_else(!is.na(best) & !is.na(vals) & vals == best, " class=\"sk-top\"", ""), r[[4]](vals))
+  sprintf("<tr class=\"%s\"><td>%s</td>%s<td class=\"sk-avg\">%s</td></tr>",
+          r[[5]], sk_src_label(r[[1]]), paste(cells, collapse = ""), r[[4]](r[[3]]))
+}, character(1))
 
-# Combine player data with global average
-player_scores_with_avg <- bind_rows(player_scores_display, global_avg_row)
-
-# Add column names with hyperlinks (with light colored links for dark background)
-col_names <- c("Player", "Actual Skins", "Skins %", "% Projected", "Weighted Average",
-               "Chance to Win", "Likely Range (80%)",
-               "Vegas Consensus", 
-               "<a href='https://www.teamrankings.com/nba/projections/standings/' target='_blank' style='color: #66B2FF;'>TR</a>",
-               "<a href='https://www.espn.com/nba/bpi/_/view/projections' target='_blank' style='color: #66B2FF;'>ESPN</a>",
-               "<a href='https://www.cbssports.com/nba/standings/' target='_blank' style='color: #66B2FF;'>CBS</a>",
-               "<a href='https://www.basketball-reference.com/friv/playoff_prob.html' target='_blank' style='color: #66B2FF;'>BB-Ref</a>",
-               "Proj Avg", "Max Proj")
-
-table_output <- kable(player_scores_with_avg, align = c("l", "r", "r", "r", "r", "r", "c", "r", "r", "r", "r", "r", "r", "r"),
-      col.names = col_names, escape = FALSE, format = "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, position = "center") %>%
-  row_spec(nrow(player_scores_with_avg), bold = TRUE, background = "#F0F0F0") %>%  # Highlight average row
-  column_spec(1, bold = TRUE) %>%
-  column_spec(2, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
-  column_spec(3, bold = TRUE, background = "#FFF9C4") %>%  # Highlight skins %
-  column_spec(5, bold = TRUE, background = "#DFF0D8") %>%  # Highlight weighted average
-  column_spec(6, bold = TRUE, background = "#E3F2FD")      # Highlight chance to win
-
-# Add header styling via CSS
-table_html <- as.character(table_output)
-table_html <- gsub("<thead>", "<thead style='background-color: #444444; color: white; font-weight: bold;'>", table_html)
-cat(table_html)
-
+raw_html(
+  "<h2 class=\"sk-h\">Standings</h2>",
+  "<div class=\"sk-tablewrap\"><table class=\"sk-table\" id=\"sk-standings\" data-quarto-disable-processing=\"true\"><thead><tr><th></th>",
+  paste(sprintf("<th data-player=\"%s\">%s%s</th>", standing_order, vapply(standing_order, sk_dot, ""), standing_order), collapse = ""),
+  "<th class=\"sk-avg\">Avg</th></tr></thead><tbody>", paste(st_body, collapse = ""), "</tbody></table></div>",
+  "<p class=\"sk-note\">Skins % projection = each team's skins % &times; 82, added up. Projected rows are final-season skins from each source; bold = best in the row. Avg = league average per player.</p>"
+)
 ```
 
-```{r player-footnotes, echo=FALSE, results='asis'}
-# Manually print the footnotes as HTML <p> tags
-# This divorces them from the table's column widths
-cat("<p style='font-size: 13px; margin-top: 5px; margin-bottom: 0; text-align: left;'>Skins % 2023-26: <b>58%, 62%, 59%, 59%</b></p>")
-cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Winner's Skins % 2023-26: <b>61%, 68%, 65%, 66%</b> (6-player leagues; with 3 players each roster is a third of the league, so expect this year's winner to finish with a lower %)</p>")
-cat("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Oct-Nov Weighted Avg: Vegas 40%, TR 20%, ESPN 20%, CBS 20% (most accurate robust blend on 2025-26 Oct-Nov data; until CBS publishes: Vegas 50%, TR 25%, ESPN 25%)</p>")
-cat(sprintf("<p style='font-size: 13px; margin-top: 2px; margin-bottom: 0; text-align: left;'>Chance to Win and Likely Range come from %s simulated seasons around the weighted average. The likely range is where a player's final total lands 4 times in 5; it narrows as games are played. Uncertainty is based on %s.</p>",
-            format(N_SIMS, big.mark = ","), uncertainty_note))
+```{r season-charts, echo=FALSE, results='asis'}
+# Interactive charts (drawn in the browser from standings_history.csv, embedded below as JSON)
+for (col in c("win_prob", "range_lo", "range_hi", "max_projection")) if (!col %in% names(history)) history[[col]] <- NA_real_
+chart_hist <- history %>%
+  filter(player %in% PLAYERS) %>%
+  arrange(date, player) %>%
+  transmute(d = format(date, "%Y-%m-%d"), p = player, sk = actual_skins, pct = skins_pct, pace = pct_projected,
+            wa = weighted_average, v = vegas_consensus, tr = team_rankings, es = espn_bpi, cb = cbs_sports,
+            br = basketball_reference, avg = projection_average, mx = max_projection,
+            win = win_prob, lo = range_lo, hi = range_hi)
+chart_json <- jsonlite::toJSON(list(players = PLAYERS, colors = as.list(colorblind_colors), sims = N_SIMS, hist = chart_hist),
+                               dataframe = "rows", na = "null", digits = 4, auto_unbox = TRUE)
+
+raw_html(
+  "<h2 class=\"sk-h\">Season charts</h2>",
+  "<div class=\"sk-chart\" id=\"sk-chart\">",
+  "<div class=\"sk-ctabs\"><span class=\"sk-seg\" id=\"sk-ctabs\">",
+  "<button type=\"button\" data-c=\"proj\" aria-pressed=\"true\">Projection</button>",
+  "<button type=\"button\" data-c=\"race\">Race</button>",
+  "<button type=\"button\" data-c=\"pct\">Skins %</button>",
+  "<button type=\"button\" data-c=\"win\">To win</button></span></div>",
+  "<div class=\"sk-crow\"><div><div class=\"sk-cttl\" id=\"sk-cttl\"></div><p class=\"sk-cdsc\" id=\"sk-cdsc\"></p></div>",
+  "<select id=\"sk-copt\" aria-label=\"Chart series\" hidden></select></div>",
+  "<div class=\"sk-cleg\" id=\"sk-cleg\"></div>",
+  "<div class=\"sk-plot\" id=\"sk-plot\"><div class=\"sk-empty\">Charts need JavaScript.</div></div>",
+  "</div>",
+  "<script type=\"application/json\" id=\"sk-data\">", chart_json, "</script>"
+)
 ```
 
-```{r range-strip, echo=FALSE, fig.width=12, fig.height=3.4, warning=FALSE}
-# Range strip: dot = weighted average, thick bar = 50% likely range, thin bar = 80% likely range
+```{r chance-to-win, echo=FALSE, results='asis'}
+# Chance to win: title odds bar, then one card per player with the likely range on a shared scale
 if (!is.null(uncertainty)) {
-  strip <- uncertainty %>%
+  cw <- uncertainty %>%
     left_join(player_scores %>% select(player, proj = `Weighted Average`), by = "player") %>%
-    arrange(desc(proj)) %>%
-    mutate(label = sprintf("%s  \u00b7  %.0f%% to win", player, 100 * win_prob),
-           label = factor(label, levels = rev(label)))
-  print(
-    ggplot(strip, aes(y = label, color = player)) +
-      geom_linerange(aes(xmin = lo80, xmax = hi80), linewidth = 3, alpha = 0.35) +
-      geom_linerange(aes(xmin = lo50, xmax = hi50), linewidth = 7, alpha = 0.6) +
-      geom_point(aes(x = proj), size = 4.5, color = "white") +
-      geom_point(aes(x = proj), size = 3) +
-      geom_text(aes(x = proj, label = sprintf("%.0f", proj)), vjust = -1.6, size = 4, color = "#333333") +
-      scale_color_manual(values = colorblind_colors, guide = "none") +
-      labs(title = "Projected final skins",
-           subtitle = "Dot = weighted average   thick bar = 50% likely range   thin bar = 80% likely range",
-           x = "Final skins", y = NULL) +
-      theme_minimal() +
-      theme(plot.title = element_text(size = 16, face = "bold"), axis.text = element_text(size = 12),
-            panel.grid.minor = element_blank(), panel.grid.major.y = element_blank())
+    arrange(desc(win_prob), desc(proj))
+  span <- max(cw$hi80) - min(cw$lo80)
+  step <- c(5, 10, 20, 50, 100)[which(span / c(5, 10, 20, 50, 100) <= 6)[1]]
+  ax_lo <- floor((min(cw$lo80) - step / 4) / step) * step
+  ax_hi <- ceiling((max(cw$hi80) + step / 4) / step) * step
+  xp <- function(v) sprintf("%.2f%%", 100 * (v - ax_lo) / (ax_hi - ax_lo))
+  ticks <- seq(ax_lo, ax_hi, by = step)
+  grid <- paste(sprintf("<i class=\"sk-grid\" style=\"left:%s\"></i>", xp(ticks)), collapse = "")
+
+  odds <- paste0(
+    "<div class=\"sk-odds\"><div class=\"sk-k\">Chance to win the league</div>",
+    sprintf("<div class=\"sk-bar\" role=\"img\" aria-label=\"%s\">", paste(sprintf("%s %.0f%%", cw$player, 100 * cw$win_prob), collapse = ", ")),
+    paste(sprintf("<span style=\"--c:%s;flex:%.4f\"></span>", colorblind_colors[cw$player], cw$win_prob), collapse = ""),
+    "</div><div class=\"sk-leg\">",
+    paste(sprintf("<span>%s%s <b>%.0f%%</b></span>", vapply(cw$player, sk_dot, ""), cw$player, 100 * cw$win_prob), collapse = ""),
+    "</div></div>")
+  cards <- paste(sprintf(paste0(
+    "<article class=\"sk-pc\" data-player=\"%s\" style=\"--c:%s\">",
+    "<div class=\"sk-pc-top\"><span class=\"sk-rank\">%d</span><i class=\"sk-dot\"></i><span class=\"sk-nm\">%s</span>",
+    "<span class=\"sk-win\"><b>%.0f%%</b><small>to win</small></span></div>",
+    "<div class=\"sk-pc-sub\">Projected <b>%.0f</b> &middot; likely %.0f&ndash;%.0f</div>",
+    "<div class=\"sk-range\" role=\"img\" aria-label=\"%s: projected %.0f, likely range %.0f to %.0f\">%s",
+    "<i class=\"sk-r80\" style=\"left:%s;width:calc(%s - %s)\"></i>",
+    "<i class=\"sk-r50\" style=\"left:%s;width:calc(%s - %s)\"></i>",
+    "<i class=\"sk-pt\" style=\"left:%s\"></i></div></article>"),
+    cw$player, colorblind_colors[cw$player], seq_len(nrow(cw)), cw$player, 100 * cw$win_prob,
+    cw$proj, cw$lo80, cw$hi80, cw$player, cw$proj, cw$lo80, cw$hi80, grid,
+    xp(cw$lo80), xp(cw$hi80), xp(cw$lo80), xp(cw$lo50), xp(cw$hi50), xp(cw$lo50), xp(cw$proj)), collapse = "")
+
+  raw_html(
+    "<h2 class=\"sk-h\">Chance to win</h2>", odds,
+    "<div class=\"sk-cards\">", cards, "</div>",
+    "<div class=\"sk-axis\">", paste(sprintf("<span style=\"left:%s\">%d</span>", xp(ticks), as.integer(ticks)), collapse = ""), "</div>",
+    sprintf("<p class=\"sk-note\">Projected final skins: dot = weighted average, thick bar = 1-in-2 range, thin bar = 4-in-5 range, from %s simulated seasons. Fit on one season of data, so expect misses.</p>",
+            format(N_SIMS, big.mark = ","))
   )
 }
 ```
 
-```{r by-player-heading, echo=FALSE, results='asis'}
-cat("\n## Standings and Projections by player\n\n")
+```{r rosters, echo=FALSE, results='asis'}
+# Rosters: one player at a time (tabs), each team expandable to its source-by-source numbers
+roster_teams <- draft_data %>%
+  left_join(df_final_projections %>% select(-abbr, -skins_pick), by = "team") %>%
+  mutate(proj_avg = rowMeans(cbind(vegas_consensus, tr_skins, espn_skins, cbs_skins), na.rm = TRUE),
+         proj_avg = if_else(is.nan(proj_avg), NA_real_, proj_avg))
+
+roster_html <- vapply(PLAYERS, function(p) {
+  ts <- roster_teams %>% filter(player == p) %>% arrange(desc(actual_skins), desc(weighted_average))
+  rows <- vapply(seq_len(nrow(ts)), function(i) {
+    t <- ts[i, ]
+    pace <- if (t$games_played > 0) {
+      sprintf("<span class=\"sk-pill %s\" title=\"%+.1f vs projection\">%.0f</span>",
+              if (is.na(t$weighted_average) || t$pct_projected >= t$weighted_average) "pos" else "neg",
+              t$pct_projected - coalesce(t$weighted_average, t$pct_projected), t$pct_projected)
+    } else "&ndash;"
+    srcs <- c(`Skins %` = sk_pct(if (t$games_played > 0) t$skins_pct else NA), Vegas = sk_f1(t$vegas_consensus),
+              TR = sk_f1(t$tr_skins), ESPN = sk_f1(t$espn_skins), CBS = sk_f1(t$cbs_skins),
+              `BB-Ref` = sk_f1(t$br_skins), `Source avg` = sk_f1(t$proj_avg), Max = sk_f1(t$max_projection))
+    sprintf(paste0(
+      "<details><summary class=\"sk-rrow\"><span class=\"sk-tm\">%s <span class=\"sk-pick\" title=\"%s\">%s</span></span>",
+      "<span>%d&ndash;%d</span><span>%s</span><span><b>%s</b><div class=\"sk-mini\"><span style=\"width:%.1f%%\"></span></div></span>",
+      "<span class=\"sk-chev\" aria-hidden=\"true\">&#9654;</span></summary>",
+      "<div class=\"sk-srcs\"><div class=\"sk-tfull\">%s &middot; %s</div>%s</div></details>"),
+      t$abbr, if (t$skins_pick == "W") "Wins" else "Losses", t$skins_pick,
+      as.integer(t$actual_skins), as.integer(t$games_played - t$actual_skins), pace,
+      sk_f1(t$weighted_average), 100 * coalesce(t$weighted_average, 0) / 82,
+      t$team, if (t$skins_pick == "W") "picked to win" else "picked to lose",
+      paste(sprintf("<div><span>%s</span>%s</div>", names(srcs), srcs), collapse = ""))
+  }, character(1))
+  sprintf("<div class=\"sk-roster\" data-roster=\"%s\" data-player=\"%s\"><div class=\"sk-rname\">%s%s</div><div class=\"sk-rhead\"><span>Team</span><span>Skins</span><span>%% Proj</span><span>Proj</span><span></span></div>%s</div>",
+          p, p, sk_dot(p), p, paste(rows, collapse = ""))
+}, character(1))
+
+raw_html(
+  "<h2 class=\"sk-h\">Rosters</h2>",
+  sprintf("<div class=\"sk-who\"><span class=\"sk-seg\" id=\"sk-rtabs\" data-default=\"%s\">%s</span></div>", standing_order[1],
+          paste(sprintf("<button type=\"button\" data-p=\"%s\">%s</button>", PLAYERS, PLAYERS), collapse = "")),
+  paste(roster_html, collapse = ""),
+  "<p class=\"sk-note\">Skins = skins&ndash;misses so far. % Proj = skins % projection (skins % &times; 82), green when ahead of the projection. Proj = weighted-average final skins. Tap a team for every source.</p>"
+)
 ```
 
-```{r draft-results, echo=FALSE, results='asis'}
-# Create standings table grouped by player
-standings_table <- draft_data %>%
-  left_join(
-    df_final_projections %>% 
-      select(
-        team, # The join key
-        `Actual Skins` = actual_skins,
-        `Skins %` = skins_pct,
-        `% Projected` = pct_projected,
-        `Weighted Average` = weighted_average,
-        `Vegas Consensus` = vegas_consensus,
-        `TR` = tr_skins,
-        `ESPN` = espn_skins,
-        `CBS` = cbs_skins,
-        `BB-Ref` = br_skins,
-        `Max Proj` = max_projection
-      ),
-    by = "team"
-  ) %>%
-  # Calculate Projection Average for each team
-  rowwise() %>%
-  mutate(
-    `Proj Avg` = mean(c(`Vegas Consensus`, `TR`, `ESPN`, `CBS`), na.rm = TRUE)
-  ) %>%
-  ungroup() %>%
-  select(
-    team,
-    Player = player,
-    Abbr = abbr,
-    `Skins Pick` = skins_pick,
-    `Actual Skins`,
-    `Skins %`,
-    `% Projected`,
-    `Weighted Average`,
-    `Vegas Consensus`,
-    `TR`,
-    `ESPN`,
-    `CBS`,
-    `BB-Ref`,
-    `Proj Avg`,
-    `Max Proj`
-  ) %>%
-  arrange(
-    match(Player, PLAYERS),
-    desc(`Actual Skins`)
-  ) %>%
-  mutate(
-    `Actual Skins` = as.integer(`Actual Skins`),
-    `Skins %` = sprintf("%.1f%%", `Skins %` * 100),
-    `% Projected` = fmt_num(`% Projected`),
-    `Weighted Average` = fmt_num(`Weighted Average`),
-    `Vegas Consensus` = fmt_num(`Vegas Consensus`),
-    `TR` = fmt_num(`TR`),
-    `ESPN` = fmt_num(`ESPN`),
-    `CBS` = fmt_num(`CBS`),
-    `BB-Ref` = fmt_num(`BB-Ref`),
-    `Proj Avg` = fmt_num(`Proj Avg`),
-    `Max Proj` = fmt_num(`Max Proj`)
-  )
+```{r all-teams, echo=FALSE, results='asis'}
+# All 30 teams, sortable by tapping a header (sort keys live in data-v)
+all_t <- roster_teams %>% arrange(desc(actual_skins), desc(weighted_average))
+all_rows <- sprintf(paste0(
+  "<tr data-player=\"%s\"><td data-v=\"%s\" title=\"%s\"><b>%s</b></td><td data-v=\"%s\"><span class=\"sk-pname\">%s%s</span></td>",
+  "<td data-v=\"%s\">%s</td><td data-v=\"%d\">%d&ndash;%d</td><td data-v=\"%.4f\">%s</td><td data-v=\"%.2f\">%s</td></tr>"),
+  all_t$player, all_t$abbr, all_t$team, all_t$abbr, all_t$player, vapply(all_t$player, sk_dot, ""), all_t$player,
+  all_t$skins_pick, all_t$skins_pick, as.integer(all_t$actual_skins), as.integer(all_t$actual_skins),
+  as.integer(all_t$games_played - all_t$actual_skins),
+  if_else(all_t$games_played > 0, all_t$skins_pct, -1), if_else(all_t$games_played > 0, sk_pct(all_t$skins_pct), "&ndash;"),
+  coalesce(all_t$weighted_average, -1), sk_f1(all_t$weighted_average))
+sort_th <- function(i, label, num, active = FALSE) sprintf("<th><button type=\"button\" data-col=\"%d\" data-num=\"%d\"%s>%s</button></th>", i, num, if (active) " aria-sort=\"descending\"" else "", label)
 
-# Column names with hyperlinks for by-player tables (light colored links for blue background)
-player_col_names <- c("Abbr", "Skins Pick", "Actual Skins", "Skins %", "% Projected", "Weighted Average", 
-                      "Vegas Consensus", 
-                      "<a href='https://www.teamrankings.com/nba/projections/standings/' target='_blank' style='color: #E0E0E0;'>TR</a>",
-                      "<a href='https://www.espn.com/nba/bpi/_/view/projections' target='_blank' style='color: #E0E0E0;'>ESPN</a>",
-                      "<a href='https://www.cbssports.com/nba/standings/' target='_blank' style='color: #E0E0E0;'>CBS</a>",
-                      "<a href='https://www.basketball-reference.com/friv/playoff_prob.html' target='_blank' style='color: #E0E0E0;'>BB-Ref</a>",
-                      "Proj Avg", "Max Proj")
-
-# Generate one table per player with no spacing
-player_order <- PLAYERS
-
-for(i in seq_along(player_order)) {
-  player_name <- player_order[i]
-  player_data <- standings_table %>% 
-    filter(Player == player_name) %>% 
-    select(-team, -Player)
-  
-  # Add div wrapper with player name above table
-  cat('<div style="margin-bottom: 0px; margin-top: ', ifelse(i == 1, '0px', '-1px'), ';">\n')
-  cat('<div style="background-color: #666; color: #fff; font-weight: bold; padding: 8px; text-align: center;">', player_name, '</div>\n')
-  
-  table_output <- kable(
-    player_data,
-    align = c("c", "c", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r"),
-    col.names = player_col_names,
-    escape = FALSE,
-    format = "html"
-  ) %>%
-    kable_styling(
-      bootstrap_options = c("striped", "hover", "condensed"),
-      full_width = FALSE,
-      position = "center"
-    ) %>%
-    column_spec(3, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
-    column_spec(4, bold = TRUE, background = "#FFF9C4") %>%  # Highlight skins %
-    column_spec(6, bold = TRUE, background = "#DFF0D8")  # Highlight weighted average
-  
-  table_html <- as.character(table_output)
-  table_html <- gsub("<thead>", "<thead style='background-color: #0073C2; color: white; font-weight: bold;'>", table_html)
-  
-  cat(as.character(table_html))
-  cat('\n</div>\n')
-}
+raw_html(
+  "<details class=\"sk-fold\"><summary>All 30 teams<small>tap a header to sort</small></summary>",
+  "<div class=\"sk-tablewrap\"><table class=\"sk-table\" id=\"sk-all\" data-quarto-disable-processing=\"true\"><thead><tr>",
+  sort_th(0, "Team", 0), sort_th(1, "Player", 0), sort_th(2, "Pick", 0), sort_th(3, "Skins", 1, TRUE), sort_th(4, "Skins %", 1), sort_th(5, "Proj", 1),
+  "</tr></thead><tbody>", paste(all_rows, collapse = ""), "</tbody></table></div></details>"
+)
 ```
 
-```{r by-team-heading, echo=FALSE, results='asis'}
-cat("\n## Standings and Projections by Team\n\n")
+```{r accuracy-open, echo=FALSE, results='asis'}
+raw_html("<details class=\"sk-fold\"><summary>Projection accuracy</summary><div class=\"sk-inner\">")
 ```
 
-```{r team-projections, echo=FALSE, results='asis'}
-# Select and format the final projections for display
-team_projections_table <- df_final_projections %>%
-  left_join(draft_data %>% select(team, player), by = "team") %>%
-  rowwise() %>%
-  mutate(
-    `Proj Avg` = mean(c(vegas_consensus, tr_skins, espn_skins, cbs_skins), na.rm = TRUE)
-  ) %>%
-  ungroup() %>%
-  select(
-    Team = team,
-    Player = player,
-    `Pick Type` = skins_pick,
-    `Actual Skins` = actual_skins,
-    `Skins %` = skins_pct,
-    `% Projected` = pct_projected,
-    `Weighted Average` = weighted_average,
-    `Vegas Consensus` = vegas_consensus,
-    `TR` = tr_skins,
-    `ESPN` = espn_skins,
-    `CBS` = cbs_skins,
-    `BB-Ref` = br_skins,
-    `Proj Avg`,
-    `Max Proj` = max_projection
-  ) %>%
-  arrange(desc(`Actual Skins`)) %>%
-  mutate(
-    `Actual Skins` = as.integer(`Actual Skins`),
-    `Skins %` = sprintf("%.1f%%", `Skins %` * 100),
-    `% Projected` = fmt_num(`% Projected`),
-    `Weighted Average` = fmt_num(`Weighted Average`),
-    `Vegas Consensus` = fmt_num(`Vegas Consensus`),
-    `TR` = fmt_num(`TR`),
-    `ESPN` = fmt_num(`ESPN`),
-    `CBS` = fmt_num(`CBS`),
-    `BB-Ref` = fmt_num(`BB-Ref`),
-    `Proj Avg` = fmt_num(`Proj Avg`),
-    `Max Proj` = fmt_num(`Max Proj`)
-  )
-
-# Column names with hyperlinks for team table (light colored links for dark background)
-team_col_names <- c("Team", "Player", "Pick Type", "Actual Skins", "Skins %", "% Projected", "Weighted Average", 
-                     "Vegas Consensus", 
-                     "<a href='https://www.teamrankings.com/nba/projections/standings/' target='_blank' style='color: #66B2FF;'>TR</a>",
-                     "<a href='https://www.espn.com/nba/bpi/_/view/projections' target='_blank' style='color: #66B2FF;'>ESPN</a>",
-                     "<a href='https://www.cbssports.com/nba/standings/' target='_blank' style='color: #66B2FF;'>CBS</a>",
-                     "<a href='https://www.basketball-reference.com/friv/playoff_prob.html' target='_blank' style='color: #66B2FF;'>BB-Ref</a>",
-                     "Proj Avg", "Max Proj")
-
-table_output <- kable(team_projections_table, align = c("l", "l", "c", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r", "r"),
-      col.names = team_col_names, escape = FALSE, format = "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, position = "center") %>%
-  column_spec(1, bold = TRUE) %>%
-  column_spec(4, bold = TRUE, background = "#E8F5E9") %>%  # Highlight actual skins
-  column_spec(5, bold = TRUE, background = "#FFF9C4") %>%  # Highlight skins %
-  column_spec(7, bold = TRUE, background = "#DFF0D8")  # Highlight weighted average
-
-table_html <- as.character(table_output)
-table_html <- gsub("<thead>", "<thead style='background-color: #444444; color: white; font-weight: bold;'>", table_html)
-cat(table_html)
-```
-
-```{r accuracy-heading, echo=FALSE, results='asis'}
-cat("\n## Projection Accuracy\n\n")
-```
-
-```{r projection-accuracy, echo=FALSE, results='asis', fig.width=12, fig.height=5, warning=FALSE, message=FALSE}
+```{r projection-accuracy, echo=FALSE, results='asis', fig.width=7, fig.height=4.5, dpi=150, warning=FALSE, message=FALSE}
 # How well did each source's projection on date D predict what teams did AFTER D?
 # Sources already include results to date, so we only grade games played after the projection was saved:
 #   expected wins since D = (projected wins - wins at D) / (games left at D) * games played since D
@@ -1266,14 +1316,15 @@ if (is.null(h) || nrow(h) == 0) {
     }
     acc_display <- acc %>%
       transmute(Source,
-                `Miss since opening night` = fmt_col(opening, key),
-                `Miss last 30 days` = fmt_col(last30, key),
-                `Current weight` = weight)
+                opening = fmt_col(opening, key),
+                last30 = fmt_col(last30, key),
+                weight)
 
-    out <- kable(acc_display, align = c("l", "r", "r", "r"), escape = FALSE, format = "html") %>%
-      kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, position = "center")
-    out <- gsub("<thead>", "<thead style='background-color: #444444; color: white; font-weight: bold;'>", as.character(out))
-    cat(out)
+    raw_html("<div class=\"sk-tablewrap\"><table class=\"sk-table\" data-quarto-disable-processing=\"true\"><thead><tr>",
+             "<th>Source</th><th>Since opening</th><th>Last 30 days</th><th>Weight</th></tr></thead><tbody>",
+             paste(sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
+                           acc_display$Source, acc_display$opening, acc_display$last30, acc_display$weight), collapse = ""),
+             "</tbody></table></div>")
     acc_p(sprintf(paste0("Average miss in wins per team, grading only games played <i>after</i> each projection was saved ",
                          "(opening night: %s, %s games per team; last 30 days: %s). Lower is better; best source in bold. ",
                          "The .500 baseline shows how much the projections beat a coin flip."),
@@ -1317,420 +1368,232 @@ if (is.null(h) || nrow(h) == 0) {
       trend <- trend %>% mutate(Source = factor(ACC_SOURCES[source], levels = ACC_SOURCES))
       print(
         ggplot(trend, aes(date, miss, color = Source, linetype = source == "baseline")) +
-          geom_line(linewidth = 1.1) +
+          geom_line(linewidth = 0.9) +
           scale_linetype_manual(values = c(`FALSE` = "solid", `TRUE` = "dashed"), guide = "none") +
-          scale_color_manual(values = c("TeamRankings" = "#0077BB", "ESPN BPI" = "#CC3311", "CBS" = "#009988",
-                                        "Vegas" = "#EE7733", "BB-Ref" = "#AA3377", "Weighted Average" = "#222222",
-                                        "Baseline: .500 rest of season" = "#999999")) +
-          labs(title = "Rolling 30-day miss by source (lower is better)", x = NULL, y = "Average miss (wins per team)", color = NULL) +
-          theme_minimal() +
-          theme(legend.position = "right", plot.title = element_text(size = 16, face = "bold"),
-                axis.text = element_text(size = 11), panel.grid.minor = element_blank())
+          scale_color_manual(values = c("TeamRankings" = "#4C9BE8", "ESPN BPI" = "#E26A54", "CBS" = "#22A794",
+                                        "Vegas" = "#EE9944", "BB-Ref" = "#CC6FA8", "Weighted Average" = "#EEEEEE",
+                                        "Baseline: .500 rest of season" = "#888888")) +
+          labs(title = "Rolling 30-day miss by source", subtitle = "Lower is better", x = NULL,
+               y = "Average miss (wins per team)", color = NULL) +
+          guides(color = guide_legend(nrow = 3)) +
+          theme_minimal(base_size = 12) +
+          theme(legend.position = "bottom", plot.title = element_text(face = "bold"),
+                plot.background = element_rect(fill = "#2b2b2b", color = NA),
+                panel.grid.minor = element_blank(), panel.grid.major = element_line(color = "#3a3a3a"),
+                text = element_text(color = "#dddddd"), axis.text = element_text(color = "#aaaaaa"))
       )
     }
   }
 }
 ```
 
-```{r charts-heading, echo=FALSE, results='asis'}
-cat("\n## Season Charts\n\n")
+```{r accuracy-close, echo=FALSE, results='asis'}
+raw_html("</div></details>")
 ```
 
-```{r likely-range-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
-# Projection with 80% likely range, as tracked each day (standings_history.csv). The band narrows on its own
-# as games are played; the lines move only as projections change.
-band_hist <- history %>%
-  filter(!is.na(range_lo), !is.na(weighted_average)) %>%
-  select(player, date, proj = weighted_average, lo = range_lo, hi = range_hi, win_prob)
+```{=html}
+<script>
+// Standings page behaviour: "I'm" picker (shared with Daily Matchups via localStorage skinsMe), roster tabs,
+// sortable all-teams table, and the season charts drawn from the embedded #sk-data JSON.
+(function () {
+  document.body.classList.add("sk-js");
+  var KEY = "skinsMe";
+  var dataEl = document.getElementById("sk-data");
+  if (!dataEl) return;   // pre-draft: nothing below exists yet
+  var D = JSON.parse(dataEl.textContent);
+  var PLAYERS = D.players, COLORS = D.colors;
+  var me = "";
+  try { me = localStorage.getItem(KEY) || ""; } catch (e) {}
+  if (PLAYERS.indexOf(me) < 0) me = "";
 
-if (nrow(band_hist) > 0) {
-  latest_band <- band_hist %>% filter(date == max(date))
-  print(
-    ggplot(band_hist, aes(date, proj, color = player, fill = player)) +
-      geom_ribbon(aes(ymin = lo, ymax = hi), alpha = 0.18, color = NA) +
-      geom_line(linewidth = 1.2) +
-      geom_linerange(data = latest_band, aes(ymin = lo, ymax = hi), linewidth = 3, alpha = 0.5) +
-      geom_point(data = latest_band, size = 2.5) +
-      scale_color_manual(values = colorblind_colors) +
-      scale_fill_manual(values = colorblind_colors) +
-      scale_x_date(limits = c(min(band_hist$date, SEASON_START), max(max(band_hist$date), SEASON_START + 14))) +
-      labs(title = "Projected final skins with 80% likely range",
-           subtitle = "Line = weighted average each day   band = range the final total lands in 4 times in 5",
-           x = NULL, y = "Projected final skins", color = NULL, fill = NULL) +
-      theme_minimal() +
-      theme(legend.position = "right", plot.title = element_text(size = 16, face = "bold"),
-            axis.text = element_text(size = 11), axis.title = element_text(size = 12),
-            panel.grid.minor = element_blank(), panel.grid.major = element_line(color = "gray90"),
-            legend.text = element_text(size = 11))
-  )
-}
+  var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
+  var dot = function (p) { return '<i class="sk-dot" style="--c:' + COLORS[p] + '"></i>'; };
+
+  // --- "I'm" picker ---
+  var meEl = document.getElementById("sk-me");
+  function renderPicker() {
+    if (!meEl) return;
+    meEl.innerHTML = PLAYERS.concat([""]).map(function (p) {
+      return '<button type="button" data-me="' + esc(p) + '" aria-pressed="' + (p === me) + '">' + esc(p || "All") + "</button>";
+    }).join("");
+    meEl.parentElement.hidden = false;
+  }
+  function applyMe() {
+    document.querySelectorAll("[data-player]").forEach(function (el) { el.classList.toggle("sk-me", !!me && el.getAttribute("data-player") === me); });
+  }
+  if (meEl) meEl.addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    me = b.getAttribute("data-me");
+    try { me ? localStorage.setItem(KEY, me) : localStorage.removeItem(KEY); } catch (err) {}
+    renderPicker(); applyMe(); if (me) showRoster(me); if (tabs) drawChart();
+  });
+
+  // --- roster tabs ---
+  var rt = document.getElementById("sk-rtabs");
+  function showRoster(p) {
+    document.querySelectorAll(".sk-roster").forEach(function (r) { r.hidden = r.getAttribute("data-roster") !== p; });
+    if (rt) rt.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", b.getAttribute("data-p") === p); });
+  }
+  if (rt) rt.addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) showRoster(b.getAttribute("data-p")); });
+
+  // --- sortable all-teams table ---
+  var all = document.getElementById("sk-all");
+  if (all) all.tHead.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-col]"); if (!b) return;
+    var c = +b.getAttribute("data-col"), num = b.getAttribute("data-num") === "1", tb = all.tBodies[0];
+    var rows = Array.prototype.slice.call(tb.rows);
+    rows.sort(function (x, y) {
+      var a = x.cells[c].getAttribute("data-v"), z = y.cells[c].getAttribute("data-v");
+      return num ? (+z) - (+a) : a.localeCompare(z);
+    });
+    rows.forEach(function (r) { tb.appendChild(r); });
+    all.tHead.querySelectorAll("button").forEach(function (x) { x.removeAttribute("aria-sort"); });
+    b.setAttribute("aria-sort", "descending");
+  });
+
+  // --- season charts ---
+  var dates = [], byDate = {};
+  D.hist.forEach(function (h) { if (!byDate[h.d]) { byDate[h.d] = {}; dates.push(h.d); } byDate[h.d][h.p] = h; });
+  dates.sort();
+  var H = dates.map(function (d) { return { d: d, t: new Date(d + "T12:00:00").getTime(), r: byDate[d] }; });
+  var firstGame = -1;
+  for (var i = 0; i < H.length && firstGame < 0; i++) if (PLAYERS.some(function (p) { return H[i].r[p] && H[i].r[p].sk > 0; })) firstGame = i;
+  var avgOf = function (row, k) { var s = 0, n = 0; PLAYERS.forEach(function (p) { if (row[p] && row[p][k] != null) { s += row[p][k]; n++; } }); return n ? s / n : null; };
+  var f0 = function (v) { return v.toFixed(0); }, f1 = function (v) { return v.toFixed(1); };
+  var CH = {
+    proj: { ttl: "Projected final skins",
+      opts: [["wa", "Weighted avg"], ["v", "Vegas"], ["tr", "TR"], ["es", "ESPN"], ["cb", "CBS"], ["br", "BB-Ref"], ["avg", "Source avg"], ["mx", "Max"], ["pace", "Skins % projection"]],
+      dsc: function (o) { return o === "wa" ? "Weighted average with the 4-in-5 likely range (dashed). Pick yourself above to see just your range." : o === "pace" ? "Each team's skins % × 82, added up." : "Projected final skins from this source."; },
+      get: function (r, o) { return o === "pace" && !(r.pace > 0) ? null : r[o]; }, band: function (o) { return o === "wa"; },
+      games: function (o) { return o === "pace"; }, fmt: f0, tip: f1 },
+    race: { ttl: "Skins race", opts: [["gap", "vs. league average"], ["sk", "Total skins"]],
+      dsc: function (o) { return o === "gap" ? "Above zero means ahead of the average player. The gap between lines is the lead." : "Skins so far."; },
+      get: function (r, o, row) { if (r.sk == null) return null; return o === "gap" ? r.sk - avgOf(row, "sk") : r.sk; },
+      zero: function (o) { return o === "gap"; }, games: function () { return true; },
+      fmt: function (v, o) { return (o === "gap" && v > 0 ? "+" : "") + v.toFixed(0); } },
+    pct: { ttl: "Skins %", dsc: function () { return "Share of games so far that earned a skin."; },
+      get: function (r) { return r.pct > 0 ? r.pct : null; }, games: function () { return true; },
+      fmt: function (v) { return (100 * v).toFixed(1) + "%"; } },
+    win: { ttl: "Chance to win", dsc: function () { return "From " + D.sims.toLocaleString() + " simulated seasons each day. Built on one season of data, so treat it as rough."; },
+      get: function (r) { return r.win; }, dom: [0, 1], ticks: [0, .25, .5, .75, 1],
+      fmt: function (v) { return Math.round(100 * v) + "%"; } }
+  };
+  var state = { c: "proj", o: { proj: "wa", race: "gap" } };
+  var tabs = document.getElementById("sk-ctabs"), sel = document.getElementById("sk-copt"), plot = document.getElementById("sk-plot");
+
+  function niceTicks(a, b) {
+    if (a === b) { a -= 1; b += 1; }
+    var step0 = (b - a) / 4, mag = Math.pow(10, Math.floor(Math.log10(step0)));
+    var step = [1, 2, 2.5, 5, 10].map(function (m) { return m * mag; }).filter(function (s) { return s >= step0; })[0];
+    var t = []; for (var v = Math.floor(a / step) * step; v <= b + step * 1e-6; v += step) t.push(+v.toFixed(6));
+    if (t[t.length - 1] < b) t.push(+(t[t.length - 1] + step).toFixed(6));
+    return t;
+  }
+
+  function drawChart() {
+    var c = CH[state.c], o = state.o[state.c];
+    tabs.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", b.getAttribute("data-c") === state.c); });
+    if (c.opts) {
+      sel.innerHTML = c.opts.map(function (x) { return '<option value="' + x[0] + '"' + (x[0] === o ? " selected" : "") + ">" + x[1] + "</option>"; }).join("");
+      sel.hidden = false;
+    } else sel.hidden = true;
+    document.getElementById("sk-cttl").textContent = c.ttl;
+    document.getElementById("sk-cdsc").textContent = c.dsc(o);
+    document.getElementById("sk-cleg").innerHTML = PLAYERS.map(function (p) { return "<span>" + dot(p) + esc(p) + "</span>"; }).join("");
+
+    var from = 0;
+    if (c.games && c.games(o)) {
+      if (firstGame < 0) { plot.innerHTML = '<div class="sk-empty">Starts once the first games go final.</div>'; return; }
+      from = Math.max(0, firstGame - 1);
+    }
+    var pts = H.slice(from);
+    var series = PLAYERS.map(function (p) {
+      return { p: p,
+        v: pts.map(function (h) { var r = h.r[p]; return r ? c.get(r, o, h.r) : null; }),
+        lo: pts.map(function (h) { var r = h.r[p]; return r && c.band && c.band(o) ? r.lo : null; }),
+        hi: pts.map(function (h) { var r = h.r[p]; return r && c.band && c.band(o) ? r.hi : null; }) };
+    });
+    var vals = [];
+    series.forEach(function (s) { s.v.concat(s.lo, s.hi).forEach(function (v) { if (v != null) vals.push(v); }); });
+    if (!vals.length) { plot.innerHTML = '<div class="sk-empty">No data for this chart yet.</div>'; return; }
+
+    var W = Math.max(280, plot.clientWidth || 600), Hh = Math.round(Math.min(320, Math.max(220, W * 0.58)));
+    var m = { l: 44, r: 76, t: 10, b: 24 };
+    var y0 = c.dom ? c.dom[0] : Math.min.apply(null, vals), y1 = c.dom ? c.dom[1] : Math.max.apply(null, vals);
+    if (c.zero && c.zero(o)) { y0 = Math.min(y0, 0); y1 = Math.max(y1, 0); }
+    var yt = c.ticks || niceTicks(y0, y1);
+    y0 = Math.min(y0, yt[0]); y1 = Math.max(y1, yt[yt.length - 1]);
+    var t0 = pts[0].t, t1 = pts[pts.length - 1].t;
+    var xs = function (i) { return m.l + (t1 === t0 ? 0.5 : (pts[i].t - t0) / (t1 - t0)) * (W - m.l - m.r); };
+    var ys = function (v) { return m.t + (1 - (v - y0) / ((y1 - y0) || 1)) * (Hh - m.t - m.b); };
+    var fmtD = function (d) { return new Date(d + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }); };
+    var n = pts.length;
+    var xIdx = n <= 4 ? pts.map(function (_, i) { return i; }) : [0, Math.round((n - 1) / 3), Math.round(2 * (n - 1) / 3), n - 1];
+    var fmt = function (v) { return c.fmt(v, o); };
+    var line = function (arr) {
+      var d = "", on = false;
+      arr.forEach(function (v, i) { if (v == null) { on = false; return; } d += (on ? "L" : "M") + xs(i).toFixed(1) + " " + ys(v).toFixed(1); on = true; });
+      return d;
+    };
+    var svg = '<svg width="' + W + '" height="' + Hh + '" viewBox="0 0 ' + W + " " + Hh + '" role="img" aria-label="' + esc(c.ttl) + ' chart">';
+    yt.forEach(function (t) {
+      var z = c.zero && c.zero(o) && t === 0;
+      svg += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + ys(t) + '" y2="' + ys(t) + '" stroke="' + (z ? "#888" : "#3a3a3a") + '" stroke-width="1"/>' +
+        '<text x="' + (m.l - 6) + '" y="' + (ys(t) + 4) + '" text-anchor="end">' + fmt(t) + "</text>";
+    });
+    xIdx.forEach(function (i) {
+      svg += '<text x="' + xs(i) + '" y="' + (Hh - 6) + '" text-anchor="' + (i === 0 && n > 1 ? "start" : i === n - 1 && n > 1 ? "end" : "middle") + '">' + fmtD(pts[i].d) + "</text>";
+    });
+    // Likely-range bands overlap heavily early in the season: once a player picks themselves, only their band is drawn
+    series.forEach(function (s) {
+      if (me && s.p !== me) return;
+      var idx = []; s.lo.forEach(function (v, i) { if (v != null && s.hi[i] != null) idx.push(i); });
+      if (idx.length < 2) return;
+      var top = idx.map(function (i) { return xs(i) + " " + ys(s.hi[i]); }), bot = idx.slice().reverse().map(function (i) { return xs(i) + " " + ys(s.lo[i]); });
+      svg += '<path d="M' + top.join("L") + "L" + bot.join("L") + 'Z" fill="' + COLORS[s.p] + '" fill-opacity="' + (me ? ".18" : ".08") + '"/>' +
+        '<path d="M' + top.join("L") + "M" + bot.join("L") + '" fill="none" stroke="' + COLORS[s.p] + '" stroke-opacity=".45" stroke-width="1" stroke-dasharray="3 3"/>';
+    });
+    series.forEach(function (s) { svg += '<path d="' + line(s.v) + '" fill="none" stroke="' + COLORS[s.p] + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'; });
+    var ends = [];
+    series.forEach(function (s) { var last = -1; s.v.forEach(function (v, i) { if (v != null) last = i; }); if (last >= 0) ends.push({ s: s, i: last, y: ys(s.v[last]) }); });
+    ends.sort(function (a, b) { return a.y - b.y; });
+    for (var k = 1; k < ends.length; k++) if (ends[k].y - ends[k - 1].y < 15) ends[k].y = ends[k - 1].y + 15;
+    ends.forEach(function (e) {
+      svg += '<circle cx="' + xs(e.i) + '" cy="' + ys(e.s.v[e.i]) + '" r="4" fill="' + COLORS[e.s.p] + '" stroke="#2b2b2b" stroke-width="2"/>' +
+        '<text class="sk-end" x="' + (xs(e.i) + 8) + '" y="' + (e.y + 4) + '">' + esc(e.s.p.slice(0, 3)) + " " + fmt(e.s.v[e.i]) + "</text>";
+    });
+    svg += '<line class="sk-xh" y1="' + m.t + '" y2="' + (Hh - m.b) + '" stroke="#888" stroke-width="1" visibility="hidden"/>' +
+      '<rect class="sk-hit" x="' + m.l + '" y="0" width="' + (W - m.l - m.r) + '" height="' + Hh + '" fill="transparent"/></svg>';
+    plot.innerHTML = svg + '<div class="sk-tip" hidden></div>';
+
+    var hit = plot.querySelector(".sk-hit"), xh = plot.querySelector(".sk-xh"), tip = plot.querySelector(".sk-tip");
+    var show = function (e) {
+      var x = e.clientX - plot.getBoundingClientRect().left, best = 0;
+      for (var i = 1; i < n; i++) if (Math.abs(xs(i) - x) < Math.abs(xs(best) - x)) best = i;
+      var rows = series.map(function (s) { return { p: s.p, v: s.v[best] }; }).filter(function (r) { return r.v != null; }).sort(function (a, b) { return b.v - a.v; });
+      if (!rows.length) { tip.hidden = true; xh.setAttribute("visibility", "hidden"); return; }
+      xh.setAttribute("x1", xs(best)); xh.setAttribute("x2", xs(best)); xh.setAttribute("visibility", "visible");
+      var tf = c.tip || fmt;
+      tip.innerHTML = '<div style="color:var(--sk-muted)">' + fmtD(pts[best].d) + "</div>" +
+        rows.map(function (r) { return "<div>" + dot(r.p) + esc(r.p) + "<b>" + tf(r.v, o) + "</b></div>"; }).join("");
+      tip.hidden = false;
+      var tw = tip.offsetWidth;
+      tip.style.left = Math.max(0, Math.min(W - tw, xs(best) + (xs(best) > W / 2 ? -tw - 10 : 10))) + "px";
+    };
+    hit.addEventListener("pointermove", show);
+    hit.addEventListener("pointerdown", show);
+    hit.addEventListener("pointerleave", function () { tip.hidden = true; xh.setAttribute("visibility", "hidden"); });
+  }
+  if (tabs) {
+    tabs.addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) { state.c = b.getAttribute("data-c"); drawChart(); } });
+    sel.addEventListener("change", function () { state.o[state.c] = sel.value; drawChart(); });
+    var rz; window.addEventListener("resize", function () { clearTimeout(rz); rz = setTimeout(drawChart, 120); });
+    drawChart();
+  }
+
+  renderPicker();
+  applyMe();
+  showRoster(me || (rt && rt.getAttribute("data-default")) || PLAYERS[0]);
+})();
+</script>
 ```
-
-## 
-
-```{r chance-to-win-chart, echo=FALSE, fig.width=12, fig.height=5, warning=FALSE}
-if (nrow(band_hist) > 0) {
-  print(
-    ggplot(band_hist %>% filter(!is.na(win_prob)), aes(date, win_prob, color = player)) +
-      geom_line(linewidth = 1.2) +
-      geom_point(size = 2.5) +
-      scale_color_manual(values = colorblind_colors) +
-      scale_y_continuous(labels = function(x) sprintf("%.0f%%", 100 * x), limits = c(0, 1)) +
-      scale_x_date(limits = c(min(band_hist$date, SEASON_START), max(max(band_hist$date), SEASON_START + 14))) +
-      labs(title = "Chance to win over time", x = NULL, y = "Chance to win", color = NULL) +
-      theme_minimal() +
-      theme(legend.position = "right", plot.title = element_text(size = 16, face = "bold"),
-            axis.text = element_text(size = 11), axis.title = element_text(size = 12),
-            panel.grid.minor = element_blank(), panel.grid.major = element_line(color = "gray90"),
-            legend.text = element_text(size = 11))
-  )
-}
-```
-
-## 
-
-```{r skins-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
-library(ggplot2)
-
-
-# Find the first date with actual games (non-zero skins)
-first_game_date <- history %>%
-  filter(actual_skins > 0) %>%
-  pull(date) %>%
-  min()
-
-# Create dataset for actual skins chart starting one day before first game
-history_actual <- history %>%
-  filter(date >= first_game_date - 1)
-
-# Create time series chart for Actual Skins
-ggplot(history_actual, aes(x = date, y = actual_skins, color = player, group = player)) +
-  geom_line(linewidth = 1.2) +
-  geom_point(size = 2.5) +
-  scale_color_manual(values = colorblind_colors) +
-  scale_y_continuous(
-    limits = c(0, NA),
-    expand = expansion(mult = c(0, 0.05))
-  ) +
-  labs(
-    title = "Skins over time",
-    x = NULL,
-    y = "Skins",
-    color = NULL
-  ) +
-  theme_minimal() +
-  theme(
-    legend.position = "right",
-    plot.title = element_text(size = 16, face = "bold"),
-    axis.text = element_text(size = 11),
-    axis.title = element_text(size = 12),
-    panel.grid.minor = element_blank(),
-    panel.grid.major = element_line(color = "gray90"),
-    legend.text = element_text(size = 11)
-  )
-```
-
-## 
-
-```{r skins-pct-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
-# Filter out zero values for skins percentage chart
-history_skins_pct <- history %>% filter(skins_pct > 0)
-
-ggplot(history_skins_pct, aes(x = date, y = skins_pct, color = player, group = player)) +
-  geom_line(linewidth = 1.2) +
-  geom_point(size = 2.5) +
-  scale_color_manual(values = colorblind_colors) +
-  scale_y_continuous(
-    labels = function(x) sprintf("%.1f%%", x * 100),
-    expand = expansion(mult = c(0.05, 0.05))
-  ) +
-  labs(
-    title = "Skins % over time",
-    x = NULL,
-    y = "Skins %",
-    color = NULL
-  ) +
-  theme_minimal() +
-  theme(
-    legend.position = "right",
-    plot.title = element_text(size = 16, face = "bold"),
-    axis.text = element_text(size = 11),
-    axis.title = element_text(size = 12),
-    panel.grid.minor = element_blank(),
-    panel.grid.major = element_line(color = "gray90"),
-    legend.text = element_text(size = 11)
-  )
-```
-
-```{r pct-projected-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
-# Filter out zero values for % projected chart
-history_pct_projected <- history %>% filter(pct_projected > 0)
-
-ggplot(history_pct_projected, aes(x = date, y = pct_projected, color = player, group = player)) +
-  geom_line(linewidth = 1.2) +
-  geom_point(size = 2.5) +
-  scale_color_manual(values = colorblind_colors) +
-  scale_y_continuous(
-    labels = function(x) sprintf("%.1f", x),
-    expand = expansion(mult = c(0.05, 0.05))
-  ) +
-  labs(
-    title = "% Projected (Skins % × 82) over time",
-    x = NULL,
-    y = "Projected Skins",
-    color = NULL
-  ) +
-  theme_minimal() +
-  theme(
-    legend.position = "right",
-    plot.title = element_text(size = 16, face = "bold"),
-    axis.text = element_text(size = 11),
-    axis.title = element_text(size = 12),
-    panel.grid.minor = element_blank(),
-    panel.grid.major = element_line(color = "gray90"),
-    legend.text = element_text(size = 11)
-  )
-```
-
-## 
-
-```{r weighted-avg-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
-# Filter out NA values for projection charts
-history_projections <- history %>% filter(!is.na(weighted_average))
-
-ggplot(history_projections, aes(x = date, y = weighted_average, color = player, group = player)) +
-  geom_line(linewidth = 1.2) +
-  geom_point(size = 2.5) +
-  scale_color_manual(values = colorblind_colors) +
-  scale_y_continuous(
-    labels = function(x) sprintf("%.1f", x),
-    expand = expansion(mult = c(0.05, 0.05))
-  ) +
-  labs(
-    title = "Weighted Average Projection over time",
-    x = NULL,
-    y = "Projected Skins",
-    color = NULL
-  ) +
-  theme_minimal() +
-  theme(
-    legend.position = "right",
-    plot.title = element_text(size = 16, face = "bold"),
-    axis.text = element_text(size = 11),
-    axis.title = element_text(size = 12),
-    panel.grid.minor = element_blank(),
-    panel.grid.major = element_line(color = "gray90"),
-    legend.text = element_text(size = 11)
-  )
-```
-
-## 
-
-```{r vegas-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
-ggplot(history_projections, aes(x = date, y = vegas_consensus, color = player, group = player)) +
-  geom_line(linewidth = 1.2) +
-  geom_point(size = 2.5) +
-  scale_color_manual(values = colorblind_colors) +
-  scale_y_continuous(
-    labels = function(x) sprintf("%.1f", x),
-    expand = expansion(mult = c(0.05, 0.05))
-  ) +
-  labs(
-    title = "Vegas Consensus Projection over time",
-    x = NULL,
-    y = "Projected Skins",
-    color = NULL
-  ) +
-  theme_minimal() +
-  theme(
-    legend.position = "right",
-    plot.title = element_text(size = 16, face = "bold"),
-    axis.text = element_text(size = 11),
-    axis.title = element_text(size = 12),
-    panel.grid.minor = element_blank(),
-    panel.grid.major = element_line(color = "gray90"),
-    legend.text = element_text(size = 11)
-  )
-```
-
-## 
-
-```{r teamrankings-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
-ggplot(history_projections, aes(x = date, y = team_rankings, color = player, group = player)) +
-  geom_line(linewidth = 1.2) +
-  geom_point(size = 2.5) +
-  scale_color_manual(values = colorblind_colors) +
-  scale_y_continuous(
-    labels = function(x) sprintf("%.1f", x),
-    expand = expansion(mult = c(0.05, 0.05))
-  ) +
-  labs(
-    title = "TeamRankings Projection over time",
-    x = NULL,
-    y = "Projected Skins",
-    color = NULL
-  ) +
-  theme_minimal() +
-  theme(
-    legend.position = "right",
-    plot.title = element_text(size = 16, face = "bold"),
-    axis.text = element_text(size = 11),
-    axis.title = element_text(size = 12),
-    panel.grid.minor = element_blank(),
-    panel.grid.major = element_line(color = "gray90"),
-    legend.text = element_text(size = 11)
-  )
-```
-
-## 
-
-```{r espn-bpi-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
-ggplot(history_projections, aes(x = date, y = espn_bpi, color = player, group = player)) +
-  geom_line(linewidth = 1.2) +
-  geom_point(size = 2.5) +
-  scale_color_manual(values = colorblind_colors) +
-  scale_y_continuous(
-    labels = function(x) sprintf("%.1f", x),
-    expand = expansion(mult = c(0.05, 0.05))
-  ) +
-  labs(
-    title = "ESPN BPI Projection over time",
-    x = NULL,
-    y = "Projected Skins",
-    color = NULL
-  ) +
-  theme_minimal() +
-  theme(
-    legend.position = "right",
-    plot.title = element_text(size = 16, face = "bold"),
-    axis.text = element_text(size = 11),
-    axis.title = element_text(size = 12),
-    panel.grid.minor = element_blank(),
-    panel.grid.major = element_line(color = "gray90"),
-    legend.text = element_text(size = 11)
-  )
-```
-
-## 
-
-```{r cbs-sports-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
-ggplot(history_projections, aes(x = date, y = cbs_sports, color = player, group = player)) +
-  geom_line(linewidth = 1.2) +
-  geom_point(size = 2.5) +
-  scale_color_manual(values = colorblind_colors) +
-  scale_y_continuous(
-    labels = function(x) sprintf("%.1f", x),
-    expand = expansion(mult = c(0.05, 0.05))
-  ) +
-  labs(
-    title = "CBS Sports Projection over time",
-    x = NULL,
-    y = "Projected Skins",
-    color = NULL
-  ) +
-  theme_minimal() +
-  theme(
-    legend.position = "right",
-    plot.title = element_text(size = 16, face = "bold"),
-    axis.text = element_text(size = 11),
-    axis.title = element_text(size = 12),
-    panel.grid.minor = element_blank(),
-    panel.grid.major = element_line(color = "gray90"),
-    legend.text = element_text(size = 11)
-  )
-```
-
-## 
-
-```{r basketball-reference-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
-# Filter out NA values for Basketball Reference chart
-history_br <- history %>% filter(!is.na(basketball_reference))
-
-ggplot(history_br, aes(x = date, y = basketball_reference, color = player, group = player)) +
-  geom_line(linewidth = 1.2) +
-  geom_point(size = 2.5) +
-  scale_color_manual(values = colorblind_colors) +
-  scale_y_continuous(
-    labels = function(x) sprintf("%.1f", x),
-    expand = expansion(mult = c(0.05, 0.05))
-  ) +
-  labs(
-    title = "BB-Ref Projection over time",
-    x = NULL,
-    y = "Projected Skins",
-    color = NULL
-  ) +
-  theme_minimal() +
-  theme(
-    legend.position = "right",
-    plot.title = element_text(size = 16, face = "bold"),
-    axis.text = element_text(size = 11),
-    axis.title = element_text(size = 12),
-    panel.grid.minor = element_blank(),
-    panel.grid.major = element_line(color = "gray90"),
-    legend.text = element_text(size = 11)
-  )
-```
-
-## 
-
-```{r projection-avg-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
-ggplot(history_projections, aes(x = date, y = projection_average, color = player, group = player)) +
-  geom_line(linewidth = 1.2) +
-  geom_point(size = 2.5) +
-  scale_color_manual(values = colorblind_colors) +
-  scale_y_continuous(
-    labels = function(x) sprintf("%.1f", x),
-    expand = expansion(mult = c(0.05, 0.05))
-  ) +
-  labs(
-    title = "Projection Average over time",
-    x = NULL,
-    y = "Projected Skins",
-    color = NULL
-  ) +
-  theme_minimal() +
-  theme(
-    legend.position = "right",
-    plot.title = element_text(size = 16, face = "bold"),
-    axis.text = element_text(size = 11),
-    axis.title = element_text(size = 12),
-    panel.grid.minor = element_blank(),
-    panel.grid.major = element_line(color = "gray90"),
-    legend.text = element_text(size = 11)
-  )
-```
-
-## 
-
-```{r max-projection-chart, echo=FALSE, fig.width=12, fig.height=6, warning=FALSE}
-# Filter out NA values for Max Projection chart
-history_max <- history %>% filter(!is.na(max_projection))
-
-ggplot(history_max, aes(x = date, y = max_projection, color = player, group = player)) +
-  geom_line(linewidth = 1.2) +
-  geom_point(size = 2.5) +
-  scale_color_manual(values = colorblind_colors) +
-  scale_y_continuous(
-    labels = function(x) sprintf("%.1f", x),
-    expand = expansion(mult = c(0.05, 0.05))
-  ) +
-  labs(
-    title = "Max Projection over time",
-    x = NULL,
-    y = "Projected Skins",
-    color = NULL
-  ) +
-  theme_minimal() +
-  theme(
-    legend.position = "right",
-    plot.title = element_text(size = 16, face = "bold"),
-    axis.text = element_text(size = 11),
-    axis.title = element_text(size = 12),
-    panel.grid.minor = element_blank(),
-    panel.grid.major = element_line(color = "gray90"),
-    legend.text = element_text(size = 11)
-  )
-```
-
-

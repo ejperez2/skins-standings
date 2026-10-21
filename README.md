@@ -87,8 +87,8 @@ made of two parts, fit on 2025-26 team projections vs final records:
 - the projection misjudging the team: `TALENT_SD * (left / 82)^1.5` (8.6 wins preseason in 2025-26)
 
 Together they reproduce last season's typical miss at every stage (9.7 wins preseason, 6.2 with ~57 games
-left, 3.1 with ~27 left). Player totals are summed from their teams in each simulated season. The standings
-table shows Chance to Win and the 80% Likely Range; the range strip below it adds the 50% range. Once teams
+left, 3.1 with ~27 left). Player totals are summed from their teams in each simulated season. The Chance to
+Win cards show each player's odds with the 50% and 80% likely ranges on a shared scale. Once teams
 average 12+ games since opening night, `TALENT_SD` is re-estimated from this season's own misses
 (`team_projection_history.csv`) and blended in, reaching 100% this season's data by midseason. Simulations
 are seeded by date so every run on a given day shows the same numbers. `win_prob`, `range_lo` and
@@ -312,131 +312,36 @@ season_completion_pct = (total_games_played / 2460) × 100
 
 ## 📊 Display Tables and Charts
 
-### Table 1: Skins Standings (Player Summary)
+The page is laid out phone-first and matches the Daily Matchups page (dark `darkly` theme, the same `sk-*` CSS
+tokens and nav). Every section is emitted as raw HTML from an R chunk; the styles sit in a `<style>` block at the
+top of `index.qmd` and the page behaviour in a `<script>` block at the bottom. Sections, top to bottom:
 
-**Purpose**: High-level view of each player's performance
+1. **Header**: nav with the **"I'm" picker**, last-updated time and a season-completion progress bar. The picker
+   is stored in `localStorage` under `skinsMe`, the same key Daily Matchups uses, so picking yourself on either page
+   highlights you on both (your column, card, roster and teams).
+2. **How it works** (folded): the rules, historical skins %, the weighted-average weights, and how chance to win
+   and likely ranges are simulated. Directly below it, an always-visible caveat that the model is built on one
+   season (2025-26) of data and should be expected to be inaccurate.
+3. **Standings**: one table with players across (leader first) and rows for Skins, Skins %, Skins % projection
+   (skins % × 82 per team, summed), then projected final skins from each source (Weighted avg, Vegas, TR, ESPN,
+   CBS, BB-Ref, Source avg, Max). Best value in each row is bold; the league-average column hides on narrow phones.
+4. **Season charts**: one interactive chart (tap or hover for values) drawn in the browser from
+   `standings_history.csv`, which is embedded as JSON (`#sk-data`). Tabs: **Projection** (default; a dropdown
+   switches between the weighted average with its 80% range band, each source, Max and Skins % projection),
+   **Race** (gap to the league average, or total skins), **Skins %** and **To win**.
+5. **Chance to win**: a bar splitting the title odds, then one card per player with chance to win, projection and
+   the 50% / 80% likely range on a shared scale.
+6. **Rosters**: tabs for one player at a time (opens on your roster, else the leader). Each team shows skins-misses,
+   skins % projection (green/red vs the weighted average) and projected skins; tap a team for every source.
+7. **All 30 teams** (folded, sortable by tapping a header) and **Projection accuracy** (folded).
 
-**Columns**: 
-- Player (name)
-- Actual Skins (current total)
-- Skins % (current winning/losing rate)
-- % Projected (pace-based projection)
-- Weighted Average (composite projection - **50/34/16 formula**)
-- Vegas Consensus (betting market - tracked but not in weighted avg)
-- TR (TeamRankings - 50% of weighted avg)
-- ESPN (ESPN BPI - 34% of weighted avg)
-- CBS (CBS Sports - 16% of weighted avg)
-- BB-Ref (Basketball Reference - tracked but not in weighted avg)
-- Proj Avg (mean of all sources)
-- Max Proj (best-case scenario) ⭐ NEW
-
-**Special Features**:
-- **League Average row** (bottom): Gray background (#F0F0F0)
-  - Uses global calculation (total league skins / total league games)
-  - Prevents inflation from players with different game counts
-- **Highlighting**:
-  - Actual Skins: Green (#E8F5E9)
-  - Skins %: Yellow (#FFF9C4)
-  - Weighted Average: Light green (#DFF0D8)
-- **Historical Context**: Footnotes show:
-  - Average Skins 2023-25: 236, 253, 240
-  - Skins % 2023-25: 58%, 62%, 59%
-  - Winner's Skins 2023-25: 249, 280, 260
-  - Current weighted average formula explanation
-
-**Formatting**:
-- Actual Skins: Integer (no decimals)
-- Skins %: Percentage with 1 decimal (e.g., "76.5%")
-- All projections: 1 decimal place (e.g., "253.8")
-
-### Table 2: Standings by Player (One Table per Player)
-
-**Purpose**: Detailed breakdown of each player's 10 teams
-
-**Structure**: 3 seamless tables with gray headers showing player names
-
-**Player Order**: Eristeo → Brian → Adam (from `PLAYERS`)
-
-**Columns**: 
-- Abbr (team abbreviation)
-- Skins Pick (W or L)
-- Actual Skins
-- Skins %
-- % Projected
-- Weighted Average
-- Vegas Consensus
-- TR (TeamRankings)
-- ESPN (ESPN BPI)
-- CBS (CBS Sports)
-- BB-Ref (Basketball Reference)
-- Proj Avg (Projection Average)
-- Max Proj (Maximum Projection) ⭐ NEW
-
-**Sorting**: Within each player, teams sorted by Actual Skins (descending)
-
-**Visual Design**:
-- Gray header bar (#666) for player name
-- Blue column headers (#0073C2)
-- Same highlighting as Table 1
-- Zero margin between tables for seamless appearance
-
-### Table 3: Standings by Team
-
-**Purpose**: See all 30 teams ranked by performance
-
-**Columns**: Team, Player, Pick Type, [same projection columns as above]
-
-**Sorting**: Descending by Actual Skins (best performers at top)
-
-**Use Cases**:
-- Compare teams across different players
-- See which teams are overperforming/underperforming projections
-- Identify draft steals and busts
-
-### Charts (11 Total) ⭐ UPDATED
-
-All charts use a **colorblind-friendly palette** (Paul Tol's vibrant scheme):
+Player colors are Paul Tol's vibrant hues lightened for the dark background (checked for color-blind separation
+and contrast):
 ```r
-Eristeo:  #0077BB (Blue)
-Brian:    #CC3311 (Red)
-Adam:     #009988 (Teal)
+Eristeo:  #3E97D6 (Blue)
+Brian:    #E26A54 (Red)
+Adam:     #22A794 (Teal)
 ```
-
-#### Chart 1: Skins Over Time
-- **Y-axis**: 0 to max, integer scale
-- **Start**: One day before first games (with 0 values for clean visual)
-- **Purpose**: Track cumulative skins accumulation
-
-#### Chart 2: Skins % Over Time
-- **Y-axis**: 45% to max (focused range)
-- **Format**: Percentage with 1 decimal
-- **Purpose**: Compare efficiency regardless of games played
-
-#### Chart 3: % Projected Over Time
-- **Y-axis**: 180 to max
-- **Format**: 1 decimal place
-- **Purpose**: See how pace-based projections evolve
-
-#### Charts 4-11: Projection Sources Over Time
-4. **Weighted Average** (Y-axis: 220 to max) - Shows 50/34/16 formula
-5. **Vegas Consensus** (Y-axis: 220 to max) - Market expectations
-6. **TeamRankings** (Y-axis: 220 to max) - 50% component of weighted avg
-7. **ESPN BPI** (Y-axis: 220 to max) - 34% component of weighted avg
-8. **CBS Sports** (Y-axis: 220 to max) - 16% component of weighted avg
-9. **BB-Ref** (Y-axis: 200 to max) - Reference comparison
-10. **Projection Average** (Y-axis: 220 to max) - Simple mean
-11. **Max Projection** (Y-axis: 220 to max) ⭐ NEW - Best-case scenarios
-
-- **Y-axis**: Auto-scaled to the data (fixed lower bounds were removed in 2026-27 because 10-team rosters project roughly 2× the old totals)
-- **Format**: 1 decimal place
-- **Purpose**: Track how different models project the season
-
-**Chart Features**:
-- Line width: 1.2 (thick enough for visibility)
-- Point size: 2.5 (visible markers)
-- Grid: Major lines only (minor removed for clarity)
-- Theme: Minimal with gray90 grid lines
-- Legend: Right side, 11pt text
 
 ---
 
@@ -1011,11 +916,11 @@ draft_data <- tribble(
 
 2. **Verify HARDCODED_PICKS creation** (happens automatically from draft_data)
 
-3. **Update colorblind_colors** if player names changed (around line 750):
+3. **Update colorblind_colors** if player names changed (near the top of `index.qmd`):
 ```r
 colorblind_colors <- c(
-  "Player1" = "#0077BB",
-  "Player2" = "#CC3311",
+  "Player1" = "#3E97D6",
+  "Player2" = "#E26A54",
   # ...
 )
 ```
