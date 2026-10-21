@@ -320,8 +320,7 @@ top of `index.qmd` and the page behaviour in a `<script>` block at the bottom. S
    is stored in `localStorage` under `skinsMe`, the same key Daily Matchups uses, so picking yourself on either page
    highlights you on both (your column, card, roster and teams).
 2. **How it works** (folded): the rules, historical skins %, the weighted-average weights, and how chance to win
-   and likely ranges are simulated. Directly below it, an always-visible caveat that the model is built on one
-   season (2025-26) of data and should be expected to be inaccurate.
+   is simulated.
 3. **Standings**: one table with players across (leader first) and rows for Skins, Skins %, Skins % projection
    (skins % × 82 per team, summed), then projected final skins from each source (Weighted avg, Vegas, TR, ESPN,
    CBS, BB-Ref, Source avg, Max). Best value in each row is bold; the league-average column hides on narrow phones.
@@ -329,11 +328,12 @@ top of `index.qmd` and the page behaviour in a `<script>` block at the bottom. S
    `standings_history.csv`, which is embedded as JSON (`#sk-data`). Tabs: **Projection** (default; a dropdown
    switches between the weighted average with its 80% range band, each source, Max and Skins % projection),
    **Race** (gap to the league average, or total skins), **Skins %** and **To win**.
-5. **Chance to win**: a bar splitting the title odds, then one card per player with chance to win, projection and
+5. **Chance to win**: an always-visible caveat that the model is built on one season (2025-26) of data and should
+   be expected to be inaccurate, then a bar splitting the title odds, then one card per player with chance to win, projection and
    the 50% / 80% likely range on a shared scale.
 6. **Rosters**: tabs for one player at a time (opens on your roster, else the leader). Each team shows skins-misses,
    skins % projection (green/red vs the weighted average) and projected skins; tap a team for every source.
-7. **All 30 teams** (folded, sortable by tapping a header) and **Projection accuracy** (folded).
+7. **All 30 teams** (folded, with draft order from `draft_pick`; sortable by tapping a header) and **Projection accuracy** (folded).
 
 Player colors are Paul Tol's vibrant hues lightened for the dark background (checked for color-blind separation
 and contrast):
