@@ -78,7 +78,8 @@ on games played *after* a saved projection: expected wins since then = (projecte
 games left x games played since, compared with actual wins since. It shows the average miss (wins per team)
 since opening night and over the last 30 days, a .500 baseline, the TR/ESPN/CBS weights (5% steps) that would
 have missed least, and a rolling 30-day trend chart. A window is graded once teams average 12+ games in it
-(about mid-November). Weights live in `WEIGHTS` near the top of `index.qmd`.
+(about mid-November). Weights live in `WEIGHTS` near the top of `index.qmd`. Opta (added Oct 21, 2026, after
+opening night) is graded "since opening" from its first saved snapshot and marked with `*`.
 
 ### Chance to Win and Likely Range
 Each team's final wins are simulated (10,000 seasons) around its weighted-average projection with a miss
@@ -232,6 +233,17 @@ The W/L pick for each team is **hardcoded** in the `draft_data` tibble and store
 - **Reliability**: ⭐⭐⭐⭐ (Stable)
 - **Note**: Tracked separately but NOT included in weighted average formula
 - **Added**: November 2024 update
+
+### 7. Opta / The Analyst (trial, 2026-27)
+- **Page**: `https://theanalyst.com/nba-predictions` (the table is a JS widget, so the page itself has no data)
+- **Method**: JSON feed the widget reads:
+  `https://api.performfeeds.com/basketballdata/tournamentsimulations/1mjq6w6ezkxe611ykkj8rgz7f1?tmcl=b8hmq9h3fea4isg4f04r8ebkk&_fmt=json&_rt=c`
+  (outlet key and `tmcl` season id come from the widget's `index.js`; the feed returns 403 without the widget's
+  `Referer: https://dataviz.theanalyst.com/`). `tmcl` is the 2026/27 season and will need updating next season.
+- **Data Extracted**: projected `Wins` for all 30 teams (full team names)
+- **Note**: Shown everywhere BB-Ref is (standings row, rosters, chart, Max) and graded in Projection Accuracy,
+  but **NOT** in the weighted average or Source avg. Candidate for next season's blend if it grades well.
+- **Columns**: `opta` in `team_projection_history.csv` (projected wins) and `standings_history.csv` (player skins)
 
 ---
 

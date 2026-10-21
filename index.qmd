@@ -532,6 +532,23 @@ br_proj <- safe_scrape("BB-Ref", {
     select(team, br_proj_w)
 }, empty = tibble(team = character(), br_proj_w = numeric()))
 
+# G: The Analyst (Opta) season simulations - tracked and graded, NOT in the weighted average (trial season 2026-27)
+# theanalyst.com/nba-predictions embeds a widget that reads this Opta feed (outlet key and season id from the widget's JS;
+# tmcl = 2026/27 NBA season). The feed refuses requests without the widget's Referer.
+url_opta_page <- "https://theanalyst.com/nba-predictions"
+url_opta <- "https://api.performfeeds.com/basketballdata/tournamentsimulations/1mjq6w6ezkxe611ykkj8rgz7f1?tmcl=b8hmq9h3fea4isg4f04r8ebkk&_fmt=json&_rt=c"
+opta_proj <- safe_scrape("Opta", {
+  resp_opta <- GET(url_opta, user_agent("Mozilla/5.0"), add_headers(Referer = "https://dataviz.theanalyst.com/"))
+  if (status_code(resp_opta) != 200) stop("HTTP ", status_code(resp_opta))
+  opta_json <- fromJSON(content(resp_opta, as = "text", encoding = "UTF-8"), simplifyVector = FALSE)
+  out <- bind_rows(lapply(opta_json$predictions[[1]]$team, function(t) {
+    wins <- Filter(function(x) x$type == "Wins", t$predicted)
+    tibble(team = t$name, opta_proj_w = if (length(wins) > 0) as.numeric(wins[[1]]$value) else NA_real_)
+  }))
+  if (nrow(out) < 30 || any(is.na(out$opta_proj_w))) stop("incomplete data")
+  out
+}, empty = tibble(team = character(), opta_proj_w = numeric()))
+
 # --- Step 3: Combine All Projections ---
 
 # Create a master team name crosswalk function to standardize ALL sources
@@ -603,6 +620,7 @@ cbs_proj <- cbs_proj %>%
 
 # Basketball Reference standardization
 br_proj <- br_proj %>% standardize_team_names("team")
+opta_proj <- opta_proj %>% standardize_team_names("team")
 
 # Now combine with consistent team names
 # Start with a complete list of all 30 teams to ensure no teams are missing
@@ -725,6 +743,7 @@ df_final_projections <- all_teams %>%
   left_join(espn_cleaned %>% select(team, espn_proj_w), by = "team") %>%
   left_join(cbs_proj, by = "team") %>%
   left_join(br_proj, by = "team") %>%
+  left_join(opta_proj, by = "team") %>%
   left_join(nba_standings, by = "team") %>%
   # Join hardcoded picks LAST to ensure they are NEVER overwritten
   left_join(HARDCODED_PICKS, by = "team") %>%
@@ -748,6 +767,9 @@ df_final_projections <- all_teams %>%
     # Basketball Reference: use projected wins if W pick, else use projected losses
     br_skins = if_else(skins_pick == "W", br_proj_w, 82 - br_proj_w),
     
+    # Opta (The Analyst): tracked only, not in the weighted average
+    opta_skins = if_else(skins_pick == "W", opta_proj_w, 82 - opta_proj_w),
+    
     # Calculate weighted average using skins (which now correctly apply draft picks)
     # Updated formula to include Basketball Reference
     # Early-season weights; if a source is missing, re-weight across the sources that are available
@@ -761,7 +783,7 @@ df_final_projections <- all_teams %>%
     ),
     
     # Calculate max projection for each team
-    max_projection = pmax(weighted_average, vegas_consensus, tr_skins, espn_skins, cbs_skins, br_skins, na.rm = TRUE),
+    max_projection = pmax(weighted_average, vegas_consensus, tr_skins, espn_skins, cbs_skins, br_skins, opta_skins, na.rm = TRUE),
     
     # Calculate actual skins based on HARDCODED pick type from draft (never inferred)
     actual_skins = if_else(skins_pick == "W", actual_wins, actual_losses),
@@ -799,7 +821,7 @@ proj_history <- if (file.exists(proj_history_file)) {
 if (now_ct$hour >= 5 && (is.null(proj_history) || !any(proj_history$date == snapshot_date))) {
   snapshot <- df_final_projections %>%
     transmute(date = snapshot_date, team, wins = actual_wins, losses = actual_losses,
-              vegas = vegas_proj_wins, tr = tr_proj_w, espn = espn_proj_w, cbs = cbs_proj_w, br = br_proj_w,
+              vegas = vegas_proj_wins, tr = tr_proj_w, espn = espn_proj_w, cbs = cbs_proj_w, br = br_proj_w, opta = opta_proj_w,
               weighted = if_else(skins_pick == "W", weighted_average, 82 - weighted_average))
   proj_history <- bind_rows(proj_history, snapshot) %>% arrange(date, team)
   write.csv(proj_history, proj_history_file, row.names = FALSE)
@@ -826,12 +848,13 @@ player_scores <- draft_data %>%
     `ESPN` = sum_or_na(espn_skins),
     `CBS` = sum_or_na(cbs_skins),
     `BB-Ref` = sum_or_na(br_skins),
+    `Opta` = sum_or_na(opta_skins),
     `Max Proj` = sum_or_na(max_projection)
   ) %>%
   mutate(`Proj Avg` = rowMeans(select(., `Vegas Consensus`, `TR`, `ESPN`, `CBS`), na.rm = TRUE),
          `Proj Avg` = if_else(is.nan(`Proj Avg`), NA_real_, `Proj Avg`)) %>%
   select(player, `Actual Skins`, `Skins %`, `% Projected`, `Weighted Average`, 
-         `Vegas Consensus`, `TR`, `ESPN`, `CBS`, `BB-Ref`, `Proj Avg`, `Max Proj`) %>%
+         `Vegas Consensus`, `TR`, `ESPN`, `CBS`, `BB-Ref`, `Opta`, `Proj Avg`, `Max Proj`) %>%
   arrange(desc(`Actual Skins`))
 
 # --- Step 5.5: Projection uncertainty (likely ranges and chance to win) ---
@@ -927,6 +950,7 @@ current_standings <- player_scores %>%
     espn_bpi = `ESPN`,
     cbs_sports = `CBS`,
     basketball_reference = `BB-Ref`,
+    opta = `Opta`,
     projection_average = `Proj Avg`,
     max_projection = `Max Proj`,
     win_prob = `Chance to Win`,
@@ -977,6 +1001,7 @@ if(needs_zero_start) {
     espn_bpi = NA,
     cbs_sports = NA,
     basketball_reference = NA,
+    opta = NA,
     projection_average = NA,
     max_projection = NA,
     date = min_date - 1
@@ -1001,7 +1026,8 @@ sk_pct <- function(x) if_else(is.na(x), "&ndash;", sprintf("%.1f%%", 100 * x))
 SK_LINKS <- c(TR = "https://www.teamrankings.com/nba/projections/standings/",
               ESPN = "https://www.espn.com/nba/bpi/_/view/projections",
               CBS = "https://www.cbssports.com/nba/standings/",
-              `BB-Ref` = "https://www.basketball-reference.com/friv/playoff_prob.html")
+              `BB-Ref` = "https://www.basketball-reference.com/friv/playoff_prob.html",
+              Opta = "https://theanalyst.com/nba-predictions")
 sk_src_label <- function(l) if (l %in% names(SK_LINKS)) sprintf("<a href='%s' target='_blank' rel='noopener'>%s</a>", SK_LINKS[[l]], l) else l
 ```
 
@@ -1021,6 +1047,7 @@ raw_html(
   "<dt>Winner's skins %</dt><dd><b>61%, 68%, 65%, 66%</b> (6-player leagues; with 3 players each roster is a third of the league, so expect this year's winner to finish with a lower %)</dd>",
   "<dt>Skins % projection</dt><dd>Each team's current skins % &times; 82, added up: where a player finishes if every team keeps its current rate.</dd>",
   "<dt>Weighted avg</dt><dd>Vegas 40%, TR 20%, ESPN 20%, CBS 20% (most accurate robust blend on 2025-26 Oct-Nov data; until CBS publishes: Vegas 50%, TR 25%, ESPN 25%)</dd>",
+  "<dt>BB-Ref, Opta</dt><dd>Shown and graded for accuracy but not in the weighted average. Opta (The Analyst) is on trial in 2026-27 and may join the blend next season if it proves accurate.</dd>",
   sprintf(paste0("<dt>Chance to win</dt><dd>%s simulated seasons around the weighted average. It narrows as more games are played. ",
                  "Uncertainty is based on %s. Each simulated season draws every team's final wins from a normal distribution ",
                  "around its weighted-average projection, with a spread that combines game-to-game luck in the games left ",
@@ -1044,10 +1071,10 @@ if (!draft_complete) {
   cat("\n## Draft Board\n\n")
 
   draft_board <- df_final_projections %>%
-    select(team, abbr, vegas_proj_wins, tr_proj_w, espn_proj_w, cbs_proj_w, br_proj_w) %>%
+    select(team, abbr, vegas_proj_wins, tr_proj_w, espn_proj_w, cbs_proj_w, br_proj_w, opta_proj_w) %>%
     left_join(draft_data %>% select(team, player, skins_pick), by = "team") %>%
     rowwise() %>%
-    mutate(avg_proj_w = mean(c(vegas_proj_wins, tr_proj_w, espn_proj_w, cbs_proj_w, br_proj_w), na.rm = TRUE)) %>%
+    mutate(avg_proj_w = mean(c(vegas_proj_wins, tr_proj_w, espn_proj_w, cbs_proj_w, br_proj_w, opta_proj_w), na.rm = TRUE)) %>%
     ungroup() %>%
     mutate(
       avg_proj_w = if_else(is.nan(avg_proj_w), NA_real_, avg_proj_w),
@@ -1066,13 +1093,14 @@ if (!draft_complete) {
       `ESPN W` = fmt1(espn_proj_w),
       `CBS W` = fmt1(cbs_proj_w),
       `BB-Ref W` = fmt1(br_proj_w),
+      `Opta W` = fmt1(opta_proj_w),
       `Avg Proj W` = fmt1(avg_proj_w),
       `Best Side` = coalesce(best_side, ""),
       `Proj Skins` = fmt1(best_side_skins),
       `Drafted By` = if_else(is.na(player), "", paste0(player, coalesce(paste0(" (", skins_pick, ")"), "")))
     )
 
-  table_output <- kable(draft_board_display, align = c("l", "c", rep("r", 6), "c", "r", "l"),
+  table_output <- kable(draft_board_display, align = c("l", "c", rep("r", 7), "c", "r", "l"),
                         format = "html", escape = FALSE) %>%
     kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, position = "center") %>%
     column_spec(1, bold = TRUE) %>%
@@ -1109,6 +1137,7 @@ st_rows <- list(
   list("ESPN", ps$ESPN, col_mean(ps$ESPN), sk_f1, ""),
   list("CBS", ps$CBS, col_mean(ps$CBS), sk_f1, ""),
   list("BB-Ref", ps$`BB-Ref`, col_mean(ps$`BB-Ref`), sk_f1, ""),
+  list("Opta", ps$Opta, col_mean(ps$Opta), sk_f1, ""),
   list("Source avg", ps$`Proj Avg`, col_mean(ps$`Proj Avg`), sk_f1, ""),
   list("Max", ps$`Max Proj`, col_mean(ps$`Max Proj`), sk_f1, "")
 )
@@ -1134,13 +1163,13 @@ raw_html(
 
 ```{r season-charts, echo=FALSE, results='asis'}
 # Interactive charts (drawn in the browser from standings_history.csv, embedded below as JSON)
-for (col in c("win_prob", "range_lo", "range_hi", "max_projection")) if (!col %in% names(history)) history[[col]] <- NA_real_
+for (col in c("win_prob", "range_lo", "range_hi", "max_projection", "opta")) if (!col %in% names(history)) history[[col]] <- NA_real_
 chart_hist <- history %>%
   filter(player %in% PLAYERS) %>%
   arrange(date, player) %>%
   transmute(d = format(date, "%Y-%m-%d"), p = player, sk = actual_skins, pct = skins_pct, pace = pct_projected,
             wa = weighted_average, v = vegas_consensus, tr = team_rankings, es = espn_bpi, cb = cbs_sports,
-            br = basketball_reference, avg = projection_average, mx = max_projection,
+            br = basketball_reference, op = opta, avg = projection_average, mx = max_projection,
             win = win_prob, lo = range_lo, hi = range_hi)
 chart_json <- jsonlite::toJSON(list(players = PLAYERS, colors = as.list(colorblind_colors), sims = N_SIMS, hist = chart_hist),
                                dataframe = "rows", na = "null", digits = 4, auto_unbox = TRUE)
@@ -1227,7 +1256,7 @@ roster_html <- vapply(PLAYERS, function(p) {
     } else "&ndash;"
     srcs <- c(`Skins %` = sk_pct(if (t$games_played > 0) t$skins_pct else NA), Vegas = sk_f1(t$vegas_consensus),
               TR = sk_f1(t$tr_skins), ESPN = sk_f1(t$espn_skins), CBS = sk_f1(t$cbs_skins),
-              `BB-Ref` = sk_f1(t$br_skins), `Source avg` = sk_f1(t$proj_avg), Max = sk_f1(t$max_projection))
+              `BB-Ref` = sk_f1(t$br_skins), Opta = sk_f1(t$opta_skins), `Source avg` = sk_f1(t$proj_avg), Max = sk_f1(t$max_projection))
     sprintf(paste0(
       "<details><summary class=\"sk-rrow\"><span class=\"sk-tm\">%s <span class=\"sk-pick\" title=\"%s\">%s</span></span>",
       "<span>%d&ndash;%d</span><span>%s</span><span><b>%s</b><div class=\"sk-mini\"><span style=\"width:%.1f%%\"></span></div></span>",
@@ -1282,7 +1311,7 @@ raw_html("<details class=\"sk-fold\"><summary>Projection accuracy</summary><div 
 # Sources already include results to date, so we only grade games played after the projection was saved:
 #   expected wins since D = (projected wins - wins at D) / (games left at D) * games played since D
 #   miss = |actual wins since D - expected wins since D|, averaged over teams (in wins)
-ACC_SOURCES <- c(tr = "TeamRankings", espn = "ESPN BPI", cbs = "CBS", vegas = "Vegas", br = "BB-Ref",
+ACC_SOURCES <- c(tr = "TeamRankings", espn = "ESPN BPI", cbs = "CBS", vegas = "Vegas", br = "BB-Ref", opta = "Opta",
                  weighted = "Weighted Average", baseline = "Baseline: .500 rest of season")
 MIN_GAMES <- 12   # average games per team since the projection before a window is graded (~4 weeks)
 acc_p <- function(txt, size = 14) cat(sprintf("<p style='font-size:%dpx; margin-top:4px; margin-bottom:6px;'>%s</p>\n", size, txt))
@@ -1326,6 +1355,17 @@ if (is.null(h) || nrow(h) == 0) {
   enough <- sapply(scores, function(x) !is.null(x) && x$games[1] >= MIN_GAMES)
   games_txt <- sapply(scores, function(x) if (is.null(x)) "0" else sprintf("%.0f", x$games[1]))
 
+  # Sources added after opening night (Opta, 2026-27) are graded "since opening" from their first saved projection
+  late_start <- list()
+  for (k in setdiff(names(ACC_SOURCES), "baseline")) {
+    if (!k %in% names(h) || any(!is.na(h[[k]][h$date == opening]))) next
+    dates_k <- h$date[!is.na(h[[k]])]
+    if (length(dates_k) == 0 || min(dates_k) >= latest) next
+    x <- score_window(min(dates_k), latest)
+    x <- x[x$source == k, ]
+    if (nrow(x) == 1 && x$games >= MIN_GAMES) late_start[[k]] <- list(date = min(dates_k), miss = x$miss)
+  }
+
   if (!any(enough)) {
     acc_p(sprintf(paste0("Daily snapshots since %s (%d so far). Scores appear once teams have played about %d games ",
                          "since a saved projection &mdash; currently %s per team since opening night (around mid-November)."),
@@ -1334,7 +1374,9 @@ if (is.null(h) || nrow(h) == 0) {
     col_for <- function(key) {
       x <- scores[[key]]
       if (!enough[[key]]) return(setNames(rep(NA_real_, length(ACC_SOURCES)), names(ACC_SOURCES)))
-      setNames(x$miss[match(names(ACC_SOURCES), x$source)], names(ACC_SOURCES))
+      out <- setNames(x$miss[match(names(ACC_SOURCES), x$source)], names(ACC_SOURCES))
+      if (key == "opening") for (k in names(late_start)) out[[k]] <- late_start[[k]]$miss
+      out
     }
     acc <- tibble(key = names(ACC_SOURCES), Source = unname(ACC_SOURCES),
                   opening = col_for("opening"), last30 = col_for("last30"),
@@ -1350,7 +1392,7 @@ if (is.null(h) || nrow(h) == 0) {
       ifelse(is.na(x), "&ndash;", ifelse(!is.na(best) & x == best & real, sprintf("<b>%.2f</b>", x), sprintf("%.2f", x)))
     }
     acc_display <- acc %>%
-      transmute(Source,
+      transmute(Source = if_else(key %in% names(late_start), paste0(Source, "*"), Source),
                 opening = fmt_col(opening, key),
                 last30 = fmt_col(last30, key),
                 weight)
@@ -1366,6 +1408,11 @@ if (is.null(h) || nrow(h) == 0) {
                   format(opening, "%b %d"), games_txt[["opening"]],
                   if (enough[["last30"]]) sprintf("since %s, %s games per team", format(last30, "%b %d"), games_txt[["last30"]])
                   else "not enough games yet"), 13)
+    if (length(late_start) > 0)
+      acc_p(paste0("* Not tracked on opening night; graded since its first saved projection (",
+                   paste(sprintf("%s: %s", ACC_SOURCES[names(late_start)],
+                                 vapply(late_start, function(x) format(x$date, "%b %d"), "")), collapse = "; "),
+                   "). Opta is tracked for accuracy only and is not in the weighted average."), 13)
 
     # Suggested weights: TR/ESPN/CBS mix (5% steps) with the smallest miss over the most recent graded window
     key_w <- if (enough[["last30"]]) "last30" else "opening"
@@ -1406,7 +1453,7 @@ if (is.null(h) || nrow(h) == 0) {
           geom_line(linewidth = 0.9) +
           scale_linetype_manual(values = c(`FALSE` = "solid", `TRUE` = "dashed"), guide = "none") +
           scale_color_manual(values = c("TeamRankings" = "#4C9BE8", "ESPN BPI" = "#E26A54", "CBS" = "#22A794",
-                                        "Vegas" = "#EE9944", "BB-Ref" = "#CC6FA8", "Weighted Average" = "#EEEEEE",
+                                        "Vegas" = "#EE9944", "BB-Ref" = "#CC6FA8", "Opta" = "#B8C94A", "Weighted Average" = "#EEEEEE",
                                         "Baseline: .500 rest of season" = "#888888")) +
           labs(title = "Rolling 30-day miss by source", subtitle = "Lower is better", x = NULL,
                y = "Average miss (wins per team)", color = NULL) +
@@ -1497,7 +1544,7 @@ raw_html("</div></details>")
   var f0 = function (v) { return v.toFixed(0); }, f1 = function (v) { return v.toFixed(1); };
   var CH = {
     proj: { ttl: "Projected final skins",
-      opts: [["wa", "Weighted avg"], ["v", "Vegas"], ["tr", "TR"], ["es", "ESPN"], ["cb", "CBS"], ["br", "BB-Ref"], ["avg", "Source avg"], ["mx", "Max"], ["pace", "Skins % projection"]],
+      opts: [["wa", "Weighted avg"], ["v", "Vegas"], ["tr", "TR"], ["es", "ESPN"], ["cb", "CBS"], ["br", "BB-Ref"], ["op", "Opta"], ["avg", "Source avg"], ["mx", "Max"], ["pace", "Skins % projection"]],
       dsc: function (o) { return o === "wa" ? "Weighted average with the 4-in-5 likely range (dashed). Pick yourself above to see just your range." : o === "pace" ? "Each team's skins % × 82, added up." : "Projected final skins from this source."; },
       get: function (r, o) { return o === "pace" && !(r.pace > 0) ? null : r[o]; }, band: function (o) { return o === "wa"; },
       games: function (o) { return o === "pace"; }, fmt: f0, tip: f1 },
