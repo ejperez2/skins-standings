@@ -151,14 +151,18 @@ The W/L pick for each team is **hardcoded** in the `draft_data` tibble and store
 ## 🔄 Data Sources
 
 ### 1. ESPN Standings (Actual Results)
-- **URL**: `https://www.espn.com/nba/standings/_/seasontype/2` (regular season only, so preseason records never count)
-- **Method**: HTML scraping (rvest)
+- **URLs**: ESPN's JSON standings feed `https://site.api.espn.com/apis/v2/sports/basketball/nba/standings?seasontype=2`
+  and the page `https://www.espn.com/nba/standings/_/seasontype/2` (both regular season only)
+- **Method**: both are read every render and the one with more games played wins. ESPN's CDN once served the
+  GitHub runner a stale page (0-0 records hours after games ended, with no error), and a stale copy can only be
+  missing games. The Actions log prints `ESPN standings: feed N team-games, page N team-games`.
 - **Data Extracted**: Live wins and losses for all 30 teams
 - **Frequency**: Every render (9x daily)
 - **Reliability**: ⭐⭐⭐⭐⭐ (Highly stable)
 - **Parsing**: 4 tables (East teams, East stats, West teams, West stats)
 
 **Common Issues**:
+- History rows are dated by the Chicago date (runners use UTC, which used to file evening games under tomorrow)
 - ESPN sometimes uses abbreviated team names in the raw HTML
 - The scraper handles this with regex cleaning and standardization
 

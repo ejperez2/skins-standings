@@ -254,11 +254,26 @@ HARDCODED_PICKS <- draft_data %>%
 season_total_games <- 0
 season_completion_pct <- 0
 
-# B: Get current NBA standings using ESPN HTML scraping
-nba_standings <- tryCatch({
+# B: Get current NBA standings from ESPN. ESPN's CDN has served GitHub's runners a stale standings page (0-0
+# records hours after games ended, with no error), so we read both ESPN's JSON standings feed and the HTML page
+# and keep whichever has more games played - a stale copy can only be missing games.
+espn_feed <- tryCatch({
+  feed <- jsonlite::fromJSON("https://site.api.espn.com/apis/v2/sports/basketball/nba/standings?seasontype=2",
+                             simplifyVector = FALSE)
+  bind_rows(lapply(feed$children, function(conf) bind_rows(lapply(conf$standings$entries, function(e) {
+    st <- setNames(lapply(e$stats, function(x) x$value), vapply(e$stats, function(x) x$name, ""))
+    tibble(team = e$team$displayName, actual_wins = as.numeric(st$wins), actual_losses = as.numeric(st$losses))
+  })))) %>%
+    mutate(team = if_else(team == "LA Clippers", "Los Angeles Clippers", team))
+}, error = function(e) {
+  cat("ESPN standings feed failed:", conditionMessage(e), "\n", file = stderr())  # visible in Actions log
+  NULL
+})
+
+espn_page <- tryCatch({
   espn_url <- "https://www.espn.com/nba/standings/_/seasontype/2"  # regular season only (no preseason records)
-  espn_page <- read_html(espn_url)
-  all_tables <- espn_page %>% html_table(fill = TRUE)
+  espn_html <- read_html(espn_url)
+  all_tables <- espn_html %>% html_table(fill = TRUE)
   
   # ESPN has 4 tables: 1=East teams, 2=East stats, 3=West teams, 4=West stats
   if(length(all_tables) >= 4) {
@@ -323,7 +338,17 @@ nba_standings <- tryCatch({
     stop("Not enough tables found on ESPN standings page")
   }
 }, error = function(e) {
-  message("ESPN scraping failed: ", e$message)
+  cat("ESPN standings page failed:", conditionMessage(e), "\n", file = stderr())
+  NULL
+})
+
+standings_games <- function(x) if (is.null(x) || nrow(x) != 30 || anyNA(x$actual_wins)) -1 else sum(x$actual_wins + x$actual_losses)
+cat(sprintf("ESPN standings: feed %s team-games, page %s team-games (-1 = unavailable)\n",
+            standings_games(espn_feed), standings_games(espn_page)), file = stderr())
+nba_standings <- if (max(standings_games(espn_feed), standings_games(espn_page)) >= 0) {
+  if (standings_games(espn_feed) >= standings_games(espn_page)) espn_feed else espn_page
+} else {
+  cat("ESPN standings unavailable from both sources - showing 0-0 records\n", file = stderr())
   tibble(
     team = c("Atlanta Hawks", "Boston Celtics", "Brooklyn Nets", "Charlotte Hornets",
              "Chicago Bulls", "Cleveland Cavaliers", "Dallas Mavericks", "Denver Nuggets",
@@ -336,7 +361,7 @@ nba_standings <- tryCatch({
     actual_wins = 0,
     actual_losses = 0
   )
-})
+}
 
 # Calculate season completion percentage
 season_total_games <- sum(nba_standings$actual_wins + nba_standings$actual_losses, na.rm = TRUE)
@@ -593,7 +618,7 @@ all_teams <- tibble(
 )
 
 # Get today's date for historical tracking
-today <- Sys.Date()
+today <- as.Date(format(Sys.time(), "%Y-%m-%d", tz = "America/Chicago"))  # runners use UTC; evening games belong to the Chicago date
 
 # --- Step 4.5: Handle Missing Vegas Data with Historical Values ---
 # IMPORTANT: This must happen BEFORE creating df_final_projections
@@ -856,7 +881,7 @@ if (draft_complete) {
            rate = if_else(left > 0, pmin(pmax((proj_w - actual_wins) / left, 0.01), 0.99), 0.5),
            sd = sqrt(left * rate * (1 - rate) + (talent_sd_now * (left / 82)^1.5)^2))
 
-  set.seed(as.integer(Sys.Date()))  # same numbers for every run on a given day
+  set.seed(as.integer(today))  # same numbers for every run on a given day
   z <- matrix(rnorm(nrow(unc_teams) * N_SIMS), nrow = nrow(unc_teams))
   final_w <- pmin(pmax(unc_teams$proj_w + unc_teams$sd * z, unc_teams$actual_wins), unc_teams$actual_wins + unc_teams$left)
   final_skins <- final_w
@@ -919,7 +944,8 @@ if(!draft_complete) {
   }
 } else if(file.exists(history_file)) {
   history <- read.csv(history_file, stringsAsFactors = FALSE) %>%
-    mutate(date = as.Date(date))
+    mutate(date = as.Date(date)) %>%
+    filter(date <= today)   # drop rows that UTC-dated evening runs filed under tomorrow
   
   # Add max_projection column if it doesn't exist
   if(!"max_projection" %in% names(history)) {
