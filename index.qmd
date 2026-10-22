@@ -6,7 +6,7 @@ format:
     self-contained: true
     include-before-body:
       text: |
-        <nav class='sk-nav'><strong>Standings</strong><a href='https://ejperez2.github.io/Daily-Skins-Matchups/'>Daily Matchups</a><span class='sk-who' hidden>I'm <span class='sk-seg' id='sk-me'></span></span></nav>
+        <nav class='sk-nav'><strong>Standings</strong><a href='https://ejperez2.github.io/Daily-Skins-Matchups/'>Daily Matchups</a><button id='refresh-btn' class='sk-btn' type='button' style='display:none;'>Refresh now</button><span id='refresh-msg' style='font-size:13px; opacity:0.85;'></span><span class='sk-who' hidden>I'm <span class='sk-seg' id='sk-me'></span></span></nav>
     include-after-body:
       text: |
         <footer class='sk-footer'>Past seasons &middot; 2025-26: <a href='https://ejperez2.github.io/skins-standings/2025-26/'>Standings</a> &middot; <a href='https://ejperez2.github.io/Daily-Skins-Matchups/2025-26/'>Matchups</a></footer>
@@ -24,6 +24,7 @@ editor: visual
 }
 .sk-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 15px; margin: 0 0 6px 0; padding: 6px 0; border-bottom: 1px solid rgba(128,128,128,0.35); }
 .sk-nav .sk-who { margin: 0 0 0 auto; }
+.sk-btn { font-size: 13px; padding: 2px 10px; cursor: pointer; color: inherit; background: transparent; border: 1px solid rgba(128,128,128,0.6); border-radius: 4px; }
 .sk-meta { font-size: 14px; color: #999; margin: 0; }
 .sk-who { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; color: var(--sk-muted); margin: 12px 0; }
 .sk-who[hidden] { display: none; }
@@ -163,6 +164,40 @@ details[open] > .sk-rrow .sk-chev { transform: rotate(90deg); }
 }
 @media (prefers-reduced-motion: reduce) { .sk-chev { transition: none; } }
 </style>
+<script>
+// Owner-only refresh: shown with ?admin (or once a token is saved). The GitHub token lives only in this browser's localStorage.
+(function () {
+  var KEY = "skinsRefreshToken";
+  var URL = "https://api.github.com/repos/ejperez2/skins-standings/actions/workflows/publish.yml/dispatches";
+  var btn = document.getElementById("refresh-btn"), msg = document.getElementById("refresh-msg");
+  if (!btn) return;
+  var params = new URLSearchParams(location.search);
+  function get() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
+  function set(v) { try { v ? localStorage.setItem(KEY, v) : localStorage.removeItem(KEY); } catch (e) {} }
+  if (params.get("admin") === "reset") { set(null); msg.textContent = "Saved token removed."; }
+  if (!params.has("admin") && !get()) return;
+  btn.style.display = "inline-block";
+  btn.onclick = function () {
+    var token = get();
+    if (!token) {
+      token = (prompt("Paste your GitHub token (saved only in this browser):") || "").trim();
+      if (!token) return;
+      set(token);
+    }
+    btn.disabled = true; msg.textContent = "Starting...";
+    fetch(URL, {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + token, "Accept": "application/vnd.github+json" },
+      body: JSON.stringify({ ref: "main" })
+    }).then(function (r) {
+      if (r.status === 204) { msg.textContent = "Refresh started - reload in about 4 minutes."; return; }
+      if (r.status === 401 || r.status === 403 || r.status === 404) { set(null); msg.textContent = "Token rejected (" + r.status + ") - tap again to enter a new one."; }
+      else { msg.textContent = "GitHub error " + r.status + "."; }
+      btn.disabled = false;
+    }).catch(function () { msg.textContent = "Network error."; btn.disabled = false; });
+  };
+})();
+</script>
 ```
 
 ```{r timestamp, echo=FALSE, results='asis'}
