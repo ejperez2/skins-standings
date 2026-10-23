@@ -1469,11 +1469,9 @@ if (is.null(h) || nrow(h) == 0) {
   }
 
   if (!any(enough)) {
-    acc_p(sprintf(paste0("Will have enough data around mid-November. This section will evaluate the accuracy of the projection models. ",
-                         "Every source's projected wins are saved daily (%d snapshots since %s), and each is graded only on games played after it was saved: ",
-                         "the average miss between a team's actual wins and the wins its projection implied for those games. ",
-                         "Scores appear once teams average about %d games since a saved projection (currently %s), next to a .500 baseline and suggested weights for the blend."),
-                  n_distinct(h$date), format(min(h$date), "%b %d"), MIN_GAMES, games_txt[["opening"]]))
+    acc_p(paste0("Will have enough data around mid-November. This section will evaluate the accuracy of the projection models. ",
+                 "Every source&rsquo;s projected wins are saved daily and each is graded: the average miss between a team&rsquo;s actual wins ",
+                 "and the wins its projection implied for those games."))
   } else {
     col_for <- function(key) {
       x <- scores[[key]]
