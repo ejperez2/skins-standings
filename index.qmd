@@ -1333,6 +1333,14 @@ roster_teams <- draft_data %>%
   left_join(df_final_projections %>% select(-abbr, -skins_pick), by = "team") %>%
   mutate(proj_avg = rowMeans(cbind(vegas_consensus, tr_skins, espn_skins, cbs_skins), na.rm = TRUE),
          proj_avg = if_else(is.nan(proj_avg), NA_real_, proj_avg))
+# Preseason projection = weighted average from the last snapshot on or before opening night, as skins for the drafted side
+pre_dates <- if (is.null(proj_history)) as.Date(character(0)) else proj_history$date[proj_history$date <= SEASON_START]
+pre_date <- if (length(pre_dates) > 0) max(pre_dates) else NA
+roster_teams <- roster_teams %>%
+  left_join(if (is.na(pre_date)) tibble(team = character(0), pre_w = numeric(0))
+            else proj_history %>% filter(date == pre_date) %>% select(team, pre_w = weighted), by = "team") %>%
+  mutate(pre_skins = if_else(skins_pick == "W", pre_w, 82 - pre_w),
+         vs_pre = weighted_average - pre_skins)
 
 roster_html <- vapply(PLAYERS, function(p) {
   ts <- roster_teams %>% filter(player == p) %>% arrange(desc(actual_skins), desc(weighted_average))
@@ -1349,11 +1357,11 @@ roster_html <- vapply(PLAYERS, function(p) {
               DARKO = sk_f1(t$darko_skins), `D&T` = sk_f1(t$dnt_skins), `Source avg` = sk_f1(t$proj_avg), Max = sk_f1(t$max_projection))
     sprintf(paste0(
       "<details><summary class=\"sk-rrow\"><span class=\"sk-tm\">%s <span class=\"sk-pick\" title=\"%s\">%s</span></span>",
-      "<span>%d&ndash;%d</span><span>%s</span><span><b>%s</b><div class=\"sk-mini\"><span style=\"width:%.1f%%\"></span></div></span>",
+      "<span>%d</span><span>%s</span><span><b>%s</b><div class=\"sk-mini\"><span style=\"width:%.1f%%\"></span></div></span>",
       "<span class=\"sk-chev\" aria-hidden=\"true\">&#9654;</span></summary>",
       "<div class=\"sk-srcs\"><div class=\"sk-tfull\">%s &middot; %s</div>%s</div></details>"),
       t$abbr, if (t$skins_pick == "W") "Wins" else "Losses", t$skins_pick,
-      as.integer(t$actual_skins), as.integer(t$games_played - t$actual_skins), pace,
+      as.integer(t$actual_skins), pace,
       sk_f1(t$weighted_average), 100 * coalesce(t$weighted_average, 0) / 82,
       t$team, if (t$skins_pick == "W") "picked to win" else "picked to lose",
       paste(sprintf("<div><span>%s</span>%s</div>", names(srcs), srcs), collapse = ""))
@@ -1367,7 +1375,7 @@ raw_html(
   sprintf("<div class=\"sk-who\"><span class=\"sk-seg\" id=\"sk-rtabs\" data-default=\"%s\">%s</span></div>", standing_order[1],
           paste(sprintf("<button type=\"button\" data-p=\"%s\">%s</button>", PLAYERS, PLAYERS), collapse = "")),
   paste(roster_html, collapse = ""),
-  "<p class=\"sk-note\">Skins = skins&ndash;misses so far. % Proj = skins % projection (skins % &times; 82), green when ahead of the projection. Proj = weighted-average final skins. Tap a team for every source.</p>"
+  "<p class=\"sk-note\">Skins = skins so far. % Proj = skins % projection (skins % &times; 82), green when ahead of the projection. Proj = weighted-average final skins. Tap a team for every source.</p>"
 )
 ```
 
@@ -1376,19 +1384,23 @@ raw_html(
 all_t <- roster_teams %>% arrange(desc(actual_skins), desc(weighted_average))
 all_rows <- sprintf(paste0(
   "<tr data-player=\"%s\"><td data-v=\"%d\">%d</td><td data-v=\"%s\" title=\"%s\"><b>%s</b></td><td data-v=\"%s\"><span class=\"sk-pname\">%s%s</span></td>",
-  "<td data-v=\"%s\">%s</td><td data-v=\"%d\">%d&ndash;%d</td><td data-v=\"%.4f\">%s</td><td data-v=\"%.2f\">%s</td></tr>"),
+  "<td data-v=\"%s\">%s</td><td data-v=\"%d\">%d</td><td data-v=\"%.4f\">%s</td><td data-v=\"%.2f\">%s</td><td data-v=\"%.2f\">%s</td></tr>"),
   all_t$player, all_t$draft_pick, all_t$draft_pick, all_t$abbr, all_t$team, all_t$abbr, all_t$player, vapply(all_t$player, sk_dot, ""), all_t$player,
   all_t$skins_pick, all_t$skins_pick, as.integer(all_t$actual_skins), as.integer(all_t$actual_skins),
-  as.integer(all_t$games_played - all_t$actual_skins),
   if_else(all_t$games_played > 0, all_t$skins_pct, -1), if_else(all_t$games_played > 0, sk_pct(all_t$skins_pct), "&ndash;"),
-  coalesce(all_t$weighted_average, -1), sk_f1(all_t$weighted_average))
+  coalesce(all_t$weighted_average, -1), sk_f1(all_t$weighted_average),
+  coalesce(all_t$vs_pre, -999), if_else(is.na(all_t$vs_pre), "&ndash;",
+    sprintf("<span class=\"sk-pill %s\">%+.1f</span>", if_else(coalesce(all_t$vs_pre, 0) >= 0, "pos", "neg"), all_t$vs_pre)))
 sort_th <- function(i, label, num, active = FALSE) sprintf("<th><button type=\"button\" data-col=\"%d\" data-num=\"%d\"%s>%s</button></th>", i, num, if (active) " aria-sort=\"descending\"" else "", label)
 
 raw_html(
   "<details class=\"sk-fold\"><summary>All 30 teams<small>tap a header to sort</small></summary>",
   "<div class=\"sk-tablewrap\"><table class=\"sk-table\" id=\"sk-all\" data-quarto-disable-processing=\"true\"><thead><tr>",
-  sort_th(0, "#", 2), sort_th(1, "Team", 0), sort_th(2, "Player", 0), sort_th(3, "W/L", 0), sort_th(4, "Skins", 1, TRUE), sort_th(5, "Skins %", 1), sort_th(6, "Proj", 1),
-  "</tr></thead><tbody>", paste(all_rows, collapse = ""), "</tbody></table></div></details>"
+  sort_th(0, "#", 2), sort_th(1, "Team", 0), sort_th(2, "Player", 0), sort_th(3, "W/L", 0), sort_th(4, "Skins", 1, TRUE), sort_th(5, "Skins %", 1), sort_th(6, "Proj", 1), sort_th(7, "vs Pre", 1),
+  "</tr></thead><tbody>", paste(all_rows, collapse = ""), "</tbody></table></div>",
+  sprintf("<p class=\"sk-note\" style=\"padding: 0 12px 10px 12px;\">vs Pre = projected final skins now minus the preseason projection (%s): green picks are beating their draft-day expectation, red are falling short. Sort by it to see the best and worst picks.</p>",
+          if (is.na(pre_date)) "not saved" else format(pre_date, "%b %d")),
+  "</details>"
 )
 ```
 
@@ -1457,9 +1469,11 @@ if (is.null(h) || nrow(h) == 0) {
   }
 
   if (!any(enough)) {
-    acc_p(sprintf(paste0("Daily snapshots since %s (%d so far). Scores appear once teams have played about %d games ",
-                         "since a saved projection &mdash; currently %s per team since opening night (around mid-November)."),
-                  format(min(h$date), "%b %d"), n_distinct(h$date), MIN_GAMES, games_txt[["opening"]]))
+    acc_p(sprintf(paste0("Will have enough data around mid-November. This section will evaluate the accuracy of the projection models. ",
+                         "Every source's projected wins are saved daily (%d snapshots since %s), and each is graded only on games played after it was saved: ",
+                         "the average miss between a team's actual wins and the wins its projection implied for those games. ",
+                         "Scores appear once teams average about %d games since a saved projection (currently %s), next to a .500 baseline and suggested weights for the blend."),
+                  n_distinct(h$date), format(min(h$date), "%b %d"), MIN_GAMES, games_txt[["opening"]]))
   } else {
     col_for <- function(key) {
       x <- scores[[key]]
