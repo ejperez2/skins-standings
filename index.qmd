@@ -165,36 +165,42 @@ details[open] > .sk-rrow .sk-chev { transform: rotate(90deg); }
 @media (prefers-reduced-motion: reduce) { .sk-chev { transition: none; } }
 </style>
 <script>
-// Owner-only refresh: shown with ?admin (or once a token is saved). The GitHub token lives only in this browser's localStorage.
+// Refresh: asks the Cloudflare Worker (which holds the GitHub token) to start an update, same as Daily Matchups.
+// Until the Worker lists this page it answers "Unknown page"; then fall back to a GitHub token saved in this
+// browser (its own key, since Daily Matchups clears the old shared "skinsRefreshToken").
 (function () {
-  var KEY = "skinsRefreshToken";
-  var URL = "https://api.github.com/repos/ejperez2/skins-standings/actions/workflows/publish.yml/dispatches";
+  var PROXY = "https://skins-refresh.ejperez2.workers.dev/?repo=skins-standings";
+  var DISPATCH = "https://api.github.com/repos/ejperez2/skins-standings/actions/workflows/publish.yml/dispatches";
+  var KEY = "skinsStandingsToken";
   var btn = document.getElementById("refresh-btn"), msg = document.getElementById("refresh-msg");
   if (!btn) return;
-  var params = new URLSearchParams(location.search);
   function get() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
   function set(v) { try { v ? localStorage.setItem(KEY, v) : localStorage.removeItem(KEY); } catch (e) {} }
-  if (params.get("admin") === "reset") { set(null); msg.textContent = "Saved token removed."; }
-  if (!params.has("admin") && !get()) return;
+  if (new URLSearchParams(location.search).get("admin") === "reset") { set(null); msg.textContent = "Saved token removed."; }
   btn.style.display = "inline-block";
-  btn.onclick = function () {
+  function done() { setTimeout(function () { btn.disabled = false; }, 30000); }
+  function withToken() {
     var token = get();
     if (!token) {
-      token = (prompt("Paste your GitHub token (saved only in this browser):") || "").trim();
-      if (!token) return;
+      token = (prompt("This page isn't set up in the refresh proxy yet. Paste a GitHub token (saved only in this browser):") || "").trim();
+      if (!token) { msg.textContent = ""; btn.disabled = false; return; }
       set(token);
     }
+    fetch(DISPATCH, { method: "POST", headers: { "Authorization": "Bearer " + token, "Accept": "application/vnd.github+json" }, body: JSON.stringify({ ref: "main" }) })
+      .then(function (r) {
+        if (r.status === 204) msg.textContent = "Refresh started - reload in about 4 minutes.";
+        else if (r.status === 401 || r.status === 403 || r.status === 404) { set(null); msg.textContent = "Token rejected (" + r.status + ") - tap again to enter a new one."; btn.disabled = false; return; }
+        else msg.textContent = "GitHub error " + r.status + ".";
+        done();
+      })
+      .catch(function () { msg.textContent = "Network error - try again."; btn.disabled = false; });
+  }
+  btn.onclick = function () {
     btn.disabled = true; msg.textContent = "Starting...";
-    fetch(URL, {
-      method: "POST",
-      headers: { "Authorization": "Bearer " + token, "Accept": "application/vnd.github+json" },
-      body: JSON.stringify({ ref: "main" })
-    }).then(function (r) {
-      if (r.status === 204) { msg.textContent = "Refresh started - reload in about 4 minutes."; return; }
-      if (r.status === 401 || r.status === 403 || r.status === 404) { set(null); msg.textContent = "Token rejected (" + r.status + ") - tap again to enter a new one."; }
-      else { msg.textContent = "GitHub error " + r.status + "."; }
-      btn.disabled = false;
-    }).catch(function () { msg.textContent = "Network error."; btn.disabled = false; });
+    fetch(PROXY, { method: "POST" })
+      .then(function (r) { return r.json().catch(function () { return { msg: "Error " + r.status + "." }; }); })
+      .then(function (d) { if (d.msg === "Unknown page") return withToken(); msg.textContent = d.msg || "Done."; done(); })
+      .catch(function () { msg.textContent = "Network error - try again."; btn.disabled = false; });
   };
 })();
 </script>

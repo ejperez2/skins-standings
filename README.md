@@ -84,6 +84,13 @@ have missed least, and a rolling 30-day trend chart. A window is graded once tea
 (about mid-November). Weights live in `WEIGHTS` near the top of `index.qmd`. Opta, DARKO and Dunks & Threes (added Oct 21, 2026,
 after opening night) are graded "since opening" from their first saved snapshot and marked with `*`.
 
+### Refresh Now Button
+Always visible in the nav. It POSTs to the Cloudflare Worker `skins-refresh.ejperez2.workers.dev/?repo=skins-standings`
+(the same one Daily Matchups uses; the Worker holds the GitHub token and runs `publish.yml`). While the Worker
+answers "Unknown page" (this repo not in its allowlist), the button falls back to a GitHub token saved in that
+browser under `skinsStandingsToken` (`?admin=reset` removes it). To finish the setup, add `skins-standings`
+(workflow `publish.yml`) to the Worker's allowlist and give its token Actions read/write on this repo.
+
 ### Chance to Win and Likely Range
 Each team's final wins are simulated (10,000 seasons) around its weighted-average projection with a miss
 made of two parts, fit on 2025-26 team projections vs final records:
