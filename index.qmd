@@ -946,6 +946,7 @@ player_scores <- draft_data %>%
 TALENT_SD_2526 <- 8.6   # 2025-26: 9.7-win preseason miss = 4.5 luck + 8.6 misjudged teams
 ROSTER_RHO_2526 <- 0.30   # 2025-26 same-roster correlation of skins misses (6 rosters of 5, 20+ games played)
 ROSTER_RHO_FLOOR <- 0.20  # starting value and floor: this season's estimate can raise it, never lower it (stay cautious)
+MODEL_VERSION <- "2026-10-24 roster-corr"   # bump when the simulation changes; saved with every forecast
 RHO_RAMP <- c(10, 25)     # league games played: no roster correlation before 10, full by 25 (2025-26: none before ~15-20;
                           # applying it from day 1 made early player ranges too wide, 80% ranges held 92-94%)
 N_SIMS <- 10000
@@ -1046,9 +1047,11 @@ if (draft_complete) {
     hi80 = apply(sim_player, 1, quantile, 0.90)
   )
   player_scores <- player_scores %>%
-    left_join(uncertainty %>% select(player, `Chance to Win` = win_prob, range_lo = lo80, range_hi = hi80), by = "player")
+    left_join(uncertainty %>% select(player, `Chance to Win` = win_prob, range_lo = lo80, range_hi = hi80,
+                                     range_lo50 = lo50, range_hi50 = hi50), by = "player")
 } else {
-  player_scores <- player_scores %>% mutate(`Chance to Win` = NA_real_, range_lo = NA_real_, range_hi = NA_real_)
+  player_scores <- player_scores %>% mutate(`Chance to Win` = NA_real_, range_lo = NA_real_, range_hi = NA_real_,
+                                            range_lo50 = NA_real_, range_hi50 = NA_real_)
 }
 
 # --- Step 6: Prepare Standings Table Data ---
@@ -1081,9 +1084,13 @@ current_standings <- player_scores %>%
     max_projection = `Max Proj`,
     win_prob = `Chance to Win`,
     range_lo,
-    range_hi
+    range_hi,
+    range_lo50,
+    range_hi50
   ) %>%
-  mutate(date = today)
+  # Which model made today's forecast (settings change during the season), for scoring it at season end
+  mutate(date = today, model_version = MODEL_VERSION, model_talent_sd = talent_sd_now,
+         model_rho = rho_now, model_rho_in_use = rho_eff)
 
 # Pre-draft: keep the old history untouched (player-level history needs the draft)
 if(!draft_complete) {

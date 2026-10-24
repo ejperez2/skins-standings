@@ -104,7 +104,10 @@ re-estimated from this season's rosters and blended in, reaching full weight aft
 drops below the 0.20 floor. In 2025-26, 0.20 still left mid-season ranges too narrow (best fit ~0.3-0.4),
 while applying any correlation from day 1 made early ranges too wide, hence the phase-in. Simulations
 are seeded by date so every run on a given day shows the same numbers. `win_prob`, `range_lo` and
-`range_hi` are saved to `standings_history.csv`.
+`range_hi` (80% range) are saved to `standings_history.csv`, with `range_lo50`/`range_hi50` (50% range) and the
+settings that produced them: `model_version` (`MODEL_VERSION`, bumped whenever the simulation changes),
+`model_talent_sd`, `model_rho` and `model_rho_in_use`. These exist so this season's forecasts can be scored
+out of sample at season end (how often the saved 80%/50% ranges held the final result, by model version).
 
 The first Season Charts show each player's weighted average with its 80% likely range by day, and Chance to
 Win over time, both from `standings_history.csv`. (An earlier version also drew a forward-looking cone of how
