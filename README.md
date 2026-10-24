@@ -67,9 +67,12 @@ GitHub schedules run on UTC, so `publish.yml` has one cron line for CDT and one 
 job lets through only the line that matches Chicago's current offset.
 
 ### Vegas Consensus
-Uses every sportsbook in Rotowire's win-totals feed (any `<book>_line` column). Each line is nudged 0.5 win
-toward the side its odds favor, then averaged across the books that have a line for that team. Books that go
-silent are skipped; if none have lines, Vegas is marked unavailable.
+Two feeds, each counted once per team: every sportsbook in Rotowire's win-totals feed (any `<book>_line`
+column, averaged across the books with a line) and Action Network's consensus line (book 15 of its
+"Regular Season - Total Wins" market, looked up by name each run since the market id changes by season).
+Each line is nudged 0.5 win toward the side its odds favor. A team in only one feed uses that feed, so
+Rotowire dropping teams (15 of 30 on Oct 23, 2026) no longer removes Vegas; `vegas_feeds` counts the feeds
+used. If either feed fails it is skipped; if neither has a team, the carry-forward / stale-feed rules apply.
 
 ### Projection Accuracy
 Once a day (first run at/after 5 AM Central) the page saves every source's projected wins for every team, plus
@@ -195,8 +198,10 @@ The W/L pick for each team is **hardcoded** in the `draft_data` tibble and store
 - ESPN sometimes uses abbreviated team names in the raw HTML
 - The scraper handles this with regex cleaning and standardization
 
-### 2. Rotowire Vegas Odds
+### 2. Vegas Odds (Rotowire + Action Network)
 - **URL**: `https://www.rotowire.com/betting/nba/tables/team-futures.php?future=Win%20Totals`
+- **Second feed**: `https://api.actionnetwork.com/web/v1/leagues/4/futures/<market type>` (consensus, book 15;
+  market type found via `/futures/available`). Both are averaged per team; see Vegas Consensus above.
 - **Method**: JSON API
 - **Books Aggregated**: MGM, DraftKings, Caesars, BetRivers, HardRock, FanDuel, ESPNBet (7 total)
 - **Processing Steps**:
