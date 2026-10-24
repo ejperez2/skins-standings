@@ -945,8 +945,8 @@ player_scores <- draft_data %>%
 # 0.15 over all four, phased in from ~0 at opening night to full by ~25 games (see README).
 TALENT_SD_2526 <- 8.6   # 2025-26: 9.7-win preseason miss = 4.5 luck + 8.6 misjudged teams
 ROSTER_RHO_2526 <- 0.30   # 2025-26 same-roster correlation of skins misses (6 rosters of 5, 20+ games played)
-ROSTER_RHO_FLOOR <- 0.20  # starting value and floor: this season's estimate can raise it, never lower it (stay cautious)
-MODEL_VERSION <- "2026-10-24 roster-corr + vegas-stale guard"   # bump when the simulation changes; saved with every forecast
+ROSTER_RHO_FLOOR <- 0.15  # starting value and floor (best fit over 2022-26): this season's estimate can raise it, never lower it
+MODEL_VERSION <- "2026-10-24 roster-corr 0.15 + vegas-stale guard"   # bump when the simulation changes; saved with every forecast
 RHO_RAMP <- c(10, 25)     # league games played: no roster correlation before 10, full by 25 (2025-26: none before ~15-20;
                           # applying it from day 1 made early player ranges too wide, 80% ranges held 92-94%)
 N_SIMS <- 10000

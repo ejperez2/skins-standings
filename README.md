@@ -97,11 +97,11 @@ Teams on the same roster can miss together. Checked against 2025-26 final record
 well calibrated all season, but player-level 80% ranges held only ~50-60% of outcomes from ~20 games on:
 a roster's skins misses were correlated about 0.30 (`ROSTER_RHO_2526`), far more than random 5-team
 groupings of the same teams (1-4% of shuffles). The simulation adds a shared draw per player, signed by
-pick so W and L teams lean the same way in skins, with correlation `ROSTER_RHO_FLOOR` = 0.20 phased in
+pick so W and L teams lean the same way in skins, with correlation `ROSTER_RHO_FLOOR` = 0.15 phased in
 from 10 to 25 league games played (`RHO_RAMP`). With 10-team rosters that widens mid-season player ranges
-about 1.7x. Once teams have played 12+ games since the first snapshot with 20+ games, the correlation is
+about 1.5x. Once teams have played 12+ games since the first snapshot with 20+ games, the correlation is
 re-estimated from this season's rosters and blended in, reaching full weight after 41 games, but it never
-drops below the 0.20 floor. In 2025-26, 0.20 still left mid-season ranges too narrow (best fit ~0.3-0.4),
+drops below the 0.15 floor (the best fit over 2022-26, below). In 2025-26 alone, 0.20 still left mid-season ranges too narrow (best fit ~0.3-0.4),
 while applying any correlation from day 1 made early ranges too wide, hence the phase-in.
 
 **Four-season check (Oct 2026).** Three earlier seasons were added from the league's spreadsheets
@@ -111,7 +111,7 @@ plus FanDuel team win totals and final records from Basketball-Reference). Out o
   projection quality varies by season (2023-24 better, 2024-25 worse), which the in-season re-fit handles.
 - Roster correlation is real in every season but 2025-26 was the high year: best fit per season 0.05,
   0.10, 0.10 (2022-23 to 2024-25) and 0.25 (2025-26); 0.15 over all four. Phasing it in from opening
-  night to ~25 games scores best; 0.20 with the 10-25 phase-in is within 0.004 log loss of the best.
+  night to ~25 games scores best (0.15 is the floor now; 0.20 was within 0.004 log loss of the best).
 - Vegas went stale late in seasons (2025-26: every line froze from Mar 17). The page now leaves Vegas out of
   the weighted average when no line has moved for `VEGAS_FREEZE_DAYS` (3; before the freeze, at least one
   line moved every day) and carries a missing team's line for at most `VEGAS_MAX_CARRY_DAYS` (5).
