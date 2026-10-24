@@ -945,8 +945,9 @@ player_scores <- draft_data %>%
 # skins misses were correlated about 0.30 (roster totals missed ~2.2x the variance of independent teams).
 TALENT_SD_2526 <- 8.6   # 2025-26: 9.7-win preseason miss = 4.5 luck + 8.6 misjudged teams
 ROSTER_RHO_2526 <- 0.30   # 2025-26 same-roster correlation of skins misses (6 rosters of 5, 20+ games played)
-ROSTER_RHO_START <- 0.15  # used until this season has data: half of 2025-26's, since that is one season of 6 rosters
-RHO_RAMP <- c(10, 25)     # league games played: no roster correlation before 10, full by 25 (2025-26: none before ~15-20)
+ROSTER_RHO_FLOOR <- 0.20  # starting value and floor: this season's estimate can raise it, never lower it (stay cautious)
+RHO_RAMP <- c(10, 25)     # league games played: no roster correlation before 10, full by 25 (2025-26: none before ~15-20;
+                          # applying it from day 1 made early player ranges too wide, 80% ranges held 92-94%)
 N_SIMS <- 10000
 talent_sd_now <- TALENT_SD_2526
 uncertainty_note <- "last season's projection misses"
@@ -978,9 +979,9 @@ if (!is.null(proj_history) && n_distinct(proj_history$date) > 1) {
 }
 
 # Re-fit the roster correlation from this season: skins misses since the first snapshot with 20+ games played,
-# from that snapshot's weighted average to today's record. Only 3 rosters, so it gets at most half the weight.
-rho_now <- ROSTER_RHO_START
-rho_note <- sprintf("%.2f, half of last season's %.2f", ROSTER_RHO_START, ROSTER_RHO_2526)
+# from that snapshot's weighted average to today's record, reaching full weight after 41 games, but never below the floor.
+rho_now <- ROSTER_RHO_FLOOR
+rho_note <- sprintf("%.2f (the floor; last season's was %.2f)", ROSTER_RHO_FLOOR, ROSTER_RHO_2526)
 if (draft_complete && !is.null(proj_history) && n_distinct(proj_history$date) > 1) {
   snap_g <- proj_history %>% group_by(date) %>% summarise(g = mean(wins + losses), .groups = "drop")
   rho_dates <- snap_g$date[snap_g$g >= 20]
@@ -995,13 +996,16 @@ if (draft_complete && !is.null(proj_history) && n_distinct(proj_history$date) > 
              v = played * rate * (1 - rate) + (talent_sd_now * (left0 / 82)^1.5 * played / left0)^2) %>%
       filter(!is.na(weighted), played > 0, left0 > 0)
     if (nrow(rw) >= 20 && mean(rw$played) >= 12) {
+      # standardize each team's miss, then scale by the misses actually seen so a bigger-than-expected
+      # spread is not mistaken for clustering: rho = mean same-roster product / mean square
+      rw <- rw %>% mutate(zr = r / sqrt(v))
       pairs <- rw %>% group_by(player) %>%
-        summarise(num = (sum(r)^2 - sum(r^2)) / 2, den = (sum(sqrt(v))^2 - sum(v)) / 2, .groups = "drop")
-      rho_hat <- min(max(sum(pairs$num) / sum(pairs$den), 0), 0.5)
-      blend_r <- min(0.5, 0.5 * mean(rw$played) / 41)
-      rho_now <- (1 - blend_r) * ROSTER_RHO_START + blend_r * rho_hat
-      rho_note <- sprintf("%.2f: %.0f%% this season's (%.2f since %s), %.0f%% the starting %.2f",
-                          rho_now, 100 * blend_r, rho_hat, format(d0, "%b %d"), 100 * (1 - blend_r), ROSTER_RHO_START)
+        summarise(num = (sum(zr)^2 - sum(zr^2)) / 2, n_pairs = n() * (n() - 1) / 2, .groups = "drop")
+      rho_hat <- min(max((sum(pairs$num) / sum(pairs$n_pairs)) / mean(rw$zr^2), 0), 0.6)
+      blend_r <- min(1, mean(rw$played) / 41)
+      rho_now <- max(ROSTER_RHO_FLOOR, (1 - blend_r) * ROSTER_RHO_FLOOR + blend_r * rho_hat)
+      rho_note <- sprintf("%.2f: %.0f%% this season's (%.2f since %s), %.0f%% the starting %.2f, floor %.2f",
+                          rho_now, 100 * blend_r, rho_hat, format(d0, "%b %d"), 100 * (1 - blend_r), ROSTER_RHO_FLOOR, ROSTER_RHO_FLOOR)
     }
   }
 }

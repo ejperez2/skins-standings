@@ -97,11 +97,12 @@ Teams on the same roster can miss together. Checked against 2025-26 final record
 well calibrated all season, but player-level 80% ranges held only ~50-60% of outcomes from ~20 games on:
 a roster's skins misses were correlated about 0.30 (`ROSTER_RHO_2526`), far more than random 5-team
 groupings of the same teams (1-4% of shuffles). The simulation adds a shared draw per player, signed by
-pick so W and L teams lean the same way in skins, with correlation `ROSTER_RHO_START` = 0.15 (half of
-last season's, as it is one season of 6 rosters) phased in from 10 to 25 league games played (`RHO_RAMP`).
-With 10-team rosters that widens mid-season player ranges about 1.5x. Once teams have played 12+ games
-since the first snapshot with 20+ games, the correlation is re-estimated from this season's rosters and
-blended in, capped at 50% weight (only 3 rosters). Simulations
+pick so W and L teams lean the same way in skins, with correlation `ROSTER_RHO_FLOOR` = 0.20 phased in
+from 10 to 25 league games played (`RHO_RAMP`). With 10-team rosters that widens mid-season player ranges
+about 1.7x. Once teams have played 12+ games since the first snapshot with 20+ games, the correlation is
+re-estimated from this season's rosters and blended in, reaching full weight after 41 games, but it never
+drops below the 0.20 floor. In 2025-26, 0.20 still left mid-season ranges too narrow (best fit ~0.3-0.4),
+while applying any correlation from day 1 made early ranges too wide, hence the phase-in. Simulations
 are seeded by date so every run on a given day shows the same numbers. `win_prob`, `range_lo` and
 `range_hi` are saved to `standings_history.csv`.
 
