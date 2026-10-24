@@ -741,8 +741,11 @@ if(file.exists(team_vegas_history_file)) {
       select(team, vegas_proj_wins, date)
   } else {
     team_vegas_history <- team_vegas_history_raw %>%
-      select(team, vegas_proj_wins, date)
+      select(any_of(c("team", "vegas_proj_wins", "date", "scraped")))
   }
+  # scraped = FALSE marks a value carried forward from an earlier day (rows before Oct 2026 count as scraped)
+  if (!"scraped" %in% names(team_vegas_history)) team_vegas_history$scraped <- TRUE
+  team_vegas_history <- team_vegas_history %>% mutate(scraped = coalesce(as.logical(scraped), TRUE))
   
   # Remove today's data if it exists
   team_vegas_history <- team_vegas_history %>%
@@ -750,51 +753,47 @@ if(file.exists(team_vegas_history_file)) {
     
 } else {
   # Create empty history
-  team_vegas_history <- tibble(team = character(), vegas_proj_wins = numeric(), date = as.Date(character()))
+  team_vegas_history <- tibble(team = character(), vegas_proj_wins = numeric(), date = as.Date(character()), scraped = logical())
 }
 
-# For each team in all_teams, get current value from df_skins or find historical value
+# Missing team: carry its last scraped line forward, but only for VEGAS_MAX_CARRY_DAYS.
+# Stale feed: in 2025-26 every line froze on Mar 17 for the rest of the season (before that, at least one
+# team's line moved every day), so if no line has moved for VEGAS_FREEZE_DAYS, Vegas is left out of the blend.
+VEGAS_MAX_CARRY_DAYS <- 5
+VEGAS_FREEZE_DAYS <- 3
+last_scraped <- team_vegas_history %>%
+  filter(scraped, !is.na(vegas_proj_wins)) %>%
+  group_by(team) %>% slice_max(date, n = 1, with_ties = FALSE) %>% ungroup() %>%
+  select(team, last_w = vegas_proj_wins, last_date = date)
 all_teams_with_vegas <- all_teams %>%
   left_join(df_skins %>% select(team, vegas_proj_wins), by = "team") %>%
   left_join(vegas_fallback, by = "team", suffix = c("", "_fallback")) %>%
-  rowwise() %>%
-  mutate(
-    vegas_proj_wins = if_else(
-      is.na(vegas_proj_wins) & nrow(team_vegas_history) > 0,
-      {
-        # Find last non-NA value for this team from history
-        current_team <- team
-        last_valid <- team_vegas_history %>%
-          filter(team == current_team, !is.na(vegas_proj_wins)) %>%
-          arrange(desc(date)) %>%
-          slice(1) %>%
-          pull(vegas_proj_wins)
-        
-        if(length(last_valid) > 0) {
-          last_valid
-        } else if(!is.na(vegas_proj_wins_fallback)) {
-          # Use fallback if no historical value found
-          vegas_proj_wins_fallback
-        } else {
-          NA_real_
-        }
-      },
-      vegas_proj_wins
-    )
-  ) %>%
-  ungroup() %>%
-  select(team, vegas_proj_wins)
+  left_join(last_scraped, by = "team") %>%
+  mutate(scraped = !is.na(vegas_proj_wins),
+         carry_age = as.numeric(today - last_date),
+         vegas_proj_wins = case_when(scraped ~ vegas_proj_wins,
+                                     !is.na(last_w) & carry_age <= VEGAS_MAX_CARRY_DAYS ~ last_w,
+                                     !is.na(last_w) ~ NA_real_,
+                                     TRUE ~ vegas_proj_wins_fallback))
+vegas_carry_dropped <- sum(!all_teams_with_vegas$scraped & !is.na(all_teams_with_vegas$last_w) &
+                             all_teams_with_vegas$carry_age > VEGAS_MAX_CARRY_DAYS)
 
-# Update df_skins with backfilled values (this replaces the scraped df_skins)
-df_skins <- all_teams_with_vegas %>%
-  select(team, vegas_proj_wins)
+# Freeze check: today's scraped lines plus the previous VEGAS_FREEZE_DAYS days, and not one has moved
+recent_vegas <- bind_rows(
+  team_vegas_history %>% filter(scraped, date >= today - VEGAS_FREEZE_DAYS, date < today) %>% select(team, date, vegas_proj_wins),
+  all_teams_with_vegas %>% filter(scraped) %>% transmute(team, date = today, vegas_proj_wins))
+vegas_frozen <- n_distinct(recent_vegas$date) > VEGAS_FREEZE_DAYS &&
+  nrow(recent_vegas %>% group_by(team) %>% filter(n_distinct(vegas_proj_wins) > 1)) == 0
+if (vegas_frozen) cat("Vegas: no line has moved in", VEGAS_FREEZE_DAYS, "days - left out of the weighted average\n", file = stderr())
 
-# Prepare current team vegas data for history (store projected WINS, not skins)
-# CRITICAL: Only save non-NA values to avoid polluting the history
-current_team_vegas <- df_skins %>%
+# History keeps every line (scraped or carried) so the freeze check can see when lines start moving again
+current_team_vegas <- all_teams_with_vegas %>%
   filter(!is.na(vegas_proj_wins)) %>%
-  select(team, vegas_proj_wins) %>%
-  mutate(date = today)
+  transmute(team, vegas_proj_wins, date = today, scraped)
+
+# Update df_skins with backfilled values (this replaces the scraped df_skins); a frozen feed is dropped
+df_skins <- all_teams_with_vegas %>%
+  transmute(team, vegas_proj_wins = if (vegas_frozen) NA_real_ else vegas_proj_wins)
 
 # Add current data to history
 team_vegas_history <- bind_rows(team_vegas_history, current_team_vegas) %>%
@@ -941,12 +940,13 @@ player_scores <- draft_data %>%
 #   luck in the games left:                   left * p * (1 - p)        (p = projected win rate the rest of the way)
 #   the projection misjudging the team:       TALENT_SD * (left / 82)^1.5, shrinking as the season goes
 # Season outcomes are simulated from those team misses and summed into each player's skins.
-# Teams on the same roster may miss together: in 2025-26, once teams had played ~20 games, a roster's
-# skins misses were correlated about 0.30 (roster totals missed ~2.2x the variance of independent teams).
+# Teams on the same roster may miss together. 2025-26: correlation ~0.30 once teams had played ~20 games.
+# Checked on 2022-23, 2023-24 and 2024-25 player histories (archive/history/): best fit 0.05-0.10 per season,
+# 0.15 over all four, phased in from ~0 at opening night to full by ~25 games (see README).
 TALENT_SD_2526 <- 8.6   # 2025-26: 9.7-win preseason miss = 4.5 luck + 8.6 misjudged teams
 ROSTER_RHO_2526 <- 0.30   # 2025-26 same-roster correlation of skins misses (6 rosters of 5, 20+ games played)
-ROSTER_RHO_FLOOR <- 0.20  # starting value and floor: this season's estimate can raise it, never lower it (stay cautious)
-MODEL_VERSION <- "2026-10-24 roster-corr"   # bump when the simulation changes; saved with every forecast
+ROSTER_RHO_FLOOR <- 0.15  # starting value and floor (best fit over 2022-26): this season's estimate can raise it, never lower it
+MODEL_VERSION <- "2026-10-24 roster-corr 0.15 + vegas-stale guard"   # bump when the simulation changes; saved with every forecast
 RHO_RAMP <- c(10, 25)     # league games played: no roster correlation before 10, full by 25 (2025-26: none before ~15-20;
                           # applying it from day 1 made early player ranges too wide, 80% ranges held 92-94%)
 N_SIMS <- 10000
@@ -1183,7 +1183,10 @@ raw_html(
   "<dt>Skins % 2023-26</dt><dd><b>58%, 62%, 59%, 59%</b></dd>",
   "<dt>Winner's skins %</dt><dd><b>61%, 68%, 65%, 66%</b> (6-player leagues; with 3 players each roster is a third of the league, so expect this year's winner to finish with a lower %)</dd>",
   "<dt>Skins % projection</dt><dd>Each team's current skins % &times; 82, added up: where a player finishes if every team keeps its current rate.</dd>",
-  "<dt>Weighted avg</dt><dd>Vegas 40%, TR 20%, ESPN 20%, CBS 20% (most accurate robust blend on 2025-26 Oct-Nov data; until CBS publishes: Vegas 50%, TR 25%, ESPN 25%)</dd>",
+  sprintf("<dt>Weighted avg</dt><dd>Vegas 40%%, TR 20%%, ESPN 20%%, CBS 20%% (most accurate robust blend on 2025-26 Oct-Nov data; until CBS publishes: Vegas 50%%, TR 25%%, ESPN 25%%). A missing Vegas line is carried forward for up to %d days.%s</dd>",
+          VEGAS_MAX_CARRY_DAYS,
+          if (vegas_frozen) sprintf(" <b>No Vegas line has moved in %d+ days (stale feed), so Vegas is left out until lines update.</b>", VEGAS_FREEZE_DAYS)
+          else if (vegas_carry_dropped > 0) sprintf(" %d team(s) left out of Vegas: no line for over %d days.", vegas_carry_dropped, VEGAS_MAX_CARRY_DAYS) else ""),
   "<dt>BB-Ref, Opta, DARKO, D&amp;T</dt><dd>Shown and graded for accuracy but not in the weighted average. Opta (The Analyst), DARKO and Dunks &amp; Threes are on trial in 2026-27 and may join the blend next season if they prove accurate.</dd>",
   sprintf(paste0("<dt>Chance to win</dt><dd>%s simulated seasons around the weighted average. It narrows as more games are played. ",
                  "Uncertainty is based on %s. Each simulated season draws every team's final wins from a normal distribution ",
