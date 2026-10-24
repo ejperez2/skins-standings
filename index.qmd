@@ -437,6 +437,25 @@ vegas_lines <- bind_rows(lapply(vegas_books, function(bk) {
 }))
 if (nrow(vegas_lines) == 0) vegas_lines <- tibble(team = character(), book = character(), line = numeric(), over = numeric(), under = numeric())
 
+# C: Action Network's consensus win totals - a second feed, since Rotowire drops teams whenever its books
+# pull a market (Oct 23, 2026: 15 of 30 teams). The market id changes each season, so look it up by name.
+an_base <- "https://api.actionnetwork.com/web/v1/leagues/4/futures"
+an_get <- function(url) fromJSON(content(GET(url, add_headers(`User-Agent` = "Mozilla/5.0")), as = "text", encoding = "UTF-8"))
+an_lines <- safe_scrape("Action Network", {
+  avail <- an_get(paste0(an_base, "/available"))$futures
+  an_type <- avail$type[grepl("Regular Season - Total Wins", avail$name, fixed = TRUE)][1]
+  if (is.na(an_type)) stop("no win totals market listed")
+  an <- an_get(paste0(an_base, "/", an_type))
+  if (!15 %in% an$books$book_id) stop("no consensus line")
+  as_tibble(an$books$odds[[which(an$books$book_id == 15)]]) %>%   # book 15 = Action Network consensus
+    filter(option_type_id %in% c(72, 73)) %>%                      # 72 = over, 73 = under
+    group_by(team_id) %>%
+    summarise(line = mean(value), over = money[option_type_id == 72][1], under = money[option_type_id == 73][1], .groups = "drop") %>%
+    inner_join(as_tibble(an$teams) %>% select(team_id = id, team = full_name), by = "team_id") %>%
+    transmute(team, book = "actionnetwork", line, over, under)
+}, empty = tibble(team = character(), book = character(), line = numeric(), over = numeric(), under = numeric()))
+vegas_lines <- bind_rows(vegas_lines, an_lines)
+
 vegas_lines <- vegas_lines %>%
   mutate(
     # Rotowire stores some books' lines divided by 1,000 (e.g. BetRivers 0.0435 = 43.5 wins)
@@ -453,10 +472,14 @@ vegas_lines <- vegas_lines %>%
   ) %>%
   filter(!is.na(adj_line))
 
-# Store as projected WINS - we'll apply draft picks later
+# Store as projected WINS - we'll apply draft picks later. Each feed counts once: Rotowire's books are
+# averaged first, then averaged with Action Network's consensus (either feed alone if the other lacks the team).
 df_skins <- vegas_lines %>%
+  mutate(feed = if_else(book == "actionnetwork", "actionnetwork", "rotowire")) %>%
+  group_by(team, feed) %>%
+  summarise(feed_line = mean(adj_line), books = n(), .groups = "drop") %>%
   group_by(team) %>%
-  summarise(vegas_proj_wins = mean(adj_line), vegas_books = n(), .groups = "drop")
+  summarise(vegas_proj_wins = mean(feed_line), vegas_books = sum(books), vegas_feeds = n(), .groups = "drop")
 if (nrow(df_skins) == 0) cat("Vegas: no sportsbook lines in the feed\n", file = stderr())
 
 # C: Scrape TeamRankings
