@@ -91,7 +91,17 @@ Together they reproduce last season's typical miss at every stage (9.7 wins pres
 left, 3.1 with ~27 left). Player totals are summed from their teams in each simulated season. The Chance to
 Win cards show each player's odds with the 50% and 80% likely ranges on a shared scale. Once teams
 average 12+ games since opening night, `TALENT_SD` is re-estimated from this season's own misses
-(`team_projection_history.csv`) and blended in, reaching 100% this season's data by midseason. Simulations
+(`team_projection_history.csv`) and blended in, reaching 100% this season's data by midseason.
+
+Teams on the same roster can miss together. Checked against 2025-26 final records, team-level ranges were
+well calibrated all season, but player-level 80% ranges held only ~50-60% of outcomes from ~20 games on:
+a roster's skins misses were correlated about 0.30 (`ROSTER_RHO_2526`), far more than random 5-team
+groupings of the same teams (1-4% of shuffles). The simulation adds a shared draw per player, signed by
+pick so W and L teams lean the same way in skins, with correlation `ROSTER_RHO_START` = 0.15 (half of
+last season's, as it is one season of 6 rosters) phased in from 10 to 25 league games played (`RHO_RAMP`).
+With 10-team rosters that widens mid-season player ranges about 1.5x. Once teams have played 12+ games
+since the first snapshot with 20+ games, the correlation is re-estimated from this season's rosters and
+blended in, capped at 50% weight (only 3 rosters). Simulations
 are seeded by date so every run on a given day shows the same numbers. `win_prob`, `range_lo` and
 `range_hi` are saved to `standings_history.csv`.
 

@@ -941,7 +941,12 @@ player_scores <- draft_data %>%
 #   luck in the games left:                   left * p * (1 - p)        (p = projected win rate the rest of the way)
 #   the projection misjudging the team:       TALENT_SD * (left / 82)^1.5, shrinking as the season goes
 # Season outcomes are simulated from those team misses and summed into each player's skins.
+# Teams on the same roster may miss together: in 2025-26, once teams had played ~20 games, a roster's
+# skins misses were correlated about 0.30 (roster totals missed ~2.2x the variance of independent teams).
 TALENT_SD_2526 <- 8.6   # 2025-26: 9.7-win preseason miss = 4.5 luck + 8.6 misjudged teams
+ROSTER_RHO_2526 <- 0.30   # 2025-26 same-roster correlation of skins misses (6 rosters of 5, 20+ games played)
+ROSTER_RHO_START <- 0.15  # used until this season has data: half of 2025-26's, since that is one season of 6 rosters
+RHO_RAMP <- c(10, 25)     # league games played: no roster correlation before 10, full by 25 (2025-26: none before ~15-20)
 N_SIMS <- 10000
 talent_sd_now <- TALENT_SD_2526
 uncertainty_note <- "last season's projection misses"
@@ -972,7 +977,37 @@ if (!is.null(proj_history) && n_distinct(proj_history$date) > 1) {
   }
 }
 
+# Re-fit the roster correlation from this season: skins misses since the first snapshot with 20+ games played,
+# from that snapshot's weighted average to today's record. Only 3 rosters, so it gets at most half the weight.
+rho_now <- ROSTER_RHO_START
+rho_note <- sprintf("%.2f, half of last season's %.2f", ROSTER_RHO_START, ROSTER_RHO_2526)
+if (draft_complete && !is.null(proj_history) && n_distinct(proj_history$date) > 1) {
+  snap_g <- proj_history %>% group_by(date) %>% summarise(g = mean(wins + losses), .groups = "drop")
+  rho_dates <- snap_g$date[snap_g$g >= 20]
+  if (length(rho_dates) > 0) {
+    d0 <- min(rho_dates)
+    rw <- proj_history %>% filter(date == d0) %>%
+      inner_join(proj_history %>% filter(date == max(proj_history$date)) %>% select(team, w1 = wins, l1 = losses), by = "team") %>%
+      inner_join(draft_data %>% select(team, player, skins_pick), by = "team") %>%
+      mutate(g0 = wins + losses, left0 = 82 - g0, played = w1 + l1 - g0, won = w1 - wins,
+             rate = pmin(pmax((weighted - wins) / left0, 0.01), 0.99),
+             r = if_else(skins_pick == "W", 1, -1) * (won - rate * played),
+             v = played * rate * (1 - rate) + (talent_sd_now * (left0 / 82)^1.5 * played / left0)^2) %>%
+      filter(!is.na(weighted), played > 0, left0 > 0)
+    if (nrow(rw) >= 20 && mean(rw$played) >= 12) {
+      pairs <- rw %>% group_by(player) %>%
+        summarise(num = (sum(r)^2 - sum(r^2)) / 2, den = (sum(sqrt(v))^2 - sum(v)) / 2, .groups = "drop")
+      rho_hat <- min(max(sum(pairs$num) / sum(pairs$den), 0), 0.5)
+      blend_r <- min(0.5, 0.5 * mean(rw$played) / 41)
+      rho_now <- (1 - blend_r) * ROSTER_RHO_START + blend_r * rho_hat
+      rho_note <- sprintf("%.2f: %.0f%% this season's (%.2f since %s), %.0f%% the starting %.2f",
+                          rho_now, 100 * blend_r, rho_hat, format(d0, "%b %d"), 100 * (1 - blend_r), ROSTER_RHO_START)
+    }
+  }
+}
+
 uncertainty <- NULL
+rho_eff <- 0
 if (draft_complete) {
   unc_teams <- df_final_projections %>%
     inner_join(draft_data %>% select(team, player), by = "team") %>%
@@ -985,6 +1020,12 @@ if (draft_complete) {
 
   set.seed(as.integer(today))  # same numbers for every run on a given day
   z <- matrix(rnorm(nrow(unc_teams) * N_SIMS), nrow = nrow(unc_teams))
+  # Shared roster draw: each player's teams lean the same way in skins (W picks up = L picks down in wins)
+  g_now <- mean(unc_teams$actual_wins + unc_teams$actual_losses)
+  rho_eff <- rho_now * min(max((g_now - RHO_RAMP[1]) / diff(RHO_RAMP), 0), 1)
+  u <- matrix(rnorm(length(PLAYERS) * N_SIMS), nrow = length(PLAYERS))
+  side <- if_else(unc_teams$skins_pick == "W", 1, -1)
+  z <- sqrt(1 - rho_eff) * z + sqrt(rho_eff) * side * u[match(unc_teams$player, PLAYERS), , drop = FALSE]
   final_w <- pmin(pmax(unc_teams$proj_w + unc_teams$sd * z, unc_teams$actual_wins), unc_teams$actual_wins + unc_teams$left)
   final_skins <- final_w
   l_rows <- unc_teams$skins_pick == "L"
@@ -1137,8 +1178,10 @@ raw_html(
                  "Uncertainty is based on %s. Each simulated season draws every team's final wins from a normal distribution ",
                  "around its weighted-average projection, with a spread that combines game-to-game luck in the games left ",
                  "and the chance the projection misjudges the team (currently %.1f wins over a full season, shrinking as games are played); ",
-                 "player totals are then summed across their %d teams.</dd>"),
-          format(N_SIMS, big.mark = ","), uncertainty_note, talent_sd_now, TEAMS_PER_PLAYER),
+                 "player totals are then summed across their %d teams. Teams on the same roster can miss together, ",
+                 "as they did last season: roster correlation %s, phased in between %d and %d games played (%.2f in use now).</dd>"),
+          format(N_SIMS, big.mark = ","), uncertainty_note, talent_sd_now, TEAMS_PER_PLAYER,
+          rho_note, RHO_RAMP[1], RHO_RAMP[2], rho_eff),
   "</dl></div></details>"
 )
 ```
