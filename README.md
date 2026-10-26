@@ -127,6 +127,16 @@ plus FanDuel team win totals and final records from Basketball-Reference). Out o
   line moved every day) and carries a missing team's line for at most `VEGAS_MAX_CARRY_DAYS` (5).
   `team_vegas_history.csv` marks carried values with `scraped = FALSE`.
 
+**Early-season calibration check (Oct 26, 2026).** Is a chance to win like 70% after ~3 games overconfident?
+Backtest: each team's projection at games 3-5 of 2023-24, 2024-25 and 2025-26 (FanDuel / Vegas totals in
+`archive/history/`), that season's W/L picks, and 1,500 random splits of the 30 teams into three 10-team rosters per
+season, scored against final records. Pooled, favorites the model gave 70-80% won 74% of the time (75% predicted);
+every bin was within ~4 points. By season it swung: in the 65%+ bin the favorite won 92% (2023-24, good projections),
+66% (2024-25, poor) and 74% (2025-26). So the odds are right on average but can be off by 10-20 points in a given
+season, depending on how good that year's projections are; the in-season `TALENT_SD` re-fit (from ~12 games) is what
+corrects for that. Drawing `TALENT_SD` from last seasons' range instead (7.2-10.4 wins) averages back to the same
+number, so it was not added. (Random rosters only; drafted rosters can miss together, see roster correlation above.)
+
 Simulations are seeded by date so every run on a given day shows the same numbers. `win_prob`, `range_lo` and
 `range_hi` (80% range) are saved to `standings_history.csv`, with `range_lo50`/`range_hi50` (50% range) and the
 settings that produced them: `model_version` (`MODEL_VERSION`, bumped whenever the simulation changes),
@@ -333,8 +343,22 @@ pct_projected = skins_pct × 82
 - Example: If a team is 10-2 (83.3%), % Projected = 68.3 skins
 
 ### 5. Weighted Average ⭐ UPDATED (2026-27)
-`WEIGHTS` near the top of `index.qmd`: **Vegas 40%, TR 20%, ESPN 20%, CBS 20%**. Sources that are missing for a
-team are re-weighted away, so until CBS publishes (once the season starts) it is Vegas 50 / TR 25 / ESPN 25.
+`WEIGHTS` near the top of `index.qmd`: **Vegas 45%, TR 22.5%, ESPN 22.5%, CBS 10%** (since Oct 26, 2026; before
+that Vegas 40 / TR 20 / ESPN 20 / CBS 20). Sources that are missing for a team are re-weighted away, so until CBS
+publishes (once the season starts) it is Vegas 50 / TR 25 / ESPN 25.
+
+**Why CBS was cut to 10%.** CBS re-rates every team only every few days (Oct 22 and Oct 26, 2026); in between it
+just adds each night's results to an unchanged rest-of-season win rate. On a re-rate day it moved teams that had
+not played by ~1.6 wins on average (other days: ~0.1, i.e. rounding), with little relation to recent results. At
+20% that re-rate of idle teams added ~2.7 points to Oct 26's chance-to-win jump (Eristeo 62% -> 70% on the chart);
+at 10% about half that. The whole one-day jump only shrinks from 8.9 to 8.4 points (Oct 25 -> 26 morning
+snapshots), because most of it was TR and ESPN re-rating teams after real results, which is expected this early.
+Two other fixes were tested on the Oct 21-26 snapshots and not adopted: fading CBS's weight as games pass since
+its last re-rate made the biggest one-day move larger (9.5 points vs 8.4), because the weight comes back at the
+re-rate and lands several days of updates at once; moving a stale CBS line along with the other sources' changes
+did nothing (8.4), because CBS's re-rate was mostly CBS changing its own view, not catching up on results. CBS was
+accurate in 2025-26 (V 50 / CBS 50 was the November grid best), so revisit the weight once Projection Accuracy
+has enough 2026-27 games (about mid-November).
 
 How it was chosen (2025-26 data, RMSE vs final results):
 
@@ -342,7 +366,7 @@ How it was chosen (2025-26 data, RMSE vs final results):
 |---|---|---|
 | Old: TR 50 / ESPN 34 / CBS 16 | 9.72 | 17.06 |
 | Equal V/TR/ESPN/CBS | 9.65 | 16.65 |
-| **V 40 / TR 20 / ESPN 20 / CBS 20** | **9.62** | **16.63** |
+| **V 40 / TR 20 / ESPN 20 / CBS 20** (used until Oct 26, 2026) | **9.62** | **16.63** |
 | V 50 / CBS 50 (Nov grid best) | 9.58 | 16.24 |
 | Vegas only | 9.58 | 16.87 |
 

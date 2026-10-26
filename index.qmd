@@ -234,8 +234,13 @@ colorblind_colors <- c(
 
 # Weighted average weights (early-season; the Projection Accuracy section suggests updates)
 # Oct-Nov blend chosen from 2025-26 data (see README); sources that are missing are re-weighted away,
-# so before CBS publishes this is Vegas 50 / TR 25 / ESPN 25
-WEIGHTS <- c(vegas = 0.40, tr = 0.20, espn = 0.20, cbs = 0.20)
+# so before CBS publishes this is Vegas 50 / TR 25 / ESPN 25.
+# CBS cut from 20% to 10% on Oct 26, 2026: it re-rates every team only every few days (Oct 22, Oct 26), moving
+# teams that did not play by ~1.6 wins at once (~2.7 points of Oct 26's chance-to-win jump at 20%). A weight that
+# fades while CBS is stale was tested and made the jumps bigger (see README).
+# Revisit once Projection Accuracy has enough games to suggest weights (about mid-November).
+WEIGHTS <- c(vegas = 0.45, tr = 0.225, espn = 0.225, cbs = 0.10)
+fmt_weight <- function(w) paste0(sub("\\.0$", "", sprintf("%.1f", 100 * w)), "%")
 
 # Create Draft Data Frame FIRST (needed for W/L picks)
 # DRAFTED: Sunday, October 18, 2026 (10-round snake; order Adam, Brian, Eristeo).
@@ -975,7 +980,7 @@ player_scores <- draft_data %>%
 TALENT_SD_2526 <- 8.6   # 2025-26: 9.7-win preseason miss = 4.5 luck + 8.6 misjudged teams
 ROSTER_RHO_2526 <- 0.30   # 2025-26 same-roster correlation of skins misses (6 rosters of 5, 20+ games played)
 ROSTER_RHO_FLOOR <- 0.15  # starting value and floor (best fit over 2022-26): this season's estimate can raise it, never lower it
-MODEL_VERSION <- "2026-10-24 roster-corr 0.15 + vegas-stale guard"   # bump when the simulation changes; saved with every forecast
+MODEL_VERSION <- "2026-10-26 cbs-10pct + roster-corr 0.15 + vegas-stale guard"   # bump when the simulation changes; saved with every forecast
 RHO_RAMP <- c(10, 25)     # league games played: no roster correlation before 10, full by 25 (2025-26: none before ~15-20;
                           # applying it from day 1 made early player ranges too wide, 80% ranges held 92-94%)
 N_SIMS <- 10000
@@ -1212,7 +1217,8 @@ raw_html(
   "<dt>Skins % 2023-26</dt><dd><b>58%, 62%, 59%, 59%</b></dd>",
   "<dt>Winner's skins %</dt><dd><b>61%, 68%, 65%, 66%</b> (6-player leagues; with 3 players each roster is a third of the league, so expect this year's winner to finish with a lower %)</dd>",
   "<dt>Skins % projection</dt><dd>Each team's current skins % &times; 82, added up: where a player finishes if every team keeps its current rate.</dd>",
-  sprintf("<dt>Weighted avg</dt><dd>Vegas 40%%, TR 20%%, ESPN 20%%, CBS 20%% (most accurate robust blend on 2025-26 Oct-Nov data; until CBS publishes: Vegas 50%%, TR 25%%, ESPN 25%%). A missing Vegas line is carried forward for up to %d days.%s</dd>",
+  sprintf("<dt>Weighted avg</dt><dd>Vegas %s, TR %s, ESPN %s, CBS %s (a Vegas-led blend chosen on 2025-26 Oct-Nov data; CBS is weighted lightly because it re-rates teams only every few days, which makes it jumpy). A missing Vegas line is carried forward for up to %d days.%s</dd>",
+          fmt_weight(WEIGHTS[["vegas"]]), fmt_weight(WEIGHTS[["tr"]]), fmt_weight(WEIGHTS[["espn"]]), fmt_weight(WEIGHTS[["cbs"]]),
           VEGAS_MAX_CARRY_DAYS,
           if (vegas_frozen) sprintf(" <b>No Vegas line has moved in %d+ days (stale feed), so Vegas is left out until lines update.</b>", VEGAS_FREEZE_DAYS)
           else if (vegas_carry_dropped > 0) sprintf(" %d team(s) left out of Vegas: no line for over %d days.", vegas_carry_dropped, VEGAS_MAX_CARRY_DAYS) else ""),
@@ -1568,7 +1574,7 @@ if (is.null(h) || nrow(h) == 0) {
     }
     acc <- tibble(key = names(ACC_SOURCES), Source = unname(ACC_SOURCES),
                   opening = col_for("opening"), last30 = col_for("last30"),
-                  weight = case_when(key %in% names(WEIGHTS) ~ sprintf("%.0f%%", 100 * WEIGHTS[key]),
+                  weight = case_when(key %in% names(WEIGHTS) ~ fmt_weight(WEIGHTS[key]),
                                      TRUE ~ "&ndash;")) %>%
       filter(!(is.na(opening) & is.na(last30))) %>%
       arrange(coalesce(last30, opening))
@@ -1620,7 +1626,7 @@ if (is.null(h) || nrow(h) == 0) {
       best_w <- unlist(grid[which.min(grid_miss), , drop = FALSE])
       cur_w <- WEIGHTS[avail] / sum(WEIGHTS[avail])
       lbl <- c(vegas = "Vegas", tr = "TR", espn = "ESPN", cbs = "CBS")
-      fmt_w <- function(w) paste(sprintf("%s %.0f%%", lbl[names(w)], 100 * w), collapse = ", ")
+      fmt_w <- function(w) paste(lbl[names(w)], fmt_weight(w), collapse = ", ")
       acc_p(sprintf("<b>Suggested weights</b> (best fit over the %s): %s &mdash; miss %.2f vs %.2f with current weights (%s).",
                     if (key_w == "last30") "last 30 days" else "season so far",
                     fmt_w(best_w), min(grid_miss), miss_for(as.numeric(cur_w)), fmt_w(cur_w)), 13)
