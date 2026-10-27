@@ -83,6 +83,8 @@ since opening night and over the last 30 days, a .500 baseline, the TR/ESPN/CBS 
 have missed least, and a rolling 30-day trend chart. A window is graded once teams average 12+ games in it
 (about mid-November). Weights live in `WEIGHTS` near the top of `index.qmd`. Opta, DARKO and Dunks & Threes (added Oct 21, 2026,
 after opening night) are graded "since opening" from their first saved snapshot and marked with `*`.
+Crafted NBA (added Oct 27, 2026) has its preseason run (Oct 20) backfilled into the opening-night snapshot, so it
+is graded from opening night like the core sources.
 
 ### Refresh Now Button
 Always visible in the nav. It POSTs to the Cloudflare Worker `skins-refresh.ejperez2.workers.dev/?repo=skins-standings`
@@ -297,6 +299,15 @@ The W/L pick for each team is **hardcoded** in the `draft_data` tibble and store
 - **Method**: the table whose header includes "Win Totals"; column 1 = team abbreviation (same as `draft_data$abbr`),
   column 3 = average projected wins.
 - **Columns**: `dnt` in both history CSVs (label "D&T" on the page). Not in the weighted average.
+
+### 10. Crafted NBA (trial, 2026-27)
+- **Page**: `https://craftednba.com/season-projections` (Nuxt; 50,000-simulation Monte Carlo, re-run daily ~4 AM Central)
+- **Method**: JSON API `https://craftednba.com/api/team-projections` (no key or Referer needed); each entry in
+  `data.team_projections` has `team_code` (same as `draft_data$abbr`) and `average_projected_wins` (one decimal).
+  `?baseline=season-start` returns the preseason run; the API serves no other past runs.
+- **Backfill**: the preseason run (Oct 20, 2026) was written into the 2026-10-20 rows of `team_projection_history.csv`
+  and the latest run into 2026-10-27, so it is graded from opening night.
+- **Columns**: `crafted` in both history CSVs (label "Crafted" on the page). Not in the weighted average.
 
 ---
 
