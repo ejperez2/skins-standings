@@ -666,6 +666,18 @@ crafted_proj <- safe_scrape("Crafted NBA", {
   if (nrow(out) < 30 || any(is.na(out$crafted_proj_w))) stop("incomplete data")
   out
 }, empty = tibble(team = character(), crafted_proj_w = numeric()))
+# Cloudflare challenges GitHub runners (HTTP 403), so a scheduled Claude Code session fetches the API each
+# morning (~4:40 AM Central, after Crafted's ~4 AM run) and commits crafted_latest.csv; used when its run is
+# at most 2 days old. Crafted OK'd a once-daily scrape of its public projections (email, Oct 27, 2026).
+crafted_file <- "crafted_latest.csv"
+if (nrow(crafted_proj) == 0 && file.exists(crafted_file)) {
+  crafted_saved <- read.csv(crafted_file, stringsAsFactors = FALSE)
+  crafted_age <- as.numeric(Sys.Date() - as.Date(crafted_saved$run_date[1]))
+  if (nrow(crafted_saved) == 30 && !is.na(crafted_age) && crafted_age <= 2) {
+    crafted_proj <- crafted_saved %>% select(team, crafted_proj_w) %>% as_tibble()
+    message("Crafted NBA: using ", crafted_file, " (run ", crafted_saved$run_date[1], ")")
+  }
+}
 
 # --- Step 3: Combine All Projections ---
 

@@ -308,6 +308,11 @@ The W/L pick for each team is **hardcoded** in the `draft_data` tibble and store
 - **Backfill**: the preseason run (Oct 20, 2026) was written into the 2026-10-20 rows of `team_projection_history.csv`
   and the latest run into 2026-10-27, so it is graded from opening night.
 - **Columns**: `crafted` in both history CSVs (label "Crafted" on the page). Not in the weighted average.
+- **GitHub is blocked**: Cloudflare answers GitHub Actions runners with a "Just a moment..." challenge (HTTP 403;
+  browser headers don't help). A scheduled Claude Code session runs `fetch_crafted.py` daily at ~4:40 AM Central
+  (after Crafted's ~4 AM run) and commits `crafted_latest.csv` (team, projected wins, Crafted run date) to `main`.
+  `index.qmd` uses that file when its own fetch fails and the run is at most 2 days old. Crafted OK'd a once-daily
+  scrape of its public projections for this page (email, Oct 27, 2026). Stop the scheduled task to turn this off.
 
 ---
 
