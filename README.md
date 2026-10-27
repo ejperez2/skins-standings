@@ -284,7 +284,7 @@ The W/L pick for each team is **hardcoded** in the `draft_data` tibble and store
   `Referer: https://dataviz.theanalyst.com/`). `tmcl` is the 2026/27 season and will need updating next season.
 - **Data Extracted**: projected `Wins` for all 30 teams (full team names)
 - **Note**: Shown everywhere BB-Ref is (standings row, rosters, chart, Max) and graded in Projection Accuracy,
-  but **NOT** in the weighted average or Source avg. Candidate for next season's blend if it grades well.
+  and in Source avg, but **NOT** in the weighted average. Candidate for next season's blend if it grades well.
 - **Columns**: `opta` in `team_projection_history.csv` (projected wins) and `standings_history.csv` (player skins)
 
 ### 8. DARKO (trial, 2026-27)
@@ -309,8 +309,8 @@ The W/L pick for each team is **hardcoded** in the `draft_data` tibble and store
   and the latest run into 2026-10-27, so it is graded from opening night.
 - **Columns**: `crafted` in both history CSVs (label "Crafted" on the page). Not in the weighted average.
 - **GitHub is blocked**: Cloudflare answers GitHub Actions runners with a "Just a moment..." challenge (HTTP 403;
-  browser headers don't help). A scheduled Claude Code session runs `fetch_crafted.py` daily at ~4:40 AM Central
-  (after Crafted's ~4 AM run) and commits `crafted_latest.csv` (team, projected wins, Crafted run date) to `main`.
+  browser headers don't help). A scheduled Claude Code session runs `fetch_crafted.py` daily at 5:30 AM Central
+  (Crafted's run lands ~09:10 UTC, 4:10 AM CDT / 3:10 AM CST; the 6 AM page run takes the daily snapshot) and commits `crafted_latest.csv` (team, projected wins, Crafted run date) to `main`.
   `index.qmd` uses that file when its own fetch fails and the run is at most 2 days old. Crafted OK'd a once-daily
   scrape of its public projections for this page (email, Oct 27, 2026). Stop the scheduled task to turn this off.
 
@@ -369,10 +369,11 @@ The Projection Accuracy section re-checks this on 2026-27 data as the season goe
 
 ### 6. Projection Average
 ```r
-projection_average = mean(weighted_average, vegas_consensus, 
-                         team_rankings, espn_bpi, cbs_sports, br_ref)
+projection_average = mean(vegas_consensus, team_rankings, espn_bpi, cbs_sports,
+                         basketball_reference, opta, darko, dnt, crafted)   # those with a value
 ```
-- Simple mean of all 6 projection sources
+- Shown as "Source avg": simple mean of every listed source (9 in 2026-27; Vegas, TR, ESPN and CBS only
+  until Oct 27, 2026, when it was widened and `standings_history.csv` was recomputed to match)
 - Treats each source equally
 - Provides alternative to weighted approach
 

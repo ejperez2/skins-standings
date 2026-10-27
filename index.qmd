@@ -667,7 +667,7 @@ crafted_proj <- safe_scrape("Crafted NBA", {
   out
 }, empty = tibble(team = character(), crafted_proj_w = numeric()))
 # Cloudflare challenges GitHub runners (HTTP 403), so a scheduled Claude Code session fetches the API each
-# morning (~4:40 AM Central, after Crafted's ~4 AM run) and commits crafted_latest.csv; used when its run is
+# morning (5:30 AM Central, before the 6 AM snapshot run) and commits crafted_latest.csv; used when its run is
 # at most 2 days old. Crafted OK'd a once-daily scrape of its public projections (email, Oct 27, 2026).
 crafted_file <- "crafted_latest.csv"
 if (nrow(crafted_proj) == 0 && file.exists(crafted_file)) {
@@ -992,7 +992,7 @@ player_scores <- draft_data %>%
     `Crafted` = sum_or_na(crafted_skins),
     `Max Proj` = sum_or_na(max_projection)
   ) %>%
-  mutate(`Proj Avg` = rowMeans(select(., `Vegas Consensus`, `TR`, `ESPN`, `CBS`), na.rm = TRUE),
+  mutate(`Proj Avg` = rowMeans(select(., `Vegas Consensus`, `TR`, `ESPN`, `CBS`, `BB-Ref`, `Opta`, `DARKO`, `D&T`, `Crafted`), na.rm = TRUE),
          `Proj Avg` = if_else(is.nan(`Proj Avg`), NA_real_, `Proj Avg`)) %>%
   select(player, `Actual Skins`, `Skins %`, `% Projected`, `Weighted Average`, 
          `Vegas Consensus`, `TR`, `ESPN`, `CBS`, `BB-Ref`, `Opta`, `DARKO`, `D&T`, `Crafted`, `Proj Avg`, `Max Proj`) %>%
@@ -1456,7 +1456,7 @@ if (!is.null(uncertainty)) {
 # Rosters: one player at a time (tabs), each team expandable to its source-by-source numbers
 roster_teams <- draft_data %>%
   left_join(df_final_projections %>% select(-abbr, -skins_pick), by = "team") %>%
-  mutate(proj_avg = rowMeans(cbind(vegas_consensus, tr_skins, espn_skins, cbs_skins), na.rm = TRUE),
+  mutate(proj_avg = rowMeans(cbind(vegas_consensus, tr_skins, espn_skins, cbs_skins, br_skins, opta_skins, darko_skins, dnt_skins, crafted_skins), na.rm = TRUE),
          proj_avg = if_else(is.nan(proj_avg), NA_real_, proj_avg))
 # Preseason projection = weighted average from the last snapshot on or before opening night, as skins for the drafted side
 pre_dates <- if (is.null(proj_history)) as.Date(character(0)) else proj_history$date[proj_history$date <= SEASON_START]
@@ -1846,6 +1846,16 @@ raw_html("</div></details>")
       arr.forEach(function (v, i) { if (v == null) { on = false; return; } d += (on ? "L" : "M") + xs(i).toFixed(1) + " " + ys(v).toFixed(1); on = true; });
       return d;
     };
+    // Dashed bridges across missing days, so sparse sources (e.g. Crafted before its daily fetch) still show
+    var bridge = function (arr) {
+      var d = "", last = -1;
+      arr.forEach(function (v, i) {
+        if (v == null) return;
+        if (last >= 0 && i - last > 1) d += "M" + xs(last).toFixed(1) + " " + ys(arr[last]).toFixed(1) + "L" + xs(i).toFixed(1) + " " + ys(v).toFixed(1);
+        last = i;
+      });
+      return d;
+    };
     var svg = '<svg width="' + W + '" height="' + Hh + '" viewBox="0 0 ' + W + " " + Hh + '" role="img" aria-label="' + esc(c.ttl) + ' chart">';
     yt.forEach(function (t) {
       var z = c.zero && c.zero(o) && t === 0;
@@ -1864,7 +1874,8 @@ raw_html("</div></details>")
       svg += '<path d="M' + top.join("L") + "L" + bot.join("L") + 'Z" fill="' + COLORS[s.p] + '" fill-opacity="' + (me ? ".18" : ".08") + '"/>' +
         '<path d="M' + top.join("L") + "M" + bot.join("L") + '" fill="none" stroke="' + COLORS[s.p] + '" stroke-opacity=".45" stroke-width="1" stroke-dasharray="3 3"/>';
     });
-    series.forEach(function (s) { svg += '<path d="' + line(s.v) + '" fill="none" stroke="' + COLORS[s.p] + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'; });
+    series.forEach(function (s) { svg += '<path d="' + line(s.v) + '" fill="none" stroke="' + COLORS[s.p] + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
+      '<path d="' + bridge(s.v) + '" fill="none" stroke="' + COLORS[s.p] + '" stroke-width="1.5" stroke-dasharray="4 4" stroke-linecap="round"/>'; });
     var ends = [];
     series.forEach(function (s) { var last = -1; s.v.forEach(function (v, i) { if (v != null) last = i; }); if (last >= 0) ends.push({ s: s, i: last, y: ys(s.v[last]) }); });
     ends.sort(function (a, b) { return a.y - b.y; });
