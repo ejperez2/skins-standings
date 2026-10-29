@@ -10,7 +10,7 @@
 "Atlanta Hawks",45,2026-10-26,TRUE
 "Atlanta Hawks",44.9375,2026-10-27,TRUE
 "Atlanta Hawks",44,2026-10-28,TRUE
-"Atlanta Hawks",44.25,2026-10-29,TRUE
+"Atlanta Hawks",44.1875,2026-10-29,TRUE
 "Boston Celtics",50.000002,2026-10-19,TRUE
 "Boston Celtics",52,2026-10-20,TRUE
 "Boston Celtics",51.875,2026-10-21,TRUE
@@ -44,7 +44,7 @@
 "Charlotte Hornets",38,2026-10-26,TRUE
 "Charlotte Hornets",38.9375,2026-10-27,TRUE
 "Charlotte Hornets",38,2026-10-28,TRUE
-"Charlotte Hornets",38.375,2026-10-29,TRUE
+"Charlotte Hornets",38.5625,2026-10-29,TRUE
 "Chicago Bulls",29.5,2026-10-19,TRUE
 "Chicago Bulls",29.25,2026-10-20,TRUE
 "Chicago Bulls",29.25,2026-10-21,TRUE
@@ -55,7 +55,7 @@
 "Chicago Bulls",28,2026-10-26,TRUE
 "Chicago Bulls",27.0625,2026-10-27,TRUE
 "Chicago Bulls",27,2026-10-28,TRUE
-"Chicago Bulls",27.375,2026-10-29,TRUE
+"Chicago Bulls",27.3125,2026-10-29,TRUE
 "Cleveland Cavaliers",46.999999,2026-10-19,TRUE
 "Cleveland Cavaliers",48,2026-10-20,TRUE
 "Cleveland Cavaliers",48.125,2026-10-21,TRUE
@@ -66,7 +66,7 @@
 "Cleveland Cavaliers",48,2026-10-26,TRUE
 "Cleveland Cavaliers",48.0625,2026-10-27,TRUE
 "Cleveland Cavaliers",49,2026-10-28,TRUE
-"Cleveland Cavaliers",49.125,2026-10-29,TRUE
+"Cleveland Cavaliers",49.0625,2026-10-29,TRUE
 "Dallas Mavericks",34.499999,2026-10-19,TRUE
 "Dallas Mavericks",33.6666666666667,2026-10-20,TRUE
 "Dallas Mavericks",33.6666666666667,2026-10-21,TRUE
@@ -77,7 +77,7 @@
 "Dallas Mavericks",32,2026-10-26,TRUE
 "Dallas Mavericks",34,2026-10-27,TRUE
 "Dallas Mavericks",33.75,2026-10-28,TRUE
-"Dallas Mavericks",34.5833333333333,2026-10-29,TRUE
+"Dallas Mavericks",34.9375,2026-10-29,TRUE
 "Denver Nuggets",49,2026-10-19,TRUE
 "Denver Nuggets",48.3333333333333,2026-10-20,TRUE
 "Denver Nuggets",48.375,2026-10-21,TRUE
@@ -88,7 +88,7 @@
 "Denver Nuggets",48.1666666666667,2026-10-26,TRUE
 "Denver Nuggets",47.0833333333333,2026-10-27,TRUE
 "Denver Nuggets",48,2026-10-28,TRUE
-"Denver Nuggets",48.375,2026-10-29,TRUE
+"Denver Nuggets",48.1875,2026-10-29,TRUE
 "Detroit Pistons",49,2026-10-19,TRUE
 "Detroit Pistons",49,2026-10-20,TRUE
 "Detroit Pistons",49.125,2026-10-21,TRUE
@@ -99,7 +99,7 @@
 "Detroit Pistons",49.8333333333333,2026-10-26,TRUE
 "Detroit Pistons",50,2026-10-27,TRUE
 "Detroit Pistons",51,2026-10-28,TRUE
-"Detroit Pistons",50.5,2026-10-29,TRUE
+"Detroit Pistons",51,2026-10-29,TRUE
 "Golden State Warriors",39.500002,2026-10-19,TRUE
 "Golden State Warriors",36.1666666666667,2026-10-20,TRUE
 "Golden State Warriors",36.125,2026-10-21,TRUE
@@ -110,7 +110,7 @@
 "Golden State Warriors",34.3333333333333,2026-10-26,TRUE
 "Golden State Warriors",35.8333333333333,2026-10-27,TRUE
 "Golden State Warriors",36,2026-10-28,TRUE
-"Golden State Warriors",35.375,2026-10-29,TRUE
+"Golden State Warriors",35.4375,2026-10-29,TRUE
 "Houston Rockets",47.499999,2026-10-19,TRUE
 "Houston Rockets",48.3333333333333,2026-10-20,TRUE
 "Houston Rockets",48.3333333333333,2026-10-21,TRUE
@@ -121,7 +121,7 @@
 "Houston Rockets",52,2026-10-26,TRUE
 "Houston Rockets",52.5,2026-10-27,TRUE
 "Houston Rockets",54,2026-10-28,TRUE
-"Houston Rockets",53.375,2026-10-29,TRUE
+"Houston Rockets",53.4375,2026-10-29,TRUE
 "Indiana Pacers",45.000001,2026-10-19,TRUE
 "Indiana Pacers",44.5,2026-10-20,TRUE
 "Indiana Pacers",44.5,2026-10-21,TRUE
@@ -132,7 +132,7 @@
 "Indiana Pacers",45,2026-10-26,TRUE
 "Indiana Pacers",43.375,2026-10-27,TRUE
 "Indiana Pacers",43,2026-10-28,TRUE
-"Indiana Pacers",43.375,2026-10-29,TRUE
+"Indiana Pacers",42.9375,2026-10-29,TRUE
 "Los Angeles Clippers",30.5,2026-10-19,TRUE
 "Los Angeles Clippers",28,2026-10-20,TRUE
 "Los Angeles Clippers",28,2026-10-21,TRUE
@@ -143,7 +143,7 @@
 "Los Angeles Clippers",28,2026-10-26,TRUE
 "Los Angeles Clippers",28,2026-10-27,TRUE
 "Los Angeles Clippers",28.125,2026-10-28,TRUE
-"Los Angeles Clippers",28.75,2026-10-29,TRUE
+"Los Angeles Clippers",28.3333333333333,2026-10-29,TRUE
 "Los Angeles Lakers",45.499999,2026-10-19,TRUE
 "Los Angeles Lakers",45.8333333333333,2026-10-20,TRUE
 "Los Angeles Lakers",45.875,2026-10-21,TRUE
@@ -154,7 +154,7 @@
 "Los Angeles Lakers",48.4166666666667,2026-10-26,TRUE
 "Los Angeles Lakers",48.3125,2026-10-27,TRUE
 "Los Angeles Lakers",47.9166666666667,2026-10-28,TRUE
-"Los Angeles Lakers",48.375,2026-10-29,TRUE
+"Los Angeles Lakers",48.1875,2026-10-29,TRUE
 "Memphis Grizzlies",29,2026-10-19,TRUE
 "Memphis Grizzlies",29.8333333333333,2026-10-20,TRUE
 "Memphis Grizzlies",29.8333333333333,2026-10-21,TRUE
@@ -165,7 +165,7 @@
 "Memphis Grizzlies",35,2026-10-26,TRUE
 "Memphis Grizzlies",35.375,2026-10-27,TRUE
 "Memphis Grizzlies",35.5,2026-10-28,TRUE
-"Memphis Grizzlies",35.6,2026-10-29,TRUE
+"Memphis Grizzlies",35.35,2026-10-29,TRUE
 "Miami Heat",46.000001,2026-10-19,TRUE
 "Miami Heat",46.5,2026-10-20,TRUE
 "Miami Heat",46.5,2026-10-21,TRUE
@@ -176,7 +176,7 @@
 "Miami Heat",43,2026-10-26,TRUE
 "Miami Heat",41.375,2026-10-27,TRUE
 "Miami Heat",42,2026-10-28,TRUE
-"Miami Heat",42.625,2026-10-29,TRUE
+"Miami Heat",42.0625,2026-10-29,TRUE
 "Milwaukee Bucks",25,2026-10-19,TRUE
 "Milwaukee Bucks",25.8333333333333,2026-10-20,TRUE
 "Milwaukee Bucks",25.8333333333333,2026-10-21,TRUE
@@ -209,7 +209,7 @@
 "New Orleans Pelicans",27.8333333333333,2026-10-26,TRUE
 "New Orleans Pelicans",28.1875,2026-10-27,TRUE
 "New Orleans Pelicans",28,2026-10-28,TRUE
-"New Orleans Pelicans",28.375,2026-10-29,TRUE
+"New Orleans Pelicans",28.1875,2026-10-29,TRUE
 "New York Knicks",51.999998,2026-10-19,TRUE
 "New York Knicks",52,2026-10-20,TRUE
 "New York Knicks",51.25,2026-10-21,TRUE
@@ -220,7 +220,7 @@
 "New York Knicks",49,2026-10-26,TRUE
 "New York Knicks",49.75,2026-10-27,TRUE
 "New York Knicks",49,2026-10-28,TRUE
-"New York Knicks",49.875,2026-10-29,TRUE
+"New York Knicks",49.6875,2026-10-29,TRUE
 "Oklahoma City Thunder",61.5,2026-10-18,TRUE
 "Oklahoma City Thunder",61.5,2026-10-19,TRUE
 "Oklahoma City Thunder",62,2026-10-20,TRUE
@@ -232,7 +232,7 @@
 "Oklahoma City Thunder",58,2026-10-26,TRUE
 "Oklahoma City Thunder",58.0833333333333,2026-10-27,TRUE
 "Oklahoma City Thunder",59,2026-10-28,TRUE
-"Oklahoma City Thunder",58.375,2026-10-29,TRUE
+"Oklahoma City Thunder",58.4375,2026-10-29,TRUE
 "Orlando Magic",43.999999,2026-10-19,TRUE
 "Orlando Magic",44,2026-10-20,TRUE
 "Orlando Magic",44,2026-10-21,TRUE
@@ -243,7 +243,7 @@
 "Orlando Magic",40.25,2026-10-26,TRUE
 "Orlando Magic",40.6875,2026-10-27,TRUE
 "Orlando Magic",40,2026-10-28,TRUE
-"Orlando Magic",39.875,2026-10-29,TRUE
+"Orlando Magic",39.9375,2026-10-29,TRUE
 "Philadelphia 76ers",50.500002,2026-10-19,TRUE
 "Philadelphia 76ers",50.1666666666667,2026-10-20,TRUE
 "Philadelphia 76ers",51.125,2026-10-21,TRUE
@@ -254,7 +254,7 @@
 "Philadelphia 76ers",51,2026-10-26,TRUE
 "Philadelphia 76ers",51.4375,2026-10-27,TRUE
 "Philadelphia 76ers",52,2026-10-28,TRUE
-"Philadelphia 76ers",52.625,2026-10-29,TRUE
+"Philadelphia 76ers",51.875,2026-10-29,TRUE
 "Phoenix Suns",38.5,2026-10-19,TRUE
 "Phoenix Suns",39.3333333333333,2026-10-20,TRUE
 "Phoenix Suns",39.25,2026-10-21,TRUE
@@ -276,7 +276,7 @@
 "Portland Trail Blazers",43.0833333333333,2026-10-26,TRUE
 "Portland Trail Blazers",43.6666666666667,2026-10-27,TRUE
 "Portland Trail Blazers",45.8125,2026-10-28,TRUE
-"Portland Trail Blazers",47.95,2026-10-29,TRUE
+"Portland Trail Blazers",48.075,2026-10-29,TRUE
 "Sacramento Kings",21.000001,2026-10-19,TRUE
 "Sacramento Kings",20.8333333333333,2026-10-20,TRUE
 "Sacramento Kings",20.875,2026-10-21,TRUE
@@ -298,7 +298,7 @@
 "San Antonio Spurs",58.9166666666667,2026-10-26,TRUE
 "San Antonio Spurs",59.125,2026-10-27,TRUE
 "San Antonio Spurs",59,2026-10-28,TRUE
-"San Antonio Spurs",59.125,2026-10-29,TRUE
+"San Antonio Spurs",59.3125,2026-10-29,TRUE
 "Toronto Raptors",45.999999,2026-10-19,TRUE
 "Toronto Raptors",46.6666666666667,2026-10-20,TRUE
 "Toronto Raptors",46.6666666666667,2026-10-21,TRUE
@@ -309,7 +309,7 @@
 "Toronto Raptors",50,2026-10-26,TRUE
 "Toronto Raptors",48.125,2026-10-27,TRUE
 "Toronto Raptors",48,2026-10-28,TRUE
-"Toronto Raptors",48.625,2026-10-29,TRUE
+"Toronto Raptors",48.1875,2026-10-29,TRUE
 "Utah Jazz",37,2026-10-18,TRUE
 "Utah Jazz",36.6666663333333,2026-10-19,TRUE
 "Utah Jazz",37.3333333333333,2026-10-20,TRUE
@@ -321,7 +321,7 @@
 "Utah Jazz",33,2026-10-26,TRUE
 "Utah Jazz",31.3125,2026-10-27,TRUE
 "Utah Jazz",30.75,2026-10-28,TRUE
-"Utah Jazz",30.125,2026-10-29,TRUE
+"Utah Jazz",30.6875,2026-10-29,TRUE
 "Washington Wizards",35.000001,2026-10-19,TRUE
 "Washington Wizards",34.1666666666667,2026-10-20,TRUE
 "Washington Wizards",34.1666666666667,2026-10-21,TRUE
@@ -332,4 +332,4 @@
 "Washington Wizards",34,2026-10-26,TRUE
 "Washington Wizards",34.125,2026-10-27,TRUE
 "Washington Wizards",33,2026-10-28,TRUE
-"Washington Wizards",33.625,2026-10-29,TRUE
+"Washington Wizards",34.0625,2026-10-29,TRUE
