@@ -143,7 +143,9 @@ jobs:
           for f in standings_history.csv team_vegas_history.csv team_projection_history.csv; do
             if [ -f "$f" ]; then git add "$f"; fi
           done
-          git diff --quiet && git diff --staged --quiet || git commit -m "Update standings history [skip ci]"
+          # Only the staged CSVs matter: the render leaves unrelated unstaged changes (e.g. index.html deleted),
+          # so checking the whole working tree made `git commit` run with nothing staged and exit 1.
+          git diff --staged --quiet || git commit -m "Update standings history [skip ci]"
           git push
         continue-on-error: true
 
