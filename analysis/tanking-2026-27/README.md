@@ -107,6 +107,10 @@ Meanwhile Brooklyn, Memphis, Washington and New Orleans, all projected near the 
 
 ## 3. Where tanking actually shows up: after the trade deadline
 
+![Dispersion of team scoring margin by season phase](phase_dispersion_chart.png)
+
+The interactive version is `phase_dispersion_chart.html`; its data comes from `phase_dispersion.py`.
+
 The same measures, split into three phases of each season:
 
 | season | team quality SD (luck removed): first 121 / to deadline / post-deadline | bottom-5 avg margin post-deadline | 20+ pt blowout rate post-deadline |
