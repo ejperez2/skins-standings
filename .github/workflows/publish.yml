@@ -44,7 +44,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Check out repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -58,7 +58,7 @@ jobs:
       # apt skips any download whose .deb (same version + checksum) is already in its archives dir.
       - name: Restore apt package cache
         id: apt-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: ~/apt-debs
           # Never matches exactly; restore-keys picks the newest saved cache
@@ -115,7 +115,7 @@ jobs:
 
       - name: Save apt package cache
         if: steps.apt-cache.outputs.cache-matched-key != format('apt-debs-{0}-{1}-{2}', runner.os, runner.arch, steps.apt-debs.outputs.hash)
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: ~/apt-debs
           key: apt-debs-${{ runner.os }}-${{ runner.arch }}-${{ steps.apt-debs.outputs.hash }}
