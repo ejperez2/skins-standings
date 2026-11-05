@@ -48,6 +48,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      # setup-r apt-installs devscripts etc., whose Recommends add ~175 packages / 33 MB we never use.
+      # On a slow Azure mirror (Nov 5, 2026) that download alone blew the 15-minute Set up R timeout.
+      - name: Skip apt Recommends
+        run: echo 'APT::Install-Recommends "false";' | sudo tee /etc/apt/apt.conf.d/99no-recommends
+
       # SPEED: Keep using binaries to maintain that ~2 minute build time
       - name: Set up R
         uses: r-lib/actions/setup-r@v2
