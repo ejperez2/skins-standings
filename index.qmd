@@ -636,9 +636,13 @@ darko_proj <- safe_scrape("DARKO", {
 
 # I: Dunks & Threes playoff probabilities - tracked and graded, NOT in the weighted average (trial season 2026-27)
 # The "Win Totals" table: team abbreviation, conference, average wins (abbreviations match draft_data)
+# Since Nov 5, 2026 the site's nginx returns 403 to the bare "Mozilla/5.0" user agent (a common scraper
+# signature); a user agent naming this project gets the page (robots.txt allows it; only /api/ is disallowed).
 url_dnt <- "https://dunksandthrees.com/playoff-probabilities"
 dnt_proj <- safe_scrape("Dunks & Threes", {
-  tables_dnt <- read_html(GET(url_dnt, user_agent("Mozilla/5.0"))) %>% html_table()
+  resp_dnt <- GET(url_dnt, user_agent("skins-standings/1.0 (+https://github.com/ejperez2/skins-standings)"))
+  if (status_code(resp_dnt) != 200) stop("HTTP ", status_code(resp_dnt))
+  tables_dnt <- read_html(resp_dnt) %>% html_table()
   wt <- Filter(function(t) "Win Totals" %in% names(t), tables_dnt)[[1]]
   out <- tibble(abbr = wt[[1]], dnt_proj_w = suppressWarnings(as.numeric(wt[[3]]))) %>%
     filter(!is.na(dnt_proj_w)) %>%
