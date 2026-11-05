@@ -15,6 +15,47 @@ The extra spread does not come from teams that set out to be bad:
 
 The real test is February–April 2027, and the 2025-26 post-deadline numbers below are the benchmark.
 
+**Charts:** open `report.html` for the interactive report (all charts with hover details, data tables, light and dark mode).
+Static images are in `charts/`. To rebuild: `python3 report_data.py && python3 build_report.py`.
+
+## Why comparing November to November can't detect tanking
+
+**Tanking happens later in the season.** Under the old lottery, a team's reason to lose depended on where it stood in the standings.
+Once it was out of the play-in race, every extra loss improved its draft odds. In late October, every team still has 74+ games to play, so nobody is out of anything yet.
+That's why the article's own "tanking 10" mostly weren't tanking in November 2025: the Bulls were 6-1 and the Bucks 5-3.
+The tanking came later: veterans traded at the February deadline, healthy starters held out, fourth quarters handed to rookies.
+
+**So the article compares two stretches with no tanking in them.** November 2025 (old rules) and November 2026 (new rules) are both mostly tank-free.
+Whatever separates them is roster talent, injuries, offseason moves and luck. None of that is a response to the lottery, because the lottery wasn't shaping anyone's behavior in either November.
+The rules could be working perfectly or failing completely, and these November numbers would look the same.
+A test that gives the same answer either way can't tell you which is true.
+
+**The data shows when tanking happened.** In each of the last five full seasons, the gap between good and bad teams was widest after the trade deadline (charts 1, 2 and 4).
+The cleanest signal is the *change* at the deadline: how much worse the bottom five got after it than before it, in the same season.
+Using each season as its own baseline cancels out whatever made that year's rosters strong or weak.
+Under the old rules, that drop was −2.4 points per game in 2021-22 and −3.0 in both 2024-25 and 2025-26 (chart 3).
+
+**The rules change decisions, not rosters.** The article measures success by whether bad teams win more.
+The lottery can only change what front offices choose to do: whom to trade, whom to rest, who plays the fourth quarter. It can't make a bad roster good.
+A team that goes 1-7 while trying to win tells you about its roster, not its incentives.
+In November, teams were already trying to win under the old rules, so there was nothing there for the new rules to fix.
+
+**One kind of tanking could show up in November.** That's "roster tanking": building a weak team on purpose over the summer.
+If the new rules had encouraged it, teams projected to be bad would be underperforming their preseason lines, or the preseason lines would be more spread out than usual.
+Neither has happened (section 2, chart 7).
+
+**What would detect it.** Compare February–April 2027 with the same stretch in earlier seasons, with the change at the deadline as the main yardstick.
+If the reform works, 2027's drop should be close to zero.
+Three supporting checks:
+- fourth-quarter fades by bottom teams in close games (chart 8)
+- bottom teams' win% in close games
+- how often healthy starters sit late in the season
+
+![How spread out teams were, by phase of season](charts/1_dispersion_by_phase.png)
+![How badly the five worst teams lost, by phase of season](charts/2_bottom5_by_phase.png)
+![How much worse the bottom five got after the deadline](charts/3_deadline_change.png)
+![Share of games decided by 20+ points, by phase of season](charts/4_blowouts_by_phase.png)
+
 ## What the rules changed
 
 The "3-2-1" lottery was approved in May 2026 by a 29-1 vote and runs through 2029. Under it:
@@ -43,6 +84,7 @@ The rules therefore give the worst teams a reason to win more, not less. If the 
   Wins are converted to an expected point margin with (W − 41) / 2.7.
 
 Run order: `python3 fetch.py games.csv`, then `python3 analyze_same_point.py games.csv out.csv`, then `python3 analyze_context.py games.csv`.
+For the charts: `python3 report_data.py`, then `python3 build_report.py`.
 `analyze_context.py` also reads the repo's projection CSVs.
 
 ## 1. Yes, this season is unusually spread out at the 8-game mark
@@ -74,6 +116,12 @@ These numbers need context, though:
   More lopsided games is a league-wide trend that started before the new rules. Bad teams are not the only cause.
   None of the blowout differences against the pooled earlier seasons is statistically significant: Fisher p = 0.17 for 20+ point games, and Mann-Whitney p = 0.09 for absolute margin.
 
+One more point in the article's favor: with luck adjusted out, this season's five worst teams are at about −9.4 points per game.
+That is deeper than any earlier season's opening stretch (−2.6 to −7.3) and close to a typical post-deadline stretch.
+
+![How often luck alone produces a spread this wide](charts/5_simulation.png)
+![Blowouts are up even without the worst teams](charts/6_blowouts_without_worst.png)
+
 ## 2. The bottom of the standings is not made up of teams built to be bad
 
 Preseason win totals were **not** more spread out this year. The standard deviation was 10.3 wins, against 11.0 in 2024-25 and 10.8 in 2025-26.
@@ -89,7 +137,7 @@ Regressing each team's early point margin on its preseason-implied margin gives 
 | **2026-27** | **+0.3** | **+2.0** |
 
 The ten teams expected to be worst are playing slightly *better* than expected this season, more so than in any of the three earlier seasons.
-The deep bottom comes from teams whose preseason lines put them near the middle:
+Of the seven teams losing by 9+ points per game, four were expected to be around average:
 
 | 2026-27 | record | avg margin | preseason win total | margin vs expectation |
 |---|---|---|---|---|
@@ -102,14 +150,16 @@ The deep bottom comes from teams whose preseason lines put them near the middle:
 | ORL | 2-5 | −9.0 | **44.0** | −10.1 |
 
 Nobody thinks Orlando, Phoenix or Charlotte is tanking.
-The extra depth at the bottom comes from a handful of expected-to-be-average teams collapsing, most of them because of injuries, plus one Bulls team that looks historically bad.
+The extra depth comes from a handful of expected-to-be-average teams collapsing, plus Kings and Bucks teams a few points below their low lines and a Bulls team far below its line.
 Meanwhile Brooklyn, Memphis, Washington and New Orleans, all projected near the bottom, are at or well above their lines.
+
+![2026-27: preseason expectations vs. first ~8 games](charts/7_preseason_vs_actual.png)
 
 ## 3. Where tanking actually shows up: after the trade deadline
 
-![Dispersion of team scoring margin by season phase](phase_dispersion_chart.png)
+Charts 1–4 above show this by phase. The fourth-quarter test is chart 8:
 
-The interactive version is `phase_dispersion_chart.html`; its data comes from `phase_dispersion.py`.
+![Fourth-quarter fades by bottom-10 teams in close games](charts/8_fourth_quarter_fades.png)
 
 The same measures, split into three phases of each season:
 
@@ -154,6 +204,8 @@ As a group, the ten are **better** than in their tanking stretch and slightly be
 Six have improved (WSH, MEM, NO, DAL, BKN, IND) and four have gotten worse (CHI, MIL, SAC, UTAH).
 The article's own team notes explain the four that slipped with injuries, roster turnover and a new coach.
 None of the four shows the fourth-quarter fade that marked last spring's tanking.
+
+![Last year's tanking 10: then and now](charts/9_tanking_10.png)
 
 ## Verdict
 
