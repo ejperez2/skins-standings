@@ -298,6 +298,10 @@ The W/L pick for each team is **hardcoded** in the `draft_data` tibble and store
 - **Page**: `https://dunksandthrees.com/playoff-probabilities` (server-rendered)
 - **Method**: the table whose header includes "Win Totals"; column 1 = team abbreviation (same as `draft_data$abbr`),
   column 3 = average projected wins.
+- **User agent**: since Nov 5, 2026 the site's nginx returns HTTP 403 to the bare `Mozilla/5.0` user agent (a common
+  scraper signature), so the request sends `skins-standings/1.0 (+https://github.com/ejperez2/skins-standings)`.
+  `robots.txt` only disallows `/api/`. The 2026-11-05 snapshot was taken while blocked; its `dnt` values were
+  backfilled from the page that afternoon.
 - **Columns**: `dnt` in both history CSVs (label "D&T" on the page). Not in the weighted average.
 
 ### 10. Crafted NBA (trial, 2026-27)
@@ -466,18 +470,31 @@ The workflow runs at times when NBA games are likely to have updates:
 ### Workflow Steps
 
 ```yaml
-1. Checkout repository (actions/checkout@v4)
-2. Set up R (r-lib/actions/setup-r@v2, latest version)
-3. Set up Quarto (quarto-dev/quarto-actions/setup@v2)
-4. Install system dependencies (libcurl, fontconfig, freetype, etc.)
-5. Install R packages (rmarkdown, knitr, pacman, httr, jsonlite, 
-                       rvest, dplyr, tidyr, kableExtra, tibble, 
-                       stringr, ggplot2, scales)
-6. Render Quarto document (quarto render index.qmd)
-7. Commit history CSVs (standings_history.csv, team_vegas_history.csv)
-   - Uses [skip ci] tag to prevent infinite loops
-8. Deploy to GitHub Pages (peaceiris/actions-gh-pages@v4)
+1. Checkout repository (actions/checkout@v7)
+2. Skip apt Recommends (APT::Install-Recommends "false")
+3. Restore apt package cache (actions/cache/restore@v6 -> ~/apt-debs)
+4. Seed apt with cached packages (copy .debs into /var/cache/apt/archives)
+5. Set up R (r-lib/actions/setup-r@v2, latest version; 15-minute step timeout)
+6. Set up Quarto (quarto-dev/quarto-actions/setup@v2)
+7. Install system libraries + R packages (r-lib/actions/setup-r-dependencies@v2:
+   rmarkdown, knitr, pacman, httr, jsonlite, rvest, dplyr, tidyr,
+   kableExtra, tibble, stringr, ggplot2, scales)
+8. Collect + save apt package cache (actions/cache/save@v6, only when the .deb set changed)
+9. Render Quarto document (quarto render index.qmd)
+10. Commit history CSVs (standings_history.csv, team_vegas_history.csv, team_projection_history.csv)
+    - Uses [skip ci] tag to prevent infinite loops
+11. Deploy to GitHub Pages (peaceiris/actions-gh-pages@v4)
 ```
+
+All actions run on Node 24 (Node 20 is deprecated on GitHub runners). The job has a 30-minute timeout.
+
+**Apt package cache**: every run needs ~90 MB of Ubuntu packages (setup-r's tools plus the `-dev` libraries the
+R packages link against). On Nov 5, 2026 the Azure Ubuntu mirror slowed to ~10-40 KB/s and two runs hit the
+15-minute Set up R timeout. Now the `.deb`s are kept in an Actions cache (`apt-debs-Linux-X64-<hash>`) and
+copied into apt's archive directory before setup; apt only downloads packages whose version changed
+(a normal run logs `Need to get 0 B/57.2 MB`). After installs, `apt-get autoclean` drops outdated versions and a
+new cache is saved only if the file list changed. Skipping Recommends cuts setup-r's `devscripts` install from
+175 packages to the required ones.
 
 **Key Permissions**:
 ```yaml
@@ -820,12 +837,38 @@ Verify commit step includes skip tag:
   run: |
     git config --local user.email "github-actions[bot]@users.noreply.github.com"
     git config --local user.name "github-actions[bot]"
-    git add standings_history.csv team_vegas_history.csv
-    git diff --quiet && git diff --staged --quiet || git commit -m "Update standings history [skip ci]"
+    for f in standings_history.csv team_vegas_history.csv team_projection_history.csv; do
+      if [ -f "$f" ]; then git add "$f"; fi
+    done
+    git diff --staged --quiet || git commit -m "Update standings history [skip ci]"
     git push
 ```
 
-The `[skip ci]` tag tells GitHub Actions to ignore this commit.
+The `[skip ci]` tag tells GitHub Actions to ignore this commit. Only staged changes are checked: the render
+leaves unrelated unstaged changes (the tracked `index.html` is deleted), and checking the whole working tree
+made `git commit` run with nothing staged and exit 1 whenever the CSVs hadn't changed.
+
+### Issue 5b: Set up R Times Out / Runs Are Slow
+
+**Symptoms**: `The action 'Set up R' has timed out after 15 minutes`, or Set up R / Install R Dependencies taking
+minutes instead of seconds; the log shows apt `Get:` lines crawling from `azure.archive.ubuntu.com`.
+
+**Root Cause**: a slow Ubuntu mirror or degraded runner (Nov 5, 2026). Even `actions/checkout` may take minutes.
+
+**Solution**: re-run the failed job. The apt package cache (see Workflow Steps) normally makes the mirror
+irrelevant; if the log shows a non-zero `Need to get` on every run, check that the Restore/Save apt package cache
+steps ran and that the cache hasn't been evicted (Actions → Caches).
+
+### Issue 5c: A Source Shows Blank for Today
+
+**Symptoms**: one source's column is blank in the table and today is missing from its chart line.
+
+**Diagnosis**: search the Render step log for `scraping failed` (e.g. `Dunks & Threes scraping failed: Forbidden
+(HTTP 403)`). Check the site from outside GitHub with `curl -A "<user agent>" <url>` and look at its `robots.txt`.
+
+**Notes**: `standings_history.csv` replaces today's rows on every run, so the table recovers on the next successful
+run. `team_projection_history.csv` takes one snapshot per day (first run at/after 5 AM Central), so a snapshot taken
+while a source was failing keeps `NA` for that day until it is backfilled by hand.
 
 ### Issue 6: Self-Contained HTML Too Large
 
@@ -1369,6 +1412,12 @@ Pull requests welcome for bug fixes and enhancements!
 - ✅ 2025-26 history archived to `archive/2025-26/`; stale Vegas fallback values removed
 - ✅ Historical benchmarks shown ×2 for 10-team rosters and 2025-26 added
 - ✅ Chart Y-axes auto-scale; workflow tolerates missing history files
+
+### v3.1.0 (November 5, 2026) - Workflow reliability
+- ✅ Apt package cache plus skipped Recommends, so a slow Ubuntu mirror can't time out Set up R
+- ✅ Commit step no longer errors when no history CSV changed
+- ✅ Dunks & Threes fetched with a project user agent (the bare `Mozilla/5.0` started getting HTTP 403); 2026-11-05 D&T snapshot backfilled
+- ✅ Actions moved to Node 24: `actions/checkout@v7`, `actions/cache/restore@v6` / `save@v6`
 
 ### v2.1.0 (November 2024)
 - ✅ Added Basketball Reference projections (6th source)
