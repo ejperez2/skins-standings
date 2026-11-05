@@ -53,6 +53,27 @@ jobs:
       - name: Skip apt Recommends
         run: echo 'APT::Install-Recommends "false";' | sudo tee /etc/apt/apt.conf.d/99no-recommends
 
+      # Cache the apt .debs (~90 MB: setup-r's tools + the -dev libraries the R packages need) so a
+      # slow Ubuntu mirror only matters for packages whose version changed since the last cache.
+      # apt skips any download whose .deb (same version + checksum) is already in its archives dir.
+      - name: Restore apt package cache
+        id: apt-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/apt-debs
+          # Never matches exactly; restore-keys picks the newest saved cache
+          key: apt-debs-${{ runner.os }}-${{ runner.arch }}-${{ github.run_id }}
+          restore-keys: apt-debs-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Seed apt with cached packages
+        run: |
+          printf 'APT::Keep-Downloaded-Packages "true";\nBinary::apt::APT::Keep-Downloaded-Packages "true";\n' \
+            | sudo tee /etc/apt/apt.conf.d/99keep-debs
+          if ls ~/apt-debs/*.deb >/dev/null 2>&1; then
+            sudo cp ~/apt-debs/*.deb /var/cache/apt/archives/
+            echo "Seeded $(ls ~/apt-debs/*.deb | wc -l) cached .debs"
+          fi
+
       # SPEED: Keep using binaries to maintain that ~2 minute build time
       - name: Set up R
         uses: r-lib/actions/setup-r@v2
@@ -81,6 +102,23 @@ jobs:
             any::stringr
             any::ggplot2
             any::scales
+
+      # Save the .debs only when the set changed (new versions), so we don't store a copy every run
+      - name: Collect apt packages for cache
+        id: apt-debs
+        run: |
+          sudo apt-get autoclean -y   # drop .debs for versions the mirror no longer serves
+          rm -rf ~/apt-debs && mkdir -p ~/apt-debs
+          cp /var/cache/apt/archives/*.deb ~/apt-debs/ 2>/dev/null || true
+          echo "Collected $(ls ~/apt-debs | wc -l) .debs, $(du -sh ~/apt-debs | cut -f1)"
+          echo "hash=$(ls ~/apt-debs | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
+
+      - name: Save apt package cache
+        if: steps.apt-cache.outputs.cache-matched-key != format('apt-debs-{0}-{1}-{2}', runner.os, runner.arch, steps.apt-debs.outputs.hash)
+        uses: actions/cache/save@v4
+        with:
+          path: ~/apt-debs
+          key: apt-debs-${{ runner.os }}-${{ runner.arch }}-${{ steps.apt-debs.outputs.hash }}
 
       - name: Render Quarto Document
         run: |
