@@ -124,7 +124,7 @@ th{font-weight:600;color:var(--text-secondary)}
 <p>In practice, post-deadline skins % was lower than in the game 121-to-deadline stretch in 2022-23, 2023-24 and 2024-25, and only 0.9 points higher in 2025-26.</p>
 <div class="card" id="c-phase"></div>
 
-<p class="src">Method: skins rebuilt from ESPN game results with each season's drafted W/L picks (archive rosters for 2022-26; the 2026-27 draft in <code>index.qmd</code>). Rebuilt finals: 57.6%, 61.6%, 58.6%, 59.3%. Earlier-season totals include the NBA Cup final, which doesn't count in the standings (one game a season).</p>
+<p class="src">Method: skins rebuilt from ESPN game results with each season's drafted W/L picks (archive rosters for 2022-26; the 2026-27 draft in <code>index.qmd</code>). Rebuilt finals: 57.6%, 61.6%, 58.6%, 59.3%. The NBA Cup final, which ESPN lists as a regular-season game but which doesn't count in the standings, is removed.</p>
 <p class="src">Simulation: each team's strength comes from its Oct 20, 2026 consensus win total, converted with (wins − 41) ÷ 2.7. Each simulated season also redraws every team's strength with a 3.2-point standard deviation, the typical preseason miss (8.6 wins, from this repo's model). Home edge (1.75 points) and per-game spread (14.0 points) are fit on 2025-26. Games are played on this season's actual schedule, 4,000 times. Undetermined NBA Cup games are left out (1,200 of 1,230 games).</p>
 <p class="src">Code: <code>analysis/skins-by-season/</code>.</p>
 </main>
@@ -382,11 +382,11 @@ function segbar(s,x0,width,y,h,parts){const tot=parts.reduce((a,p)=>a+p.v,0);let
   if(p.tip)hover(gg,p.tip);x+=w+2;});
 }
 // ---------- composition (the pie alternative) ----------
-let compView="early";
+let compView="full";
 function cComp(){
  const c=card("c-comp","Where each season's skins come from","Each bar is all of a season's team-games. Blue segments are skins; gray is team-games that missed.");
  const PARTS=[{name:"Skins from W-vs-L games",c:"--series-1"},{name:"Skins from same-pick games",c:"--blue-light"},{name:"Missed",c:"--track"}];
- controls(c,{opts:[{key:"early",label:`After ${N} games`},{key:"full",label:"Full season"}],state:()=>compView,set:k=>{compView=k;cComp()}},PARTS.map(p=>({name:p.name,c:p.c})));
+ controls(c,{opts:[{key:"full",label:"Full season"},{key:"early",label:`After ${N} games`}],state:()=>compView,set:k=>{compView=k;cComp()}},PARTS.map(p=>({name:p.name,c:p.c})));
  const seas=[...PRIOR,CUR],rh=46,W=820,m={l:80,r:96,t:22,b:30},H=m.t+seas.length*rh+m.b,s=svgIn(c,W,H,"Segmented bars of each season's skins split into W-vs-L skins, same-pick skins and misses");
  const iw=W-m.l-m.r,x=v=>m.l+v/100*iw;
  [0,25,50,75,100].forEach(v=>{el("line",{x1:x(v),x2:x(v),y1:m.t-6,y2:H-m.b+4,stroke:v===50?css("--axis"):css("--grid"),"stroke-width":1,"shape-rendering":"crispEdges"},s);txt(s,{x:x(v),y:H-m.b+18,"text-anchor":"middle"},v+"%","tick")});
@@ -395,14 +395,14 @@ function cComp(){
   txt(s,{x:m.l-12,y:cy+h/2+4,"text-anchor":"end"},sn,"xl"+(sn===CUR?" cur":""));
   const r=D.decomp.find(q=>q.season===sn&&q.window===(compView==="full"&&sn!==CUR?"full":"early"));
   const same=(100-r.share_wl)/2, tot=r.pct, wl=tot-same, miss=100-tot;
-  const lbl=compView==="full"&&sn===CUR?" (so far)":"";
+  const lbl=sn===CUR?" (so far)":compView==="early"?` (after ${N})`:"";
   segbar(s,m.l,iw,cy,h,[
    {v:wl,fill:css("--series-1"),label:p1(wl),ink:"#ffffff",tip:()=>[p1(wl)+" of team-games",{t:"Skins from W-vs-L games",key:css("--series-1")},`${sn}${lbl}: ${p1(r.share_wl)} of games were W vs L, and the W pick won ${p1(r.wpick_win)}`]},
    {v:same,fill:css("--blue-light"),label:p1(same),ink:css("--on-light"),tip:()=>[p1(same)+" of team-games",{t:"Skins from same-pick games",key:css("--blue-light")},`${sn}${lbl}: always half of the ${p1(100-r.share_wl)} of games between two W or two L picks`]},
    {v:miss,fill:css("--track"),label:p1(miss),ink:css("--text-secondary"),tip:()=>[p1(miss)+" of team-games",{t:"Missed",key:css("--track")},`${sn}${lbl}`]}]);
-  txt(s,{x:W-m.r+10,y:cy+h/2-2},p1(tot),"lab"); txt(s,{x:W-m.r+10,y:cy+h/2+12},"skins"+lbl,"tlab");
+  txt(s,{x:W-m.r+10,y:cy+h/2-2},p1(tot),"lab"); txt(s,{x:W-m.r+10,y:cy+h/2+12},sn===CUR?"so far":compView==="early"?`after ${N} games`:"final","tlab");
  });
- foot(c,"Same-pick games always split their skins, so the same-pick segment depends only on how many games are W vs W or L vs L. The W-vs-L segment is where seasons differ: how many W-vs-L games there are and how often the W pick wins them."+(compView==="full"?" 2026-27 is shown after 121 games.":""));
+ foot(c,(compView==="full"?"Earlier seasons: final skins % (matches the league's records: 57.6%, 61.6%, 58.6%, 59.3%). 2026-27: its 121 games so far. ":`All seasons after their first ${N} games. `)+"Same-pick games always split their skins, so that segment depends only on how many games are W vs W or L vs L. The W-vs-L segment is where seasons differ.");
  table(c,["Season","W-vs-L skins","Same-pick skins","Missed","Total skins"],seas.map(sn=>{const r=D.decomp.find(q=>q.season===sn&&q.window===(compView==="full"&&sn!==CUR?"full":"early"));const same=(100-r.share_wl)/2,wl=r.pct-same;return [sn,p1(wl),p1(same),p1(100-r.pct),p1(r.pct)]}));
 }
 // ---------- W/L split ----------
@@ -411,7 +411,7 @@ function cSplit(){
  controls(c,null,[{name:"W picks",c:"--series-1"},{name:"L picks",c:"--series-2"}]);
  const rows=D.split,rh=46,W=820,m={l:80,r:220,t:26,b:12},H=m.t+rows.length*rh+m.b,s=svgIn(c,W,H,"Segmented bars of W and L picks per season");
  const iw=W-m.l-m.r;
- txt(s,{x:W-m.r+14,y:14},"W-vs-L games","tick"); txt(s,{x:W-m.r+120,y:14},"2026-27 at this split","tick");
+ txt(s,{x:W-m.r+14,y:14},"W-vs-L games","tick"); txt(s,{x:W-m.r+120,y:14},"Skins %","tick");
  rows.forEach((r,i)=>{const cy=m.t+i*rh+6,h=28;
   txt(s,{x:m.l-12,y:cy+h/2+4,"text-anchor":"end"},r.season,"xl"+(r.season===CUR?" cur":""));
   segbar(s,m.l,iw,cy,h,[
@@ -419,10 +419,10 @@ function cSplit(){
    {v:r.l,fill:css("--series-2"),label:`${r.l} L`,ink:"#ffffff",tip:()=>[`${r.l} L picks`,{t:"L picks",key:css("--series-2")},r.season]}]);
   const act=D.decomp.find(q=>q.season===r.season&&q.window===(r.season===CUR?"early":"full"));
   txt(s,{x:W-m.r+14,y:cy+h/2+4},`${p1(act.share_wl)}${r.season===CUR?" so far":""}`,"lab");
-  txt(s,{x:W-m.r+120,y:cy+h/2+4},r.season===CUR?`${p1(D.paths[CUR][N-1])} (actual)`:p1(r.cf),r.season===CUR?"lab":"tlab");
+  txt(s,{x:W-m.r+120,y:cy+h/2+4},r.season===CUR?`${p1(D.paths[CUR][N-1])} so far`:`${p1(D.paths[r.season].at(-1))} final`,"lab");
  });
- foot(c,"W-vs-L games: the actual full-season share (2026-27: first 121 games). An even split makes the most W-vs-L games, about 52% of the schedule. Right column: this season's skins % after 121 games if its W picks had kept winning 76% of W-vs-L games but the draft had each earlier season's split.");
- table(c,["Season","W picks","L picks","W-vs-L games (actual)","Expected from split","2026-27 at this split"],rows.map(r=>{const act=D.decomp.find(q=>q.season===r.season&&q.window===(r.season===CUR?"early":"full"));return [r.season,r.w,r.l,p1(act.share_wl),p1(r.exp_share),p1(r.cf)]}));
+ foot(c,"W-vs-L games and skins %: full season for earlier seasons, first 121 games for 2026-27. An even split makes the most W-vs-L games, about 52% of the schedule. The data table adds what this season's skins % would be under each earlier split, keeping its 76% W-pick win rate.");
+ table(c,["Season","W picks","L picks","W-vs-L games (actual)","Expected from split","Skins %","2026-27 skins % under this split"],rows.map(r=>{const act=D.decomp.find(q=>q.season===r.season&&q.window===(r.season===CUR?"early":"full"));return [r.season,r.w,r.l,p1(act.share_wl),p1(r.exp_share),r.season===CUR?p1(D.paths[CUR][N-1])+" so far":p1(D.paths[r.season].at(-1)),p1(r.cf)]}));
 }
 function renderAll(){cComp();cSplit();cPath();cSim();cFinal();cBest();cWL();cPhase();}
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change",renderAll);

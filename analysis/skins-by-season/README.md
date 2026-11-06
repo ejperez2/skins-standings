@@ -55,7 +55,7 @@ The excess is about 1-in-12 luck, it's spread over only 121 games, and it should
 - **Skins:** rebuilt from ESPN game results (`../tanking-2026-27/games.csv`) with each season's W/L picks.
   Picks for 2022-26 come from `archive/history/rosters_and_finals_2022-26.csv`; the 2026-27 draft is read from `index.qmd`.
   The rebuilt finals (57.6%, 61.6%, 58.6%, 59.3%) match the page's 58/62/59/59.
-  Earlier-season totals include the NBA Cup final, which doesn't count in the standings (one game per season).
+  The NBA Cup final is removed: ESPN lists it as a regular-season game, but it doesn't count in the standings. With it removed, the rebuilt finals match the league's records exactly.
 - **Simulation:** each team's strength is its Oct 20, 2026 consensus win total converted to a point margin, (W − 41) ÷ 2.7.
   Each simulated season adds a fresh 3.2-point miss per team, which is the 8.6-win preseason miss from this repo's model.
   Home edge (1.75 points) and per-game spread (14.0 points) are fit on 2025-26.

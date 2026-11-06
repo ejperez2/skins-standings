@@ -105,6 +105,7 @@ The rules therefore give the worst teams a reason to win more, not less. If the 
 
 - **Data:** every regular-season final from ESPN's scoreboard API, including quarter-by-quarter scores (`games.csv`, built by `fetch.py`).
   All-Star and other exhibition games are dropped.
+  The charts (`report_data.py`) also drop the NBA Cup final, which ESPN lists as a regular-season game but which doesn't count in the standings. The older `analyze_*.py` scripts keep it; that one game per season changes no figure quoted here.
 - **Same point in the season:** each season is cut at its first 121 games, which is where 2026-27 stood through Nov 4 (about 8.07 games per team).
   This lines seasons up by games played, not by calendar date. It reproduces the article's 2026-27 win table exactly
   and is within one team per bucket for 2025-26.

@@ -1,11 +1,23 @@
 """Builds report_data.json, the data behind report.html. Run from anywhere: python3 report_data.py"""
 import pandas as pd, numpy as np, json, os
+
+def drop_cup_final(g):
+    """ESPN lists the NBA Cup final as a regular-season game, but it doesn't count in the standings.
+    Drop the December game between the two teams that would otherwise have 83 games."""
+    keep=[]
+    for s_,d_ in g.groupby("season"):
+        gp=pd.concat([d_.home,d_.away]).value_counts(); extra=set(gp[gp>82].index)
+        m=d_.home.isin(extra)&d_.away.isin(extra)&d_.date.str[5:7].eq("12")
+        if m.sum()>1: m&=d_.date.eq(d_[m].date.max())
+        keep.append(d_[~m])
+    return pd.concat(keep)
 here=os.path.dirname(os.path.abspath(__file__)); R=os.path.join(here,"..","..")
 rng=np.random.default_rng(7)
 g=pd.read_csv(os.path.join(here,"games.csv"))
 T30=sorted(set(g[g.season=="2026-27"].home)|set(g[g.season=="2026-27"].away)); TI={t:i for i,t in enumerate(T30)}
 g=g[g.home.isin(T30)&g.away.isin(T30)].copy()
 g["margin"]=g.hpts-g.apts
+g=drop_cup_final(g)
 g=g.sort_values(["season","date","game_id"]); g["idx"]=g.groupby("season").cumcount()
 N=int((g.season=="2026-27").sum())
 CUR="2026-27"; SEAS=sorted(g.season.unique()); PRIOR=[s for s in SEAS if s!=CUR]

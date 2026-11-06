@@ -2,6 +2,17 @@
 Uses ../tanking-2026-27/games.csv (game results), archive rosters (2022-26), the 2026-27 draft in index.qmd,
 preseason Vegas lines (team_vegas_history.csv) and schedule_2026-27.csv (unplayed games)."""
 import pandas as pd, numpy as np, json, os, re
+
+def drop_cup_final(g):
+    """ESPN lists the NBA Cup final as a regular-season game, but it doesn't count in the standings.
+    Drop the December game between the two teams that would otherwise have 83 games."""
+    keep=[]
+    for s_,d_ in g.groupby("season"):
+        gp=pd.concat([d_.home,d_.away]).value_counts(); extra=set(gp[gp>82].index)
+        m=d_.home.isin(extra)&d_.away.isin(extra)&d_.date.str[5:7].eq("12")
+        if m.sum()>1: m&=d_.date.eq(d_[m].date.max())
+        keep.append(d_[~m])
+    return pd.concat(keep)
 from scipy.stats import norm
 here=os.path.dirname(os.path.abspath(__file__)); R=os.path.join(here,"..","..")
 rng=np.random.default_rng(11)
@@ -9,6 +20,7 @@ g=pd.read_csv(os.path.join(here,"..","tanking-2026-27","games.csv"))
 T30=sorted(set(g[g.season=="2026-27"].home)|set(g[g.season=="2026-27"].away)); TI={t:i for i,t in enumerate(T30)}
 g=g[g.home.isin(T30)&g.away.isin(T30)].copy()
 g["margin"]=g.hpts-g.apts
+g=drop_cup_final(g)
 g=g.sort_values(["season","date","game_id"]); g["idx"]=g.groupby("season").cumcount()
 N=int((g.season=="2026-27").sum())
 CUR="2026-27"
@@ -36,14 +48,14 @@ paths={}; phase=[]; decomp=[]
 for s in DRAFTED:
     d=g[g.season==s].copy(); d["sk"]=game_skins(d,PICKS[s]).values
     cum=d.sk.cumsum()/(2*np.arange(1,len(d)+1))
-    paths[s]=np.round(cum.values*100,2).tolist()
+    paths[s]=np.round(cum.values*100,4).tolist()
     ph={"early":d[d.idx<N]}
     if s in DEADLINE: ph["mid"]=d[(d.idx>=N)&(d.date<DEADLINE[s])]; ph["post"]=d[d.date>=DEADLINE[s]]
-    for p,x in ph.items(): phase.append(dict(season=s,phase=p,games=len(x),pct=round(float(x.sk.sum()/(2*len(x))*100),2)))
+    for p,x in ph.items(): phase.append(dict(season=s,phase=p,games=len(x),pct=round(float(x.sk.sum()/(2*len(x))*100),4)))
     for lab,x in [("early",d[d.idx<N]),("full",d)]:
         hp=x.home.map(PICKS[s]); ap=x.away.map(PICKS[s]); wl=hp!=ap
         wside_win=np.where(hp[wl]=="W",x.margin[wl]>0,x.margin[wl]<0)
-        decomp.append(dict(season=s,window=lab,games=len(x),share_wl=round(float(wl.mean()*100),1),wpick_win=round(float(wside_win.mean()*100),1),pct=round(float(x.sk.sum()/(2*len(x))*100),2)))
+        decomp.append(dict(season=s,window=lab,games=len(x),share_wl=round(float(wl.mean()*100),1),wpick_win=round(float(wside_win.mean()*100),1),pct=round(float(x.sk.sum()/(2*len(x))*100),4)))
 out["paths"]=paths; out["phase"]=phase; out["decomp"]=decomp
 # 2. hindsight-best skins % (each team on its better side), all seasons
 def best(d):
