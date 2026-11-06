@@ -38,11 +38,20 @@ Open `skins_report.html` for the interactive version, with hover details, data t
   The split is the drafters' choice: L went on all 13 teams with preseason lines under 41 wins, plus Portland (41.2) and Orlando (44.0).
   It isn't a sign of a lopsided league: preseason lines had 16 teams over 41 (17–19 before), and 13 teams have winning records (11–14 at this point before).
 
+- **2022-23 was the least skinsy season, but not because of bad drafting.** Its draft caught 83% of the available edge, second only to 2023-24 (85%).
+  The league itself was flat: the best possible skins % (every team on its better side) was 59.1%, the lowest of all eight seasons.
+  The weakest drafting was in 2024-25 and 2025-26 (66–67%), whose lopsided leagues covered for it.
+- **The drafts nearly always follow the preseason lines.** Only one or two teams a season went against them.
+  Following the lines exactly would have given 57.7%, 61.1%, 58.0% and 60.7%, almost the same as the actual skins % each year.
+  Contrarian picks have been mixed. The worst was last season's Grizzlies W pick (30.5% skins), which cost about 1.3 points of league skins %.
+
 **Bottom line:** mostly randomness, plus a genuinely lopsided start to the season.
 The excess is about 1-in-12 luck, it's spread over only 121 games, and it should mostly wash out by April.
 
 ![Where each season's skins come from](charts/0a_where_skins_come_from.png)
 ![The draft: W and L picks each season](charts/0b_draft_w_l_split.png)
+![Skins % against the ceiling and against following the lines](charts/7_draft_vs_ceiling.png)
+![Picks that went against the preseason line](charts/8_picks_against_lines.png)
 ![League skins %, cumulative, by games played](charts/1_cumulative_skins_pct.png)
 ![Skins % after 121 games: simulated seasons vs this season](charts/2_luck_simulation.png)
 ![Skins % after 121 games vs at season's end](charts/3_early_vs_final.png)

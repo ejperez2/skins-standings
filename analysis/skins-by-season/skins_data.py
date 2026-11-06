@@ -115,6 +115,24 @@ for s_ in DRAFTED:
     split.append(dict(season=s_,w=nW,l=30-nW,exp_share=round(nW*(30-nW)/435*100,1),
                       cf=round(50+nW*(30-nW)/435*(e26["wpick_win"]-50),2)))
 out["split"]=split
+
+# 5. draft quality: actual vs following the preseason lines vs best possible (full season; 2026-27 so far)
+PRE=pd.read_csv(os.path.join(here,"..","tanking-2026-27","preseason_win_totals.csv"))
+dq=[]
+for s_ in DRAFTED:
+    x=g[g.season==s_]
+    w=pd.concat([x.home[x.margin>0],x.away[x.margin<0]]).value_counts().reindex(T30,fill_value=0)
+    gp=pd.concat([x.home,x.away]).value_counts().reindex(T30)
+    line=PRE[PRE.season==s_].set_index("team").win_total
+    pk=pd.Series(PICKS[s_])
+    tot=gp.sum()
+    act=float(np.where(pk[T30]=="W",w,gp-w).sum()/tot*100)
+    lines=float(np.where(line[T30]>41,w,gp-w).sum()/tot*100)
+    bestv=float(np.maximum(w,gp-w).sum()/tot*100)
+    dis=[dict(team=t,pick=pk[t],line=float(line[t]),pct=round(float((w[t] if pk[t]=="W" else gp[t]-w[t])/gp[t]*100),1)) for t in T30 if (pk[t]=="W")!=(line[t]>41)]
+    wrong=int(sum((pk[t]=="W")!=(w[t]>gp[t]-w[t]) for t in T30 if w[t]*2!=gp[t]))
+    dq.append(dict(season=s_,so_far=s_==CUR,actual=round(act,4),lines=round(lines,4),best=round(bestv,4),capture=round((act-50)/(bestv-50)*100,1),against=dis,wrong=wrong))
+out["draft_quality"]=dq
 json.dump(out,open(os.path.join(here,"skins_data.json"),"w"))
 print("finals:",{s:paths[s][-1] for s in DRAFTED}); print("at N:",{s:paths[s][N-1] for s in DRAFTED})
 print(pd.DataFrame(phase).pivot(index="season",columns="phase",values="pct"))

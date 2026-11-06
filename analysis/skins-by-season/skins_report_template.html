@@ -119,6 +119,13 @@ th{font-weight:600;color:var(--text-secondary)}
 <p>The draft also sets how many W-vs-L games there are. An even split of W and L picks makes the most of them. This season's 15–15 split is the most even yet (earlier drafts had 17–21 W picks), so slightly more games are W vs L. That accounts for only a small part of the excess. At last season's 18–12 split, this season's 76% W-pick win rate would give 63.0% instead of 63.6%.</p>
 <div class="card" id="c-split"></div>
 
+<h2>Was 2022-23 the least skinsy because of bad drafting?</h2>
+<p>No. 2022-23's draft caught 83% of the edge that was available, second only to 2023-24. The league itself was flat: with every team counted on its better side, the best possible skins % was only 59.1%, the lowest of all eight seasons. Too many teams finished near .500 for any draft to score much.</p>
+<p>The weakest drafting was in the last two full seasons (66–67% of the edge). Those leagues were lopsided enough to cover for it.</p>
+<div class="card" id="c-dq"></div>
+<p>The drafts nearly always follow the preseason betting lines: only one or two teams a season go against them. So following the lines exactly would have given almost the same skins % every year, and "drafting quality" mostly means how right the lines turned out. The few picks against the lines have been a mixed bag:</p>
+<div class="card" id="c-against"></div>
+
 <h2>Does the trade deadline make it skinsier?</h2>
 <p>Tanking after the deadline makes the league more lopsided (see the tanking report). But it only adds skins when the teams doing the losing were drafted as L picks. A W pick that collapses after the deadline costs its owner skins.</p>
 <p>In practice, post-deadline skins % was lower than in the game 121-to-deadline stretch in 2022-23, 2023-24 and 2024-25, and only 0.9 points higher in 2025-26.</p>
@@ -424,7 +431,51 @@ function cSplit(){
  foot(c,"W-vs-L games and skins %: full season for earlier seasons, first 121 games for 2026-27. An even split makes the most W-vs-L games, about 52% of the schedule. The data table adds what this season's skins % would be under each earlier split, keeping its 76% W-pick win rate.");
  table(c,["Season","W picks","L picks","W-vs-L games (actual)","Expected from split","Skins %","2026-27 skins % under this split"],rows.map(r=>{const act=D.decomp.find(q=>q.season===r.season&&q.window===(r.season===CUR?"early":"full"));return [r.season,r.w,r.l,p1(act.share_wl),p1(r.exp_share),r.season===CUR?p1(D.paths[CUR][N-1])+" so far":p1(D.paths[r.season].at(-1)),p1(r.cf)]}));
 }
-function renderAll(){cComp();cSplit();cPath();cSim();cFinal();cBest();cWL();cPhase();}
+
+// ---------- draft quality: actual vs lines vs ceiling ----------
+function cDQ(){
+ const c=card("c-dq","Skins % against the ceiling and against following the lines","Gray track: from a coin flip (50%) to the best possible skins % (every team on its better side). Blue bar: actual skins %. Orange tick: skins % if every pick had followed the preseason line (W above 41 wins, L below).");
+ controls(c,null,[{name:"Actual skins %",c:"--series-1"},{name:"Following the lines",c:"--series-2",shape:"line"},{name:"Best possible",c:"--track"}]);
+ const rows=D.draft_quality,rh=48,W=820,m={l:80,r:150,t:20,b:36},H=m.t+rows.length*rh+m.b,s=svgIn(c,W,H,"Bullet chart of actual skins % against best possible and follow-the-lines");
+ const lo=50,hi=72,iw=W-m.l-m.r,x=v=>m.l+(v-lo)/(hi-lo)*iw,bot=H-m.b;
+ for(let v=lo;v<=hi;v+=4){el("line",{x1:x(v),x2:x(v),y1:m.t-4,y2:bot,stroke:css("--grid"),"stroke-width":1,"shape-rendering":"crispEdges"},s);txt(s,{x:x(v),y:bot+16,"text-anchor":"middle"},v+"%","tick")}
+ txt(s,{x:W-m.r+12,y:12},"Edge caught","tick");
+ rows.forEach((r,i)=>{const cy=m.t+i*rh+rh/2,h=22,cur=r.so_far;
+  txt(s,{x:m.l-12,y:cy+4,"text-anchor":"end"},r.season+(cur?"*":""),"xl"+(cur?" cur":""));
+  const g1=el("g",{},s);el("rect",{x:x(lo),y:cy-h/2-4,width:x(r.best)-x(lo),height:h+8,class:"hit"},g1);
+  el("rect",{x:x(lo),y:cy-h/2,width:x(r.best)-x(lo),height:h,rx:4,fill:css("--track")},g1);
+  hover(g1,()=>[p1(r.best),{t:"Best possible",key:css("--track")},`${r.season}${cur?" so far":""}: every team counted on its better side`]);
+  const g2=el("g",{},s);el("rect",{x:x(lo),y:cy-6,width:x(r.actual)-x(lo),height:12,rx:4,fill:css("--series-1")},g2);
+  hover(g2,()=>[p1(r.actual),{t:"Actual skins %",key:css("--series-1")},`Caught ${r.capture.toFixed(0)}% of the edge over 50% · ${r.wrong} teams on the wrong side`]);
+  const g3=el("g",{},s);el("rect",{x:x(r.lines)-8,y:cy-h/2-4,width:16,height:h+8,class:"hit"},g3);
+  el("line",{x1:x(r.lines),x2:x(r.lines),y1:cy-h/2-3,y2:cy+h/2+3,stroke:css("--series-2"),"stroke-width":3,"stroke-linecap":"round"},g3);
+  hover(g3,()=>[p1(r.lines),{t:"Following the lines",key:css("--series-2")},`${r.season}: actual ${r.actual>=r.lines?"beat":"trailed"} it by ${Math.abs(r.actual-r.lines).toFixed(1)} points`]);
+  txt(s,{x:x(r.best)+8,y:cy+4},p1(r.best),"tlab");
+  txt(s,{x:W-m.r+12,y:cy+4},`${r.capture.toFixed(0)}%`,"lab");
+  txt(s,{x:W-m.r+48,y:cy+4},`(${p1(r.actual)} actual)`,"tlab");
+ });
+ foot(c,`* 2026-27: first ${N} games only. After ~8 games per team records are extreme, so its best possible (70%) isn't comparable with full seasons. Edge caught = (actual − 50%) ÷ (best possible − 50%). Preseason lines: Basketball-Reference over/unders, and the Oct 20, 2026 consensus.`);
+ table(c,["Season","Actual","Following the lines","Best possible","Edge caught","Teams on wrong side"],rows.map(r=>[r.season+(r.so_far?" (so far)":""),p1(r.actual),p1(r.lines),p1(r.best),r.capture.toFixed(0)+"%",r.wrong]));
+}
+// ---------- picks against the lines ----------
+function cAgainst(){
+ const c=card("c-against","Picks that went against the preseason line","Skins % each team produced for the side it was drafted on. Right of 50% = the contrarian pick paid off.");
+ const NM={LAL:"Lakers",IND:"Pacers",ATL:"Hawks",LAC:"Clippers",MEM:"Grizzlies",ORL:"Magic"};
+ const rows=[];D.draft_quality.forEach(r=>r.against.forEach(a=>rows.push(Object.assign({season:r.season,so_far:r.so_far},a))));
+ const rh=32,W=820,m={l:230,r:60,t:10,b:36},H=m.t+rows.length*rh+m.b,s=svgIn(c,W,H,"Dot plot of skins % on picks against the preseason line");
+ const lo=20,hi=80,iw=W-m.l-m.r,x=v=>m.l+(v-lo)/(hi-lo)*iw,bot=H-m.b;
+ for(let v=lo;v<=hi;v+=10){el("line",{x1:x(v),x2:x(v),y1:m.t,y2:bot,stroke:v===50?css("--axis"):css("--grid"),"stroke-width":1,"shape-rendering":"crispEdges"},s);txt(s,{x:x(v),y:bot+16,"text-anchor":"middle"},v+"%","tick")}
+ rows.forEach((r,i)=>{const cy=m.t+i*rh+rh/2,col=css("--series-1");
+  txt(s,{x:m.l-12,y:cy+4,"text-anchor":"end"},`${r.season}${r.so_far?" (so far)":""} · ${NM[r.team]||r.team}: ${r.pick} pick, line ${r.line}`,"xl");
+  el("line",{x1:x(50),x2:x(r.pct),y1:cy,y2:cy,stroke:css("--axis"),"stroke-width":2},s);
+  const gg=el("g",{},s);el("circle",{cx:x(r.pct),cy,r:11,class:"hit"},gg);el("circle",{cx:x(r.pct),cy,r:5,fill:col,stroke:css("--surface-1"),"stroke-width":2},gg);
+  hover(gg,()=>[p1(r.pct)+" skins",`${NM[r.team]||r.team} drafted ${r.pick === "W" ? "for wins" : "for losses"} with a preseason line of ${r.line} wins`]);
+  txt(s,{x:x(r.pct)+(r.pct>=50?10:-10),y:cy+4,"text-anchor":r.pct>=50?"start":"end"},p1(r.pct),"lab");
+ });
+ foot(c,"Each team plays 82 games, so a pick at 30% instead of 70% costs about 32 skins, or 1.3 points of league skins %. That's what last season's Grizzlies pick cost.");
+ table(c,["Season","Team","Pick","Preseason line","Skins %"],rows.map(r=>[r.season+(r.so_far?" (so far)":""),NM[r.team]||r.team,r.pick,r.line,p1(r.pct)]));
+}
+function renderAll(){cDQ();cAgainst();cComp();cSplit();cPath();cSim();cFinal();cBest();cWL();cPhase();}
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change",renderAll);
 renderAll();
 </script>
