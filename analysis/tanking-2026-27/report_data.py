@@ -24,6 +24,9 @@ def long(d):
 def team_mov(d):
     L=long(d); return L.groupby("team").m.agg(["mean","size"])
 out={}
+PRE=pd.read_csv(os.path.join(here,"preseason_win_totals.csv"))
+def pre_bottom(season,k=10):
+    x=PRE[PRE.season==season].sort_values(["win_total","team"]); return set(x.team.head(k))
 
 # 1. per season x phase: raw/talent SD, bottom-5 raw & shrunk, 20+ blowout rate
 rows=[]
@@ -90,7 +93,7 @@ for s in SEAS:
     Ls=long(g[g.season==s]); Ls=Ls[Ls.tq.str.len()>=4].copy()
     tq=np.array([[int(x) for x in r[:4]] for r in Ls.tq]); oq=np.array([[int(x) for x in r[:4]] for r in Ls.oq])
     Ls["q13"]=(tq[:,:3]-oq[:,:3]).sum(1); Ls["q4"]=tq[:,3]-oq[:,3]
-    bottom=bot10 if s==CUR else set(Ls.groupby("team").m.mean().nsmallest(10).index)
+    bottom=pre_bottom(s)
     for p,mask in [("early",Ls.idx<N)]+([("post",Ls.date>=DEADLINE[s])] if s in DEADLINE else []):
         c=Ls[mask&Ls.team.isin(bottom)&~Ls.opp.isin(bottom)&(Ls.q13.abs()<=8)]
         q4.append(dict(season=s,phase=p,q4=round(float(c.q4.mean()),2),se=round(float(c.q4.std()/np.sqrt(len(c))),2),n=len(c),winpct=round(float((c.m>0).mean()),3)))
@@ -107,16 +110,28 @@ for tm in TANK+["ALL"]:
     tk.append(dict(team=tm,early25=rec(a[a.idx<N]),mid25=rec(a[(a.idx>=N)&(a.date<DEADLINE["2025-26"])]),post25=rec(a[a.date>=DEADLINE["2025-26"]]),early26=rec(b),proj26=None if tm=="ALL" else round(proj[tm],1)))
 out["tank10"]=tk
 
-# 7. bottom 10 (by pre-deadline margin) vs everyone else, before vs after the deadline
+# 7. bottom 10 by PRESEASON line vs everyone else, before vs after the deadline (2026-27: before, so far)
 bvr=[]
+for s_ in SEAS:
+    Ls=long(g[g.season==s_]); bot=pre_bottom(s_)
+    dl=DEADLINE.get(s_,"2099-01-01")
+    pre=Ls[Ls.date<dl]; post=Ls[Ls.date>=dl]
+    a=pre[pre.team.isin(bot)&~pre.opp.isin(bot)]; b=post[post.team.isin(bot)&~post.opp.isin(bot)]
+    c=post[post.team.isin(bot)&post.opp.isin(bot)]
+    row=dict(season=s_,teams=sorted(bot),pre=round(float(a.m.mean()),2),pre_w=round(float((a.m>0).mean()),3),pre_n=len(a))
+    if len(b): row.update(post=round(float(b.m.mean()),2),post_w=round(float((b.m>0).mean()),3),post_n=len(b),bb_games=len(c)//2)
+    bvr.append(row)
+out["bvr"]=bvr
+# 7b. same, with the bottom 10 picked on deadline day by margin before the deadline (knowable in February, not preseason)
+bvr_dl=[]
 for s_ in PRIOR:
     Ls=long(g[g.season==s_]); pre=Ls[Ls.date<DEADLINE[s_]]; post=Ls[Ls.date>=DEADLINE[s_]]
     bot=set(pre.groupby("team").m.mean().nsmallest(10).index)
-    a=pre[pre.team.isin(bot)&~pre.opp.isin(bot)]; b=post[post.team.isin(bot)&~post.opp.isin(bot)]
-    c=post[post.team.isin(bot)&post.opp.isin(bot)]
-    bvr.append(dict(season=s_,pre=round(float(a.m.mean()),2),pre_w=round(float((a.m>0).mean()),3),pre_n=len(a),
-                    post=round(float(b.m.mean()),2),post_w=round(float((b.m>0).mean()),3),post_n=len(b),bb_games=len(c)//2))
-out["bvr"]=bvr
+    a=pre[pre.team.isin(bot)&~pre.opp.isin(bot)]; b=post[post.team.isin(bot)&~post.opp.isin(bot)]; c=post[post.team.isin(bot)&post.opp.isin(bot)]
+    bvr_dl.append(dict(season=s_,teams=sorted(bot),pre=round(float(a.m.mean()),2),pre_w=round(float((a.m>0).mean()),3),pre_n=len(a),
+                       post=round(float(b.m.mean()),2),post_w=round(float((b.m>0).mean()),3),post_n=len(b),bb_games=len(c)//2))
+out["bvr_dl"]=bvr_dl
+
 out["meta"]=dict(N=N,through="2026-11-04")
 json.dump(out,open(os.path.join(here,"report_data.json"),"w"))
 P=pd.DataFrame(rows); print(P.to_string()); print(pd.DataFrame(bl).to_string()); print({k:v for k,v in out["sim"].items() if k!="sd_mov"}); print(pd.DataFrame(q4).to_string())

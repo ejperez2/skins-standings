@@ -118,7 +118,12 @@ th{font-weight:600;color:var(--text-secondary)}
  <li><strong>Who they beat.</strong> A team trying to escape the bottom three gains most from beating its direct rivals.</li>
 </ul>
 <p>The rules aren't fully blanket, either. The three worst teams now get fewer lottery balls than teams 4th–10th from the bottom. Play-in seeds 9–10 get fewer than teams just below them, so a borderline team still has a small reason to slide out of the play-in.</p>
-<p>Under the old rules, the "games against everyone else" signal was strong. The chart below takes the ten worst teams before each deadline and compares how they did against the other 20 teams before and after it. Luck alone should make their second half look a little <em>better</em>, as teams drift back toward average; that's what happened in 2018-19, 2019-20 and 2022-23. Instead, in 2021-22 and from 2023-24 on, they got worse, and in 2025-26 they won only 19% of those games.</p>
+<p>Under the old rules, did bad teams fall away against everyone else after the deadline? It depends on how you pick the bad teams.</p>
+<ul>
+ <li><strong>Picked by preseason betting lines</strong> (known before the season, so 2026-27 can be tracked now): the drop is small and inconsistent. From 2021-22 on it was −0.4 to −1.7 points per game, and in 2024-25 the group actually improved (+0.7). Many of the teams that end up tanking weren't expected to be bad (in 2025-26: the Bucks, Grizzlies and Mavericks), and some expected-bad teams surprised and never tanked.</li>
+ <li><strong>Picked on deadline day by their record so far</strong> (known in February, not now): the drop is clearer, −1.4 to −2.8 from 2021-22 on, except 2022-23. Some of these teams were unlucky before the deadline, so luck alone should lift them a little afterward. That means the drop, if anything, understates the change in behavior.</li>
+</ul>
+<p>For 2027, the deadline-day version is the sharper test. The preseason version lets you follow this season's expected bottom ten from now on. So far they are at −5.7 points per game against the rest, in line with earlier seasons' preseason bottom ten before the deadline (−4.7 to −7.8).</p>
 <div class="card" id="c-bvr"></div>
 
 <h2>Is this season's spread real or noise?</h2>
@@ -136,7 +141,7 @@ th{font-weight:600;color:var(--text-secondary)}
 
 <h2>Fourth-quarter fades</h2>
 <p>Tanking at its most visible meant sitting healthy starters in the fourth quarter of close games; the Jazz were fined $500,000 for it. This test takes games within 8 points after three quarters and asks how bottom-10 teams did in the fourth quarter against everyone else.</p>
-<p>The biggest fades in the data are the last two post-deadline stretches. This season's early figure is in the normal early-season range, though it rests on only 22 games.</p>
+<p>Bottom 10 here means the ten lowest preseason win totals, so the same rule applies to every season, this one included. The biggest fade in the data is 2025-26's post-deadline stretch (−3.0 points, close-game win% .30). This season's early figure (−1.7) is in the normal early-season range, though it rests on only 22 games.</p>
 <div class="card" id="c-q4"></div>
 
 <h2>Last year's "tanking 10"</h2>
@@ -367,9 +372,9 @@ function cQ4(){
    el("line",{x1:px,x2:px,y1:y(Math.min(hi,r.q4+r.se)),y2:y(Math.max(lo,r.q4-r.se)),stroke:col,"stroke-width":2,"stroke-linecap":"round"},gg);
    el("circle",{cx:px,cy:y(r.q4),r:5,fill:col,stroke:css("--surface-1"),"stroke-width":2},gg);
    hover(gg,()=>[f1(r.q4).replace("-","−")+" Q4 pts",{t:se.name,key:col},`${g}: ${r.n} close games · bottom-10 won ${pct(r.winpct)}`,`±${r.se.toFixed(1)} standard error`]);
-   if((g==="2025-26"||g==="2024-25")&&se.key==="post")txt(s,{x:px+9,y:y(r.q4)+4},f1(r.q4).replace("-","−"),"lab");
+   if(g==="2025-26"&&se.key==="post")txt(s,{x:px+9,y:y(r.q4)+4},f1(r.q4).replace("-","−"),"lab");
   });});
- foot(c,"Bottom 10: the ten worst teams by full-season margin (2026-27: by preseason line). Every early-season value falls between −2.3 and +0.3; the two worst post-deadline fades are the last two seasons.");
+ foot(c,"Bottom 10: the ten lowest preseason win totals each season. Early-season values range from −2.2 to −0.8; post-deadline values from −1.0 to −3.0, with 2025-26 the worst.");
  table(c,["Season","Phase","Q4 margin","± SE","Close games","Bottom-10 win%"],D.q4.map(r=>[r.season,r.phase==="early"?"First ~8 games":"After deadline",f1(r.q4),r.se.toFixed(2),r.n,pct(r.winpct)]));
 }
 // ---------- chart: tanking 10 dot rows ----------
@@ -398,24 +403,30 @@ function cTank(){
 }
 
 // ---------- chart: bottom 10 vs rest, before/after deadline ----------
+let bvrM="pre";
 function cBvr(){
- const c=card("c-bvr","The ten worst teams against everyone else, before vs. after the deadline","Average point margin of each season's bottom ten (by margin before the deadline) in games against the other 20 teams. Games between two bottom-ten teams are left out.");
- const SER=[{key:"pre",name:"Before the deadline",c:"--series-3",shape:"ring"},{key:"post",name:"After the deadline",c:"--series-3",shape:"dot"}];
- controls(c,null,SER);
- const rows=D.bvr,rh=34,W=820,m={l:80,r:110,t:8,b:40},H=m.t+rows.length*rh+m.b,s=svgIn(c,W,H,"Dot plot of bottom-ten margin against the rest before and after the deadline");
+ const pre=bvrM==="pre";
+ const c=card("c-bvr","The bottom ten against everyone else, before vs. after the deadline",
+  (pre?"Bottom ten = the ten lowest preseason win totals.":"Bottom ten = the ten worst teams by point margin on deadline day.")+" Average point margin in games against the other 20 teams; games between two bottom-ten teams are left out.");
+ controls(c,{opts:[{key:"pre",label:"By preseason lines"},{key:"dl",label:"By record on deadline day"}],state:()=>bvrM,set:k=>{bvrM=k;cBvr()}},
+  [{name:"Before the deadline",c:"--series-3",shape:"ring"},{name:"After the deadline",c:"--series-3",shape:"dot"}]);
+ const rows=pre?D.bvr:D.bvr_dl,rh=34,W=820,m={l:80,r:120,t:8,b:40},H=m.t+rows.length*rh+m.b,s=svgIn(c,W,H,"Dot plot of bottom-ten margin against the rest before and after the deadline");
  const lo=-14,hi=-2,iw=W-m.l-m.r,x=v=>m.l+(v-lo)/(hi-lo)*iw,bot=H-m.b,fm=v=>"−"+Math.abs(v);
  for(let v=lo;v<=hi;v+=2){el("line",{x1:x(v),x2:x(v),y1:m.t,y2:bot,stroke:css("--grid"),"stroke-width":1,"shape-rendering":"crispEdges"},s);txt(s,{x:x(v),y:bot+16,"text-anchor":"middle"},fm(v),"tick")}
  txt(s,{x:m.l+iw/2,y:H-4,"text-anchor":"middle"},"Average point margin vs. the other 20 teams","tick");
- rows.forEach((r,i)=>{const cy=m.t+i*rh+rh/2,col=css("--series-3"),d=r.post-r.pre;
-  txt(s,{x:m.l-12,y:cy+4,"text-anchor":"end"},r.season,"xl");
-  el("line",{x1:x(r.pre),x2:x(r.post),y1:cy,y2:cy,stroke:css("--axis"),"stroke-width":2},s);
-  [["pre",r.pre,r.pre_w,r.pre_n],["post",r.post,r.post_w,r.post_n]].forEach(([k,v,w,n])=>{const gg=el("g",{},s);el("circle",{cx:x(v),cy,r:11,class:"hit"},gg);
+ rows.forEach((r,i)=>{const cy=m.t+i*rh+rh/2,col=css("--series-3"),has=r.post!=null,d=has?r.post-r.pre:0;
+  txt(s,{x:m.l-12,y:cy+4,"text-anchor":"end"},r.season,"xl"+(r.season===CUR?" cur":""));
+  if(has)el("line",{x1:x(r.pre),x2:x(r.post),y1:cy,y2:cy,stroke:css("--axis"),"stroke-width":2},s);
+  const pts=[["pre",r.pre,r.pre_w,r.pre_n]].concat(has?[["post",r.post,r.post_w,r.post_n]]:[]);
+  pts.forEach(([k,v,w,n])=>{const gg=el("g",{},s);el("circle",{cx:x(v),cy,r:11,class:"hit"},gg);
    if(k==="pre")el("circle",{cx:x(v),cy,r:4,fill:css("--surface-1"),stroke:col,"stroke-width":2},gg);else el("circle",{cx:x(v),cy,r:5,fill:col,stroke:css("--surface-1"),"stroke-width":2},gg);
-   hover(gg,()=>[f1(v).replace("-","−")+" per game",{t:k==="pre"?"Before the deadline":"After the deadline",key:col},`${r.season}: won ${pct(w)} of ${n} games vs. the rest`]);});
-  txt(s,{x:W-m.r+12,y:cy+4},Math.abs(d)<0.05?"no change":`${d>0?"+":"−"}${Math.abs(d).toFixed(1)} ${d>0?"better":"worse"}`,d<-0.05?"lab":"tlab");
+   hover(gg,()=>[f1(v).replace("-","−")+" per game",{t:k==="pre"?"Before the deadline"+(has?"":" (so far)"):"After the deadline",key:col},`${r.season}: won ${pct(w)} of ${n} games vs. the rest`,`Bottom ten: ${r.teams.join(", ")}`]);});
+  if(has)txt(s,{x:W-m.r+12,y:cy+4},Math.abs(d)<0.05?"no change":`${d>0?"+":"−"}${Math.abs(d).toFixed(1)} ${d>0?"better":"worse"}`,d<-0.05?"lab":"tlab");
+  else txt(s,{x:W-m.r+12,y:cy+4},`so far (${r.pre_n} games)`,"tlab");
  });
- foot(c,"Picking the ten worst by their pre-deadline results means some were unlucky, so they should improve a little afterward even with no change in effort. A drop despite that pull is the tanking signal. 2019-20's post-deadline stretch was cut short by COVID. For 2027, a flat or rising line would mean the reform is working.");
- table(c,["Season","Before: margin","Before: win%","After: margin","After: win%","Bottom-vs-bottom games after"],rows.map(r=>[r.season,f1(r.pre),pct(r.pre_w),f1(r.post),pct(r.post_w),r.bb_games]));
+ foot(c,pre?"Preseason lines: Basketball-Reference preseason over/unders (2018-19 to 2025-26) and the Oct 20, 2026 consensus. Teams that disappoint and then tank are missed, and preseason-bad teams that surprise are included, so this version blurs the signal; it is the one you can track for 2026-27 now. 2019-20's post-deadline stretch was cut short by COVID.":
+  "Deadline-day version: knowable in February, not before. Some of these teams were unlucky before the deadline and should improve a little afterward even with no change in effort, so a drop despite that pull is the clearer tanking signal. 2019-20's post-deadline stretch was cut short by COVID.");
+ table(c,["Season","Before: margin","Before: win%","After: margin","After: win%","Bottom ten"],rows.map(r=>[r.season,f1(r.pre),pct(r.pre_w),r.post!=null?f1(r.post):"–",r.post!=null?pct(r.post_w):"–",r.teams.join(" ")]));
 }
 function renderAll(){cDisp();cBot5();cJump();cBlowPhase();cBvr();cSim();cBlowEarly();cCalib();cQ4();cTank();}
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change",renderAll);

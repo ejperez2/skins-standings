@@ -1,0 +1,241 @@
+season,team,team_name,win_total,source
+2018-19,GS,Golden State Warriors,62.5,basketball-reference.com preseason odds
+2018-19,BOS,Boston Celtics,59.0,basketball-reference.com preseason odds
+2018-19,HOU,Houston Rockets,56.5,basketball-reference.com preseason odds
+2018-19,LAL,Los Angeles Lakers,48.5,basketball-reference.com preseason odds
+2018-19,TOR,Toronto Raptors,55.5,basketball-reference.com preseason odds
+2018-19,PHI,Philadelphia 76ers,53.5,basketball-reference.com preseason odds
+2018-19,OKC,Oklahoma City Thunder,48.5,basketball-reference.com preseason odds
+2018-19,UTAH,Utah Jazz,49.5,basketball-reference.com preseason odds
+2018-19,SA,San Antonio Spurs,43.5,basketball-reference.com preseason odds
+2018-19,NO,New Orleans Pelicans,45.5,basketball-reference.com preseason odds
+2018-19,MIL,Milwaukee Bucks,48.0,basketball-reference.com preseason odds
+2018-19,WSH,Washington Wizards,45.5,basketball-reference.com preseason odds
+2018-19,IND,Indiana Pacers,47.5,basketball-reference.com preseason odds
+2018-19,DEN,Denver Nuggets,47.5,basketball-reference.com preseason odds
+2018-19,MIN,Minnesota Timberwolves,41.5,basketball-reference.com preseason odds
+2018-19,POR,Portland Trail Blazers,42.0,basketball-reference.com preseason odds
+2018-19,MIA,Miami Heat,43.0,basketball-reference.com preseason odds
+2018-19,DET,Detroit Pistons,38.5,basketball-reference.com preseason odds
+2018-19,NY,New York Knicks,28.5,basketball-reference.com preseason odds
+2018-19,DAL,Dallas Mavericks,35.5,basketball-reference.com preseason odds
+2018-19,LAC,Los Angeles Clippers,37.0,basketball-reference.com preseason odds
+2018-19,CLE,Cleveland Cavaliers,30.5,basketball-reference.com preseason odds
+2018-19,CHI,Chicago Bulls,30.0,basketball-reference.com preseason odds
+2018-19,CHA,Charlotte Hornets,35.5,basketball-reference.com preseason odds
+2018-19,MEM,Memphis Grizzlies,34.5,basketball-reference.com preseason odds
+2018-19,ORL,Orlando Magic,31.0,basketball-reference.com preseason odds
+2018-19,PHX,Phoenix Suns,29.0,basketball-reference.com preseason odds
+2018-19,BKN,Brooklyn Nets,32.0,basketball-reference.com preseason odds
+2018-19,ATL,Atlanta Hawks,23.5,basketball-reference.com preseason odds
+2018-19,SAC,Sacramento Kings,26.0,basketball-reference.com preseason odds
+2019-20,LAC,Los Angeles Clippers,53.5,basketball-reference.com preseason odds
+2019-20,LAL,Los Angeles Lakers,50.5,basketball-reference.com preseason odds
+2019-20,MIL,Milwaukee Bucks,57.5,basketball-reference.com preseason odds
+2019-20,HOU,Houston Rockets,54.0,basketball-reference.com preseason odds
+2019-20,PHI,Philadelphia 76ers,54.5,basketball-reference.com preseason odds
+2019-20,GS,Golden State Warriors,47.5,basketball-reference.com preseason odds
+2019-20,UTAH,Utah Jazz,53.5,basketball-reference.com preseason odds
+2019-20,DEN,Denver Nuggets,53.0,basketball-reference.com preseason odds
+2019-20,BOS,Boston Celtics,48.5,basketball-reference.com preseason odds
+2019-20,POR,Portland Trail Blazers,46.5,basketball-reference.com preseason odds
+2019-20,IND,Indiana Pacers,46.5,basketball-reference.com preseason odds
+2019-20,BKN,Brooklyn Nets,43.5,basketball-reference.com preseason odds
+2019-20,TOR,Toronto Raptors,46.5,basketball-reference.com preseason odds
+2019-20,MIA,Miami Heat,43.5,basketball-reference.com preseason odds
+2019-20,SA,San Antonio Spurs,46.5,basketball-reference.com preseason odds
+2019-20,DAL,Dallas Mavericks,40.5,basketball-reference.com preseason odds
+2019-20,NO,New Orleans Pelicans,37.5,basketball-reference.com preseason odds
+2019-20,SAC,Sacramento Kings,37.5,basketball-reference.com preseason odds
+2019-20,ORL,Orlando Magic,41.5,basketball-reference.com preseason odds
+2019-20,ATL,Atlanta Hawks,33.5,basketball-reference.com preseason odds
+2019-20,OKC,Oklahoma City Thunder,32.5,basketball-reference.com preseason odds
+2019-20,DET,Detroit Pistons,37.5,basketball-reference.com preseason odds
+2019-20,CHI,Chicago Bulls,33.5,basketball-reference.com preseason odds
+2019-20,MIN,Minnesota Timberwolves,35.5,basketball-reference.com preseason odds
+2019-20,PHX,Phoenix Suns,29.5,basketball-reference.com preseason odds
+2019-20,MEM,Memphis Grizzlies,27.5,basketball-reference.com preseason odds
+2019-20,NY,New York Knicks,26.5,basketball-reference.com preseason odds
+2019-20,WSH,Washington Wizards,27.0,basketball-reference.com preseason odds
+2019-20,CLE,Cleveland Cavaliers,24.5,basketball-reference.com preseason odds
+2019-20,CHA,Charlotte Hornets,23.5,basketball-reference.com preseason odds
+2021-22,BKN,Brooklyn Nets,56.5,basketball-reference.com preseason odds
+2021-22,LAL,Los Angeles Lakers,52.5,basketball-reference.com preseason odds
+2021-22,MIL,Milwaukee Bucks,54.5,basketball-reference.com preseason odds
+2021-22,GS,Golden State Warriors,48.5,basketball-reference.com preseason odds
+2021-22,PHX,Phoenix Suns,51.5,basketball-reference.com preseason odds
+2021-22,UTAH,Utah Jazz,52.5,basketball-reference.com preseason odds
+2021-22,PHI,Philadelphia 76ers,50.5,basketball-reference.com preseason odds
+2021-22,LAC,Los Angeles Clippers,45.5,basketball-reference.com preseason odds
+2021-22,DEN,Denver Nuggets,47.5,basketball-reference.com preseason odds
+2021-22,MIA,Miami Heat,48.5,basketball-reference.com preseason odds
+2021-22,DAL,Dallas Mavericks,48.5,basketball-reference.com preseason odds
+2021-22,ATL,Atlanta Hawks,47.5,basketball-reference.com preseason odds
+2021-22,BOS,Boston Celtics,45.5,basketball-reference.com preseason odds
+2021-22,POR,Portland Trail Blazers,44.5,basketball-reference.com preseason odds
+2021-22,CHI,Chicago Bulls,42.5,basketball-reference.com preseason odds
+2021-22,NY,New York Knicks,41.5,basketball-reference.com preseason odds
+2021-22,MEM,Memphis Grizzlies,41.5,basketball-reference.com preseason odds
+2021-22,IND,Indiana Pacers,42.5,basketball-reference.com preseason odds
+2021-22,NO,New Orleans Pelicans,39.5,basketball-reference.com preseason odds
+2021-22,CHA,Charlotte Hornets,38.5,basketball-reference.com preseason odds
+2021-22,WSH,Washington Wizards,33.5,basketball-reference.com preseason odds
+2021-22,TOR,Toronto Raptors,35.5,basketball-reference.com preseason odds
+2021-22,SAC,Sacramento Kings,36.5,basketball-reference.com preseason odds
+2021-22,MIN,Minnesota Timberwolves,35.5,basketball-reference.com preseason odds
+2021-22,SA,San Antonio Spurs,28.5,basketball-reference.com preseason odds
+2021-22,CLE,Cleveland Cavaliers,26.5,basketball-reference.com preseason odds
+2021-22,ORL,Orlando Magic,22.5,basketball-reference.com preseason odds
+2021-22,OKC,Oklahoma City Thunder,23.5,basketball-reference.com preseason odds
+2021-22,DET,Detroit Pistons,24.5,basketball-reference.com preseason odds
+2021-22,HOU,Houston Rockets,27.5,basketball-reference.com preseason odds
+2022-23,BOS,Boston Celtics,54.5,basketball-reference.com preseason odds
+2022-23,GS,Golden State Warriors,52.5,basketball-reference.com preseason odds
+2022-23,MIL,Milwaukee Bucks,53.5,basketball-reference.com preseason odds
+2022-23,BKN,Brooklyn Nets,50.5,basketball-reference.com preseason odds
+2022-23,LAC,Los Angeles Clippers,52.5,basketball-reference.com preseason odds
+2022-23,PHX,Phoenix Suns,52.5,basketball-reference.com preseason odds
+2022-23,PHI,Philadelphia 76ers,50.5,basketball-reference.com preseason odds
+2022-23,MIA,Miami Heat,49.5,basketball-reference.com preseason odds
+2022-23,DEN,Denver Nuggets,51.5,basketball-reference.com preseason odds
+2022-23,LAL,Los Angeles Lakers,44.5,basketball-reference.com preseason odds
+2022-23,MEM,Memphis Grizzlies,49.5,basketball-reference.com preseason odds
+2022-23,DAL,Dallas Mavericks,48.5,basketball-reference.com preseason odds
+2022-23,MIN,Minnesota Timberwolves,49.5,basketball-reference.com preseason odds
+2022-23,CLE,Cleveland Cavaliers,46.5,basketball-reference.com preseason odds
+2022-23,TOR,Toronto Raptors,46.5,basketball-reference.com preseason odds
+2022-23,CHI,Chicago Bulls,41.5,basketball-reference.com preseason odds
+2022-23,NO,New Orleans Pelicans,45.5,basketball-reference.com preseason odds
+2022-23,ATL,Atlanta Hawks,46.5,basketball-reference.com preseason odds
+2022-23,NY,New York Knicks,38.5,basketball-reference.com preseason odds
+2022-23,POR,Portland Trail Blazers,39.5,basketball-reference.com preseason odds
+2022-23,CHA,Charlotte Hornets,34.5,basketball-reference.com preseason odds
+2022-23,WSH,Washington Wizards,35.5,basketball-reference.com preseason odds
+2022-23,DET,Detroit Pistons,29.5,basketball-reference.com preseason odds
+2022-23,OKC,Oklahoma City Thunder,23.5,basketball-reference.com preseason odds
+2022-23,ORL,Orlando Magic,26.5,basketball-reference.com preseason odds
+2022-23,IND,Indiana Pacers,24.5,basketball-reference.com preseason odds
+2022-23,SAC,Sacramento Kings,34.5,basketball-reference.com preseason odds
+2022-23,SA,San Antonio Spurs,22.5,basketball-reference.com preseason odds
+2022-23,HOU,Houston Rockets,23.5,basketball-reference.com preseason odds
+2022-23,UTAH,Utah Jazz,23.5,basketball-reference.com preseason odds
+2023-24,BOS,Boston Celtics,54.5,basketball-reference.com preseason odds
+2023-24,DEN,Denver Nuggets,52.5,basketball-reference.com preseason odds
+2023-24,PHX,Phoenix Suns,51.5,basketball-reference.com preseason odds
+2023-24,MIL,Milwaukee Bucks,54.5,basketball-reference.com preseason odds
+2023-24,GS,Golden State Warriors,48.5,basketball-reference.com preseason odds
+2023-24,LAL,Los Angeles Lakers,47.5,basketball-reference.com preseason odds
+2023-24,MIA,Miami Heat,45.5,basketball-reference.com preseason odds
+2023-24,PHI,Philadelphia 76ers,48.5,basketball-reference.com preseason odds
+2023-24,LAC,Los Angeles Clippers,46.5,basketball-reference.com preseason odds
+2023-24,MEM,Memphis Grizzlies,45.5,basketball-reference.com preseason odds
+2023-24,DAL,Dallas Mavericks,45.5,basketball-reference.com preseason odds
+2023-24,CLE,Cleveland Cavaliers,50.5,basketball-reference.com preseason odds
+2023-24,SAC,Sacramento Kings,44.5,basketball-reference.com preseason odds
+2023-24,NO,New Orleans Pelicans,44.5,basketball-reference.com preseason odds
+2023-24,NY,New York Knicks,45.5,basketball-reference.com preseason odds
+2023-24,MIN,Minnesota Timberwolves,44.5,basketball-reference.com preseason odds
+2023-24,ATL,Atlanta Hawks,42.5,basketball-reference.com preseason odds
+2023-24,TOR,Toronto Raptors,36.5,basketball-reference.com preseason odds
+2023-24,OKC,Oklahoma City Thunder,44.5,basketball-reference.com preseason odds
+2023-24,CHI,Chicago Bulls,37.5,basketball-reference.com preseason odds
+2023-24,BKN,Brooklyn Nets,37.5,basketball-reference.com preseason odds
+2023-24,POR,Portland Trail Blazers,28.5,basketball-reference.com preseason odds
+2023-24,SA,San Antonio Spurs,28.5,basketball-reference.com preseason odds
+2023-24,UTAH,Utah Jazz,35.5,basketball-reference.com preseason odds
+2023-24,ORL,Orlando Magic,37.5,basketball-reference.com preseason odds
+2023-24,IND,Indiana Pacers,38.5,basketball-reference.com preseason odds
+2023-24,HOU,Houston Rockets,31.5,basketball-reference.com preseason odds
+2023-24,WSH,Washington Wizards,24.5,basketball-reference.com preseason odds
+2023-24,CHA,Charlotte Hornets,31.5,basketball-reference.com preseason odds
+2023-24,DET,Detroit Pistons,28.5,basketball-reference.com preseason odds
+2024-25,BOS,Boston Celtics,58.5,basketball-reference.com preseason odds
+2024-25,OKC,Oklahoma City Thunder,57.5,basketball-reference.com preseason odds
+2024-25,NY,New York Knicks,53.5,basketball-reference.com preseason odds
+2024-25,PHI,Philadelphia 76ers,50.5,basketball-reference.com preseason odds
+2024-25,DAL,Dallas Mavericks,49.5,basketball-reference.com preseason odds
+2024-25,DEN,Denver Nuggets,51.5,basketball-reference.com preseason odds
+2024-25,MIN,Minnesota Timberwolves,51.5,basketball-reference.com preseason odds
+2024-25,MIL,Milwaukee Bucks,49.5,basketball-reference.com preseason odds
+2024-25,PHX,Phoenix Suns,48.5,basketball-reference.com preseason odds
+2024-25,CLE,Cleveland Cavaliers,48.5,basketball-reference.com preseason odds
+2024-25,MEM,Memphis Grizzlies,47.5,basketball-reference.com preseason odds
+2024-25,ORL,Orlando Magic,47.5,basketball-reference.com preseason odds
+2024-25,GS,Golden State Warriors,43.5,basketball-reference.com preseason odds
+2024-25,LAL,Los Angeles Lakers,43.5,basketball-reference.com preseason odds
+2024-25,MIA,Miami Heat,44.5,basketball-reference.com preseason odds
+2024-25,NO,New Orleans Pelicans,46.5,basketball-reference.com preseason odds
+2024-25,IND,Indiana Pacers,46.5,basketball-reference.com preseason odds
+2024-25,SAC,Sacramento Kings,46.5,basketball-reference.com preseason odds
+2024-25,HOU,Houston Rockets,43.5,basketball-reference.com preseason odds
+2024-25,LAC,Los Angeles Clippers,35.5,basketball-reference.com preseason odds
+2024-25,SA,San Antonio Spurs,35.5,basketball-reference.com preseason odds
+2024-25,ATL,Atlanta Hawks,36.5,basketball-reference.com preseason odds
+2024-25,UTAH,Utah Jazz,28.5,basketball-reference.com preseason odds
+2024-25,DET,Detroit Pistons,25.5,basketball-reference.com preseason odds
+2024-25,CHA,Charlotte Hornets,30.5,basketball-reference.com preseason odds
+2024-25,CHI,Chicago Bulls,28.5,basketball-reference.com preseason odds
+2024-25,BKN,Brooklyn Nets,19.5,basketball-reference.com preseason odds
+2024-25,POR,Portland Trail Blazers,21.5,basketball-reference.com preseason odds
+2024-25,TOR,Toronto Raptors,29.5,basketball-reference.com preseason odds
+2024-25,WSH,Washington Wizards,20.5,basketball-reference.com preseason odds
+2025-26,OKC,Oklahoma City Thunder,62.5,basketball-reference.com preseason odds
+2025-26,DEN,Denver Nuggets,53.5,basketball-reference.com preseason odds
+2025-26,CLE,Cleveland Cavaliers,56.5,basketball-reference.com preseason odds
+2025-26,NY,New York Knicks,53.5,basketball-reference.com preseason odds
+2025-26,MIN,Minnesota Timberwolves,49.5,basketball-reference.com preseason odds
+2025-26,HOU,Houston Rockets,52.5,basketball-reference.com preseason odds
+2025-26,LAL,Los Angeles Lakers,46.5,basketball-reference.com preseason odds
+2025-26,LAC,Los Angeles Clippers,49.5,basketball-reference.com preseason odds
+2025-26,ORL,Orlando Magic,51.5,basketball-reference.com preseason odds
+2025-26,GS,Golden State Warriors,47.5,basketball-reference.com preseason odds
+2025-26,DET,Detroit Pistons,46.5,basketball-reference.com preseason odds
+2025-26,DAL,Dallas Mavericks,41.5,basketball-reference.com preseason odds
+2025-26,PHI,Philadelphia 76ers,43.5,basketball-reference.com preseason odds
+2025-26,ATL,Atlanta Hawks,46.5,basketball-reference.com preseason odds
+2025-26,MIL,Milwaukee Bucks,43.5,basketball-reference.com preseason odds
+2025-26,BOS,Boston Celtics,41.5,basketball-reference.com preseason odds
+2025-26,SA,San Antonio Spurs,44.5,basketball-reference.com preseason odds
+2025-26,IND,Indiana Pacers,37.5,basketball-reference.com preseason odds
+2025-26,TOR,Toronto Raptors,39.5,basketball-reference.com preseason odds
+2025-26,MEM,Memphis Grizzlies,39.5,basketball-reference.com preseason odds
+2025-26,MIA,Miami Heat,37.5,basketball-reference.com preseason odds
+2025-26,NO,New Orleans Pelicans,30.5,basketball-reference.com preseason odds
+2025-26,PHX,Phoenix Suns,30.5,basketball-reference.com preseason odds
+2025-26,POR,Portland Trail Blazers,35.5,basketball-reference.com preseason odds
+2025-26,SAC,Sacramento Kings,35.5,basketball-reference.com preseason odds
+2025-26,CHI,Chicago Bulls,33.5,basketball-reference.com preseason odds
+2025-26,CHA,Charlotte Hornets,27.5,basketball-reference.com preseason odds
+2025-26,BKN,Brooklyn Nets,19.5,basketball-reference.com preseason odds
+2025-26,UTAH,Utah Jazz,18.5,basketball-reference.com preseason odds
+2025-26,WSH,Washington Wizards,20.5,basketball-reference.com preseason odds
+2026-27,ATL,Atlanta Hawks,44.0,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,BOS,Boston Celtics,52.0,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,BKN,Brooklyn Nets,24.38,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,CHA,Charlotte Hornets,37.88,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,CHI,Chicago Bulls,29.25,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,CLE,Cleveland Cavaliers,48.0,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,DAL,Dallas Mavericks,33.67,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,DEN,Denver Nuggets,48.33,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,DET,Detroit Pistons,49.0,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,GS,Golden State Warriors,36.17,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,HOU,Houston Rockets,48.33,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,IND,Indiana Pacers,44.5,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,LAC,Los Angeles Clippers,28.0,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,LAL,Los Angeles Lakers,45.83,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,MEM,Memphis Grizzlies,29.83,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,MIA,Miami Heat,46.5,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,MIL,Milwaukee Bucks,25.83,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,MIN,Minnesota Timberwolves,48.33,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,NO,New Orleans Pelicans,28.83,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,NY,New York Knicks,52.0,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,OKC,Oklahoma City Thunder,62.0,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,ORL,Orlando Magic,44.0,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,PHI,Philadelphia 76ers,50.17,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,PHX,Phoenix Suns,39.33,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,POR,Portland Trail Blazers,41.0,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,SAC,Sacramento Kings,20.83,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,SA,San Antonio Spurs,60.5,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,TOR,Toronto Raptors,46.67,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,UTAH,Utah Jazz,37.33,"repo team_vegas_history.csv, 2026-10-20 consensus"
+2026-27,WSH,Washington Wizards,34.17,"repo team_vegas_history.csv, 2026-10-20 consensus"

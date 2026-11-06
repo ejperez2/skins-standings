@@ -60,20 +60,30 @@ The effect has to show up in three places:
 
 The rules aren't fully blanket anyway: the bottom three get fewer lottery balls than 4th–10th, and play-in seeds 9–10 get fewer than the teams just below them.
 
-Under the old rules the first signal was strong (chart 10). Take the ten worst teams before each deadline and look at how they did against everyone else afterward.
-Luck alone should make them look a little *better* after the deadline, as teams drift back toward average. That's what happened in 2018-19, 2019-20 and 2022-23.
-Instead, they got worse:
+Did bad teams fall away against everyone else after the deadline under the old rules (chart 10)? It depends on how the bad teams are picked:
 
-| Season | Change after the deadline (points per game) |
-|---|---|
-| 2021-22 | −2.3 |
-| 2023-24 | −1.4 |
-| 2024-25 | −1.5 |
-| 2025-26 | −2.8 (won 19% of these games) |
+| Season | Bottom ten by preseason lines | Bottom ten by record on deadline day |
+|---|---|---|
+| 2018-19 | +3.0 | +3.7 |
+| 2019-20 | +2.7 | +2.6 |
+| 2021-22 | −0.4 | −2.3 |
+| 2022-23 | −1.4 | +0.1 |
+| 2023-24 | −1.7 | −1.4 |
+| 2024-25 | +0.7 | −1.5 |
+| 2025-26 | −0.4 | −2.8 (won 19% of these games) |
 
-A flat or rising line in 2027 would mean the reform is working.
+Values are the change in average point margin against the other 20 teams, after the deadline vs. before.
 
-![The ten worst teams against everyone else, before vs after the deadline](charts/10_bottom10_vs_rest.png)
+- **Preseason lines** are known before the season, so this version can follow 2026-27's expected bottom ten from now on.
+  It blurs the signal, though: many teams that end up tanking weren't expected to be bad (2025-26: Bucks, Grizzlies, Mavericks), and some expected-bad teams surprised and never tanked.
+  This season's preseason bottom ten are at −5.7 per game against the rest so far (58 games), in line with earlier seasons before the deadline (−4.7 to −7.8).
+- **Record on deadline day** is known in February, not before, and is the sharper test for 2027.
+  Some of those teams were unlucky before the deadline and should improve a little afterward with no change in effort, so a drop despite that pull is the clearer signal.
+
+Preseason lines for 2018-19 to 2025-26 are Basketball-Reference's preseason over/unders (`preseason_win_totals.csv`).
+They match the lines stored in this repo for 2023-24 to 2025-26 (r = 0.98–0.999).
+
+![The bottom ten against everyone else, before vs after the deadline](charts/10_bottom10_vs_rest.png)
 
 ![How spread out teams were, by phase of season](charts/1_dispersion_by_phase.png)
 ![How badly the five worst teams lost, by phase of season](charts/2_bottom5_by_phase.png)
@@ -204,16 +214,16 @@ Opening weeks are a different setting. Comparing November 2025 with November 202
 That comparison cannot show whether the new rules work. They can only be judged against the post-deadline row.
 
 **Fourth-quarter fades.** Tanking looked like sitting healthy starters in the fourth quarter (the Jazz were fined for exactly that).
-This test takes games within 8 points after three quarters and compares bottom-10 teams' fourth-quarter scoring margin against non-bottom opponents:
+This test takes games within 8 points after three quarters and compares bottom-10 teams' fourth-quarter scoring margin against non-bottom opponents.
+Bottom 10 means the ten lowest preseason win totals, so the same rule applies to every season, including this one:
 
 | season | early season | post-deadline |
 |---|---|---|
-| 2018-19 to 2023-24 | −2.3 to +0.3 | −1.3 to −2.9 |
-| 2024-25 | −0.2 | −3.7 (close-game win% .32) |
-| 2025-26 | −2.3 | **−4.2 (close-game win% .24)** |
+| 2018-19 to 2024-25 | −2.2 to −0.8 | −1.0 to −2.2 |
+| 2025-26 | −1.1 | **−3.0 (close-game win% .30)** |
 | **2026-27** | **−1.7 ± 1.9** (win% .32) | – |
 
-The two worst fourth-quarter fades in the data are the last two post-deadline stretches, the years tanking was at its worst.
+The worst fourth-quarter fade in the data is 2025-26's post-deadline stretch, the year tanking was at its worst.
 This season's early figure sits in the normal early-season range, but the sample is small: 22 close games.
 
 ## 4. The article's "tanking 10"
@@ -227,7 +237,6 @@ Pooled record and average point margin (in brackets) for the ten teams, by phase
 As a group, the ten are **better** than in their tanking stretch and slightly better than at this point last year, by 1.4 points per game.
 Six have improved (WSH, MEM, NO, DAL, BKN, IND) and four have gotten worse (CHI, MIL, SAC, UTAH).
 The article's own team notes explain the four that slipped with injuries, roster turnover and a new coach.
-None of the four shows the fourth-quarter fade that marked last spring's tanking.
 
 ![Last year's tanking 10: then and now](charts/9_tanking_10.png)
 
@@ -246,7 +255,8 @@ None of the four shows the fourth-quarter fade that marked last spring's tanking
   - team quality spread (luck removed) of 7.6
   - bottom-5 average margin of −11.9
   - 28.5% of games decided by 20+ points
-  - a fourth-quarter fade of −4.2 for bottom-10 teams in close games
+  - a fourth-quarter fade of −3.0 for the preseason bottom 10 in close games
+  - a −2.8 drop against the other 20 teams for the bottom ten on deadline day
   
   If 2027's post-deadline numbers come in well below those, the reform is working.
 
