@@ -8,15 +8,15 @@
 .viz-root{color-scheme:light;
  --page:#f9f9f7;--surface-1:#fcfcfb;--text-primary:#0b0b0b;--text-secondary:#52514e;--muted:#898781;
  --grid:#e1e0d9;--axis:#c3c2b7;--border:rgba(11,11,11,0.10);--prior:#a8a69f;
- --series-1:#2a78d6;--series-2:#eb6834;--series-3:#1baf7a;}
+ --series-1:#2a78d6;--series-2:#eb6834;--series-3:#1baf7a;--blue-light:#86b6ef;--on-light:#0b0b0b;--track:#e1e0d9;}
 @media (prefers-color-scheme: dark){:root:where(:not([data-theme="light"])) .viz-root{color-scheme:dark;
  --page:#0d0d0d;--surface-1:#1a1a19;--text-primary:#f0efec;--text-secondary:#c3c2b7;--muted:#898781;
  --grid:#2c2c2a;--axis:#383835;--border:rgba(255,255,255,0.10);--prior:#6b6a65;
- --series-1:#3987e5;--series-2:#d95926;--series-3:#199e70;}}
+ --series-1:#3987e5;--series-2:#d95926;--series-3:#199e70;--blue-light:#1c5cab;--on-light:#ffffff;--track:#383835;}}
 :root[data-theme="dark"] .viz-root{color-scheme:dark;
  --page:#0d0d0d;--surface-1:#1a1a19;--text-primary:#f0efec;--text-secondary:#c3c2b7;--muted:#898781;
  --grid:#2c2c2a;--axis:#383835;--border:rgba(255,255,255,0.10);--prior:#6b6a65;
- --series-1:#3987e5;--series-2:#d95926;--series-3:#199e70;}
+ --series-1:#3987e5;--series-2:#d95926;--series-3:#199e70;--blue-light:#1c5cab;--on-light:#ffffff;--track:#383835;}
 html,body{margin:0}
 body{background:var(--page)}
 .viz-root{background:var(--page);color:var(--text-primary);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;padding:32px 20px 60px;min-height:100vh;box-sizing:border-box;line-height:1.55}
@@ -87,6 +87,14 @@ th{font-weight:600;color:var(--text-secondary)}
  </ul>
 </div>
 
+<h2>How skinsy each season is, at a glance</h2>
+<p>Every team-game either produces a skin or it doesn't. Skins come from two kinds of games:</p>
+<ul>
+ <li><strong>Games between two W picks or two L picks</strong> always give exactly one skin out of two, so they hold every season near 50%.</li>
+ <li><strong>W-pick vs L-pick games</strong> give two skins or none. They are where seasons pull apart.</li>
+</ul>
+<div class="card" id="c-comp"></div>
+
 <h2>Through the season</h2>
 <p>Skins % swings a lot in the first few weeks and then settles. The shaded band shows where this season's skins % would land if teams played to their preseason betting lines, allowing for the lines being wrong by a typical amount. This season sits near the top of that band.</p>
 <div class="card" id="c-path"></div>
@@ -107,6 +115,9 @@ th{font-weight:600;color:var(--text-secondary)}
 <div class="card" id="c-best"></div>
 <p>Mechanically, a game between two W picks or two L picks always gives one skin each way, so only W-pick-vs-L-pick games move skins % away from 50%. About half of games are W-vs-L in every season. What changes is how often the W side wins them:</p>
 <div class="card" id="c-wl"></div>
+
+<p>The draft also sets how many W-vs-L games there are. An even split of W and L picks makes the most of them. This season's 15–15 split is the most even yet (earlier drafts had 17–21 W picks), so slightly more games are W vs L. That accounts for only a small part of the excess. At last season's 18–12 split, this season's 76% W-pick win rate would give 63.0% instead of 63.6%.</p>
+<div class="card" id="c-split"></div>
 
 <h2>Does the trade deadline make it skinsier?</h2>
 <p>Tanking after the deadline makes the league more lopsided (see the tanking report). But it only adds skins when the teams doing the losing were drafted as L picks. A W pick that collapses after the deadline costs its owner skins.</p>
@@ -361,7 +372,59 @@ function cPhase(){
  foot(c,"The post-deadline stretch (green) is not reliably the skinsiest: it was the lowest of the three in 2022-23 and 2024-25.");
  table(c,["Season",...PH.map(p=>p.name)],seas.map(sn=>[sn,...PH.map(p=>{const r=D.phase.find(q=>q.season===sn&&q.phase===p.key);return r?p1(r.pct):"–"})]));
 }
-function renderAll(){cPath();cSim();cFinal();cBest();cWL();cPhase();}
+
+// segmented bar: parts [{v,fill,label,ink,tip}] laid end to end, 2px surface gap, 4px corners each block
+function segbar(s,x0,width,y,h,parts){const tot=parts.reduce((a,p)=>a+p.v,0);let x=x0;
+ parts.forEach((p,i)=>{const w=p.v/tot*width-(i<parts.length-1?2:0);if(w<=0){x+=2;return}
+  const gg=el("g",{},s);el("rect",{x,y:y-4,width:w+2,height:h+8,class:"hit"},gg);el("rect",{x,y,width:w,height:h,rx:4,fill:p.fill},gg);
+  if(p.label){const t=txt(gg,{x:x+8,y:y+h/2+4,fill:p.ink,style:"font-size:11.5px;font-weight:600;font-variant-numeric:tabular-nums"},p.label,"");
+   if(t.getComputedTextLength()>w-14)t.remove();}
+  if(p.tip)hover(gg,p.tip);x+=w+2;});
+}
+// ---------- composition (the pie alternative) ----------
+let compView="early";
+function cComp(){
+ const c=card("c-comp","Where each season's skins come from","Each bar is all of a season's team-games. Blue segments are skins; gray is team-games that missed.");
+ const PARTS=[{name:"Skins from W-vs-L games",c:"--series-1"},{name:"Skins from same-pick games",c:"--blue-light"},{name:"Missed",c:"--track"}];
+ controls(c,{opts:[{key:"early",label:`After ${N} games`},{key:"full",label:"Full season"}],state:()=>compView,set:k=>{compView=k;cComp()}},PARTS.map(p=>({name:p.name,c:p.c})));
+ const seas=[...PRIOR,CUR],rh=46,W=820,m={l:80,r:96,t:22,b:30},H=m.t+seas.length*rh+m.b,s=svgIn(c,W,H,"Segmented bars of each season's skins split into W-vs-L skins, same-pick skins and misses");
+ const iw=W-m.l-m.r,x=v=>m.l+v/100*iw;
+ [0,25,50,75,100].forEach(v=>{el("line",{x1:x(v),x2:x(v),y1:m.t-6,y2:H-m.b+4,stroke:v===50?css("--axis"):css("--grid"),"stroke-width":1,"shape-rendering":"crispEdges"},s);txt(s,{x:x(v),y:H-m.b+18,"text-anchor":"middle"},v+"%","tick")});
+ txt(s,{x:x(50),y:m.t-10,"text-anchor":"middle"},"coin flip","note");
+ seas.forEach((sn,i)=>{const cy=m.t+i*rh+8,h=28;
+  txt(s,{x:m.l-12,y:cy+h/2+4,"text-anchor":"end"},sn,"xl"+(sn===CUR?" cur":""));
+  const r=D.decomp.find(q=>q.season===sn&&q.window===(compView==="full"&&sn!==CUR?"full":"early"));
+  const same=(100-r.share_wl)/2, tot=r.pct, wl=tot-same, miss=100-tot;
+  const lbl=compView==="full"&&sn===CUR?" (so far)":"";
+  segbar(s,m.l,iw,cy,h,[
+   {v:wl,fill:css("--series-1"),label:p1(wl),ink:"#ffffff",tip:()=>[p1(wl)+" of team-games",{t:"Skins from W-vs-L games",key:css("--series-1")},`${sn}${lbl}: ${p1(r.share_wl)} of games were W vs L, and the W pick won ${p1(r.wpick_win)}`]},
+   {v:same,fill:css("--blue-light"),label:p1(same),ink:css("--on-light"),tip:()=>[p1(same)+" of team-games",{t:"Skins from same-pick games",key:css("--blue-light")},`${sn}${lbl}: always half of the ${p1(100-r.share_wl)} of games between two W or two L picks`]},
+   {v:miss,fill:css("--track"),label:p1(miss),ink:css("--text-secondary"),tip:()=>[p1(miss)+" of team-games",{t:"Missed",key:css("--track")},`${sn}${lbl}`]}]);
+  txt(s,{x:W-m.r+10,y:cy+h/2-2},p1(tot),"lab"); txt(s,{x:W-m.r+10,y:cy+h/2+12},"skins"+lbl,"tlab");
+ });
+ foot(c,"Same-pick games always split their skins, so the same-pick segment depends only on how many games are W vs W or L vs L. The W-vs-L segment is where seasons differ: how many W-vs-L games there are and how often the W pick wins them."+(compView==="full"?" 2026-27 is shown after 121 games.":""));
+ table(c,["Season","W-vs-L skins","Same-pick skins","Missed","Total skins"],seas.map(sn=>{const r=D.decomp.find(q=>q.season===sn&&q.window===(compView==="full"&&sn!==CUR?"full":"early"));const same=(100-r.share_wl)/2,wl=r.pct-same;return [sn,p1(wl),p1(same),p1(100-r.pct),p1(r.pct)]}));
+}
+// ---------- W/L split ----------
+function cSplit(){
+ const c=card("c-split","The draft: W and L picks each season","Number of the 30 teams drafted for wins (W) and for losses (L), and the share of games that are W vs L as a result.");
+ controls(c,null,[{name:"W picks",c:"--series-1"},{name:"L picks",c:"--series-2"}]);
+ const rows=D.split,rh=46,W=820,m={l:80,r:220,t:26,b:12},H=m.t+rows.length*rh+m.b,s=svgIn(c,W,H,"Segmented bars of W and L picks per season");
+ const iw=W-m.l-m.r;
+ txt(s,{x:W-m.r+14,y:14},"W-vs-L games","tick"); txt(s,{x:W-m.r+120,y:14},"2026-27 at this split","tick");
+ rows.forEach((r,i)=>{const cy=m.t+i*rh+6,h=28;
+  txt(s,{x:m.l-12,y:cy+h/2+4,"text-anchor":"end"},r.season,"xl"+(r.season===CUR?" cur":""));
+  segbar(s,m.l,iw,cy,h,[
+   {v:r.w,fill:css("--series-1"),label:`${r.w} W`,ink:"#ffffff",tip:()=>[`${r.w} W picks`,{t:"W picks",key:css("--series-1")},r.season]},
+   {v:r.l,fill:css("--series-2"),label:`${r.l} L`,ink:"#ffffff",tip:()=>[`${r.l} L picks`,{t:"L picks",key:css("--series-2")},r.season]}]);
+  const act=D.decomp.find(q=>q.season===r.season&&q.window===(r.season===CUR?"early":"full"));
+  txt(s,{x:W-m.r+14,y:cy+h/2+4},`${p1(act.share_wl)}${r.season===CUR?" so far":""}`,"lab");
+  txt(s,{x:W-m.r+120,y:cy+h/2+4},r.season===CUR?`${p1(D.paths[CUR][N-1])} (actual)`:p1(r.cf),r.season===CUR?"lab":"tlab");
+ });
+ foot(c,"W-vs-L games: the actual full-season share (2026-27: first 121 games). An even split makes the most W-vs-L games, about 52% of the schedule. Right column: this season's skins % after 121 games if its W picks had kept winning 76% of W-vs-L games but the draft had each earlier season's split.");
+ table(c,["Season","W picks","L picks","W-vs-L games (actual)","Expected from split","2026-27 at this split"],rows.map(r=>{const act=D.decomp.find(q=>q.season===r.season&&q.window===(r.season===CUR?"early":"full"));return [r.season,r.w,r.l,p1(act.share_wl),p1(r.exp_share),p1(r.cf)]}));
+}
+function renderAll(){cComp();cSplit();cPath();cSim();cFinal();cBest();cWL();cPhase();}
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change",renderAll);
 renderAll();
 </script>

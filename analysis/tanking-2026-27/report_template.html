@@ -109,6 +109,18 @@ th{font-weight:600;color:var(--text-secondary)}
  <li>how often healthy starters sit late in the season</li>
 </ul>
 
+<h2>A blanket incentive: where would it show?</h2>
+<p>If every non-playoff team gets the same push to win, overall win percentages may not move much. Bad teams play each other often (about 50 games after each recent deadline), and every one of those games has one winner and one loser. If both teams try harder, the record between them still nets to zero.</p>
+<p>That leaves three places an effect can show up:</p>
+<ul>
+ <li><strong>Games against everyone else.</strong> If bad teams stop giving games away, they should hold up better against good teams after the deadline.</li>
+ <li><strong>Fourth quarters.</strong> Whether starters are on the floor late in close games (chart above).</li>
+ <li><strong>Who they beat.</strong> A team trying to escape the bottom three gains most from beating its direct rivals.</li>
+</ul>
+<p>The rules aren't fully blanket, either. The three worst teams now get fewer lottery balls than teams 4th–10th from the bottom. Play-in seeds 9–10 get fewer than teams just below them, so a borderline team still has a small reason to slide out of the play-in.</p>
+<p>Under the old rules, the "games against everyone else" signal was strong. The chart below takes the ten worst teams before each deadline and compares how they did against the other 20 teams before and after it. Luck alone should make their second half look a little <em>better</em>, as teams drift back toward average; that's what happened in 2018-19, 2019-20 and 2022-23. Instead, in 2021-22 and from 2023-24 on, they got worse, and in 2025-26 they won only 19% of those games.</p>
+<div class="card" id="c-bvr"></div>
+
 <h2>Is this season's spread real or noise?</h2>
 <p>Both. After ~8 games a lot of the spread is luck. To see how much, I took each earlier season's full-season team ratings and played them out over this season's actual first 121 games, 14,000 times in all.</p>
 <p>A spread as wide as this season's came up in 15% of those runs, so it's unusual but not exceptional. "Six teams with one win or fewer" came up only 1% of the time, but that's the statistic the article chose after seeing the standings.</p>
@@ -384,7 +396,28 @@ function cTank(){
  foot(c,"Sorted by this season's margin. Hollow dots are the comparison the article used: last November, before anyone was tanking.");
  table(c,["Team","2025-26 first ~8","2025-26 to deadline","2025-26 after deadline","2026-27 first ~8"],rows.map(r=>[NM[r.team],`${r.early25.rec} (${f1(r.early25.mov)})`,`${r.mid25.rec} (${f1(r.mid25.mov)})`,`${r.post25.rec} (${f1(r.post25.mov)})`,`${r.early26.rec} (${f1(r.early26.mov)})`]));
 }
-function renderAll(){cDisp();cBot5();cJump();cBlowPhase();cSim();cBlowEarly();cCalib();cQ4();cTank();}
+
+// ---------- chart: bottom 10 vs rest, before/after deadline ----------
+function cBvr(){
+ const c=card("c-bvr","The ten worst teams against everyone else, before vs. after the deadline","Average point margin of each season's bottom ten (by margin before the deadline) in games against the other 20 teams. Games between two bottom-ten teams are left out.");
+ const SER=[{key:"pre",name:"Before the deadline",c:"--series-3",shape:"ring"},{key:"post",name:"After the deadline",c:"--series-3",shape:"dot"}];
+ controls(c,null,SER);
+ const rows=D.bvr,rh=34,W=820,m={l:80,r:110,t:8,b:40},H=m.t+rows.length*rh+m.b,s=svgIn(c,W,H,"Dot plot of bottom-ten margin against the rest before and after the deadline");
+ const lo=-14,hi=-2,iw=W-m.l-m.r,x=v=>m.l+(v-lo)/(hi-lo)*iw,bot=H-m.b,fm=v=>"−"+Math.abs(v);
+ for(let v=lo;v<=hi;v+=2){el("line",{x1:x(v),x2:x(v),y1:m.t,y2:bot,stroke:css("--grid"),"stroke-width":1,"shape-rendering":"crispEdges"},s);txt(s,{x:x(v),y:bot+16,"text-anchor":"middle"},fm(v),"tick")}
+ txt(s,{x:m.l+iw/2,y:H-4,"text-anchor":"middle"},"Average point margin vs. the other 20 teams","tick");
+ rows.forEach((r,i)=>{const cy=m.t+i*rh+rh/2,col=css("--series-3"),d=r.post-r.pre;
+  txt(s,{x:m.l-12,y:cy+4,"text-anchor":"end"},r.season,"xl");
+  el("line",{x1:x(r.pre),x2:x(r.post),y1:cy,y2:cy,stroke:css("--axis"),"stroke-width":2},s);
+  [["pre",r.pre,r.pre_w,r.pre_n],["post",r.post,r.post_w,r.post_n]].forEach(([k,v,w,n])=>{const gg=el("g",{},s);el("circle",{cx:x(v),cy,r:11,class:"hit"},gg);
+   if(k==="pre")el("circle",{cx:x(v),cy,r:4,fill:css("--surface-1"),stroke:col,"stroke-width":2},gg);else el("circle",{cx:x(v),cy,r:5,fill:col,stroke:css("--surface-1"),"stroke-width":2},gg);
+   hover(gg,()=>[f1(v).replace("-","−")+" per game",{t:k==="pre"?"Before the deadline":"After the deadline",key:col},`${r.season}: won ${pct(w)} of ${n} games vs. the rest`]);});
+  txt(s,{x:W-m.r+12,y:cy+4},Math.abs(d)<0.05?"no change":`${d>0?"+":"−"}${Math.abs(d).toFixed(1)} ${d>0?"better":"worse"}`,d<-0.05?"lab":"tlab");
+ });
+ foot(c,"Picking the ten worst by their pre-deadline results means some were unlucky, so they should improve a little afterward even with no change in effort. A drop despite that pull is the tanking signal. 2019-20's post-deadline stretch was cut short by COVID. For 2027, a flat or rising line would mean the reform is working.");
+ table(c,["Season","Before: margin","Before: win%","After: margin","After: win%","Bottom-vs-bottom games after"],rows.map(r=>[r.season,f1(r.pre),pct(r.pre_w),f1(r.post),pct(r.post_w),r.bb_games]));
+}
+function renderAll(){cDisp();cBot5();cJump();cBlowPhase();cBvr();cSim();cBlowEarly();cCalib();cQ4();cTank();}
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change",renderAll);
 renderAll();
 </script>

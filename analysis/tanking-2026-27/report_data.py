@@ -106,6 +106,17 @@ for tm in TANK+["ALL"]:
     a=sel(L25); b=sel(L26)
     tk.append(dict(team=tm,early25=rec(a[a.idx<N]),mid25=rec(a[(a.idx>=N)&(a.date<DEADLINE["2025-26"])]),post25=rec(a[a.date>=DEADLINE["2025-26"]]),early26=rec(b),proj26=None if tm=="ALL" else round(proj[tm],1)))
 out["tank10"]=tk
+
+# 7. bottom 10 (by pre-deadline margin) vs everyone else, before vs after the deadline
+bvr=[]
+for s_ in PRIOR:
+    Ls=long(g[g.season==s_]); pre=Ls[Ls.date<DEADLINE[s_]]; post=Ls[Ls.date>=DEADLINE[s_]]
+    bot=set(pre.groupby("team").m.mean().nsmallest(10).index)
+    a=pre[pre.team.isin(bot)&~pre.opp.isin(bot)]; b=post[post.team.isin(bot)&~post.opp.isin(bot)]
+    c=post[post.team.isin(bot)&post.opp.isin(bot)]
+    bvr.append(dict(season=s_,pre=round(float(a.m.mean()),2),pre_w=round(float((a.m>0).mean()),3),pre_n=len(a),
+                    post=round(float(b.m.mean()),2),post_w=round(float((b.m>0).mean()),3),post_n=len(b),bb_games=len(c)//2))
+out["bvr"]=bvr
 out["meta"]=dict(N=N,through="2026-11-04")
 json.dump(out,open(os.path.join(here,"report_data.json"),"w"))
 P=pd.DataFrame(rows); print(P.to_string()); print(pd.DataFrame(bl).to_string()); print({k:v for k,v in out["sim"].items() if k!="sd_mov"}); print(pd.DataFrame(q4).to_string())

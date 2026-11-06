@@ -51,6 +51,30 @@ Three supporting checks:
 - bottom teams' win% in close games
 - how often healthy starters sit late in the season
 
+**A blanket incentive mostly nets out among bad teams.** If every non-playoff team gets the same push to win, overall win percentages may not move.
+Bad teams play each other about 50 times after each deadline, and each of those games has one winner and one loser.
+The effect has to show up in three places:
+- games against the other 20 teams
+- fourth quarters of close games
+- which rivals a team beats, since teams trying to escape the bottom three gain most against each other
+
+The rules aren't fully blanket anyway: the bottom three get fewer lottery balls than 4th–10th, and play-in seeds 9–10 get fewer than the teams just below them.
+
+Under the old rules the first signal was strong (chart 10). Take the ten worst teams before each deadline and look at how they did against everyone else afterward.
+Luck alone should make them look a little *better* after the deadline, as teams drift back toward average. That's what happened in 2018-19, 2019-20 and 2022-23.
+Instead, they got worse:
+
+| Season | Change after the deadline (points per game) |
+|---|---|
+| 2021-22 | −2.3 |
+| 2023-24 | −1.4 |
+| 2024-25 | −1.5 |
+| 2025-26 | −2.8 (won 19% of these games) |
+
+A flat or rising line in 2027 would mean the reform is working.
+
+![The ten worst teams against everyone else, before vs after the deadline](charts/10_bottom10_vs_rest.png)
+
 ![How spread out teams were, by phase of season](charts/1_dispersion_by_phase.png)
 ![How badly the five worst teams lost, by phase of season](charts/2_bottom5_by_phase.png)
 ![How much worse the bottom five got after the deadline](charts/3_deadline_change.png)

@@ -94,6 +94,15 @@ out["sim"]=dict(hca=round(HCA,2),sigma=round(SIG,2),tal_sd=round(TAL_SD,2),games
   at_N=np.round(P[:,N-1],2).tolist(),obs=round(obs,2),p_ge=round(float((P[:,N-1]>=obs-1e-3).mean()),3),p_ge_nounc=round(float((P0[:,N-1]>=obs-1e-3).mean()),3),p_ge_skins=int(round(obs*2*N/100)),
   median_at_N=round(float(np.median(P[:,N-1])),2),final_pre=[round(float(np.percentile(P[:,-1],q)),2) for q in qs],
   final_cond=[round(float(np.percentile(C[:,-1],q)),2) for q in qs])
+
+# 4. W/L pick split per season and what this season's W-pick win rate would give under each split
+e26=[r for r in decomp if r["season"]==CUR and r["window"]=="early"][0]
+split=[]
+for s_ in DRAFTED:
+    nW=sum(1 for k in PICKS[s_].values() if k=="W")
+    split.append(dict(season=s_,w=nW,l=30-nW,exp_share=round(nW*(30-nW)/435*100,1),
+                      cf=round(50+nW*(30-nW)/435*(e26["wpick_win"]-50),2)))
+out["split"]=split
 json.dump(out,open(os.path.join(here,"skins_data.json"),"w"))
 print("finals:",{s:paths[s][-1] for s in DRAFTED}); print("at N:",{s:paths[s][N-1] for s in DRAFTED})
 print(pd.DataFrame(phase).pivot(index="season",columns="phase",values="pct"))

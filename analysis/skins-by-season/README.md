@@ -32,9 +32,17 @@ Open `skins_report.html` for the interactive version, with hover details, data t
   Tanking makes the league more lopsided, but it only adds skins when the tanking teams were drafted as L picks.
   A W pick that sells off at the deadline costs its owner skins.
 
+- **The draft's W/L split adds a little.** This season's 15–15 split is the most even yet (17–13, 19–11, 21–9 and 18–12 before).
+  An even split makes the most W-vs-L games, about 52% of the schedule.
+  Keeping this season's 76% W-pick win rate, last season's 18–12 split would give 63.0% instead of 63.6%, and 2024-25's 21–9 split would give 61.4%.
+  The split is the drafters' choice: L went on all 13 teams with preseason lines under 41 wins, plus Portland (41.2) and Orlando (44.0).
+  It isn't a sign of a lopsided league: preseason lines had 16 teams over 41 (17–19 before), and 13 teams have winning records (11–14 at this point before).
+
 **Bottom line:** mostly randomness, plus a genuinely lopsided start to the season.
 The excess is about 1-in-12 luck, it's spread over only 121 games, and it should mostly wash out by April.
 
+![Where each season's skins come from](charts/0a_where_skins_come_from.png)
+![The draft: W and L picks each season](charts/0b_draft_w_l_split.png)
 ![League skins %, cumulative, by games played](charts/1_cumulative_skins_pct.png)
 ![Skins % after 121 games: simulated seasons vs this season](charts/2_luck_simulation.png)
 ![Skins % after 121 games vs at season's end](charts/3_early_vs_final.png)
