@@ -64,6 +64,35 @@ Backtest (`analysis/backtest_constraint.py`, player-level, 2022-26): winner log 
 - Not attempted: simulating the actual remaining schedule (head-to-head pairings, incl. games between
   one player's own teams). Needs a schedule scraper; the league-total constraint captures the main effect.
 
-**Heads-up:** roster correlation phases in from 10 to 25 games per team (you are at ~9). With it fully on,
-today's numbers would be about 75% rather than 88%, so expect the number to drift down over the next couple
-of weeks even if nothing changes on the court.
+**Correction to an earlier heads-up.** I first said the number would drift to ~75% "even if nothing changes".
+That was the effect of switching the roster correlation fully on *today*. `analysis/forward_path.R` re-runs the
+page's own refit + simulation forward, with every team playing exactly at today's projected pace (~0.48 games
+per team per day):
+
+| Games/team | Page as is | Correlation from day 1 | As is, no TALENT_SD refit | Day 1, no refit |
+|---|---|---|---|---|
+| 8.8 (Nov 7) | 87.6 | 75.0 | 87.6 | 75.0 |
+| 11.7 | 85.9 | 76.1 | 85.9 | 76.1 |
+| 14.6 | 89.9 | 83.3 | 85.6 | 78.1 |
+| 18.9 | 90.0 | 86.5 | 84.2 | 80.4 |
+| 23.2 | 91.1 | 90.4 | 84.5 | 83.7 |
+| 27.5 (mid-Dec) | 93.3 | 93.3 | 86.9 | 86.9 |
+
+(Eristeo's Chance to Win, %. The refit columns flatter the leader because synthetic games have no luck, so the
+re-estimated TALENT_SD drops; "no refit" is the more realistic stable path.)
+
+So with stable inputs the page dips ~3 points into December, then rises; it does not fall to 75%. But the
+gap between columns 2 and 3 is real: the 10->25 game ramp keeps the early number ~12 points above what the same
+model with correlation from day 1 says, fading to 0 by ~25 games. A good forecast should not have a built-in
+direction like that (today's number should equal the expected future number); the ramp was an empirical
+compromise from 2025-26 range coverage.
+
+Ramp vs. correlation from day 1, player-level backtest with the constraint, winner log loss (lower = better):
+
+| | 2022-23 | 2023-24 | 2024-25 | 2025-26 | 0-10 games | 10-20 games |
+|---|---|---|---|---|---|---|
+| 0.15, ramp 10->25 (current) | 2.082 | 1.995 | 1.129 | 1.164 | 1.902 | 1.541 |
+| 0.15 from day 1 | 1.937 | 1.913 | 1.170 | 1.202 | 1.820 | 1.517 |
+
+Same split as widening the spread: day-1 correlation wins in the two upset seasons and loses in the two
+favorite-won seasons. Not changed; it's a judgment call (coherence argues for day 1).
