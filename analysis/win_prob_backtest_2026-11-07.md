@@ -34,3 +34,36 @@ Missing: one team's win is another's loss, so teams (and players) are negatively
 and are treated as independent here. Likely effect: mostly on the spread between players; a modest
 issue, unquantified. Possible fixes: simulate games with pairings, or condition/rescale each simulated season
 to total 1,230 wins.
+
+## Follow-up (2026-11-08): constraint added, other ideas tested
+
+**Added** (`MODEL_VERSION` "2026-11-08 league-total constraint"): each simulated season is conditioned on
+1,230 league wins (joint-normal update by each team's covariance with the league total, roster correlation
+included, then the usual clip). Run through the page's own code with `analysis/sim_harness.R`:
+
+| Date | Before (Eristeo / Adam / Brian) | After |
+|---|---|---|
+| 2026-10-25 | 60.5 / 19.1 / 20.4 | 62.5 / 16.1 / 21.4 |
+| 2026-11-01 | 78.7 / 12.7 / 8.6 | 80.2 / 11.0 / 8.8 |
+| 2026-11-07 | 85.6 / 8.4 / 6.0 | 87.6 / 6.2 / 6.2 |
+| 2026-11-07, roster corr. 0.15 forced on | 70.2 / 16.8 / 12.9 | 75.0 / 10.8 / 14.2 |
+
+League wins per simulated season: SD ~46 before, <1 after. Adam (8 W picks, 2 L) is hurt most: his W-heavy
+roster no longer gains from seasons where the whole league wins more than is possible.
+
+Backtest (`analysis/backtest_constraint.py`, player-level, 2022-26): winner log loss, mean of seasons
+0-10 games 1.912 -> 1.902, 10-20 games 1.564 -> 1.544, 20-41 games 1.525 -> 1.510; better in 3 of 4 seasons.
+
+**Tested, not changed**
+- Spread (`analysis/backtest_spread.py`): RMS z of final skins vs projection is 1.09-1.14 up to 10 games
+  (a bit narrow), ~1.0 at 10-30 games, 1.2-1.4 later (but the backtest lacks the live in-season refits).
+  2025-26, the only season with the real weighted average, was 0.86-0.94 early, i.e. slightly wide.
+- Widening early spread by 10-30%: better in 2022-23 and 2023-24 (longshot winners), worse in 2024-25 and
+  2025-26. Four winners can't pick a new `TALENT_SD`.
+- Fat tails: 90 preseason team misses (2023-26) have excess kurtosis -0.55, none beyond 2.5 SD. Normal is fine.
+- Not attempted: simulating the actual remaining schedule (head-to-head pairings, incl. games between
+  one player's own teams). Needs a schedule scraper; the league-total constraint captures the main effect.
+
+**Heads-up:** roster correlation phases in from 10 to 25 games per team (you are at ~9). With it fully on,
+today's numbers would be about 75% rather than 88%, so expect the number to drift down over the next couple
+of weeks even if nothing changes on the court.

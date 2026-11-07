@@ -129,6 +129,20 @@ plus FanDuel team win totals and final records from Basketball-Reference). Out o
   line moved every day) and carries a missing team's line for at most `VEGAS_MAX_CARRY_DAYS` (5).
   `team_vegas_history.csv` marks carried values with `scraped = FALSE`.
 
+**League-total constraint (Nov 2026).** Every game is one win and one loss, so the league always finishes
+with 1,230 wins (`LEAGUE_WINS`). Drawn independently, a simulated season's total wandered by about ±45 wins,
+which ignored the fact that one team's win is another team's loss. Each simulated season is now conditioned
+on the true total: every team's miss is shifted by its share of the covariance with the league total
+(joint-normal conditioning, including the roster correlation), then clipped as before. That changes the odds
+in a 3-player league where every team is drafted: a roster heavy in W picks gains when the league total
+runs high, and that can no longer happen. On 2026-11-07 it moved Chance to Win from 85.6/8.4/6.0 to
+87.6/6.2/6.2 (Eristeo/Adam/Brian; Adam has 8 W picks). Backtested on 2022-26 player snapshots it improved
+winner log loss slightly in 3 of 4 seasons and at every stage (0-10, 10-20, 20-41 games). Checked and
+*not* changed: team misses are not fat-tailed (90 preseason team misses 2023-26, excess kurtosis −0.55, none
+beyond 2.5 SD), and widening the early spread helped only in the two seasons with a longshot winner
+(2022-23, 2023-24) and hurt in the other two, too few seasons to justify a new `TALENT_SD`.
+See `analysis/win_prob_backtest_2026-11-07.md`.
+
 Simulations are seeded by date so every run on a given day shows the same numbers. `win_prob`, `range_lo` and
 `range_hi` (80% range) are saved to `standings_history.csv`, with `range_lo50`/`range_hi50` (50% range) and the
 settings that produced them: `model_version` (`MODEL_VERSION`, bumped whenever the simulation changes),
