@@ -1016,7 +1016,8 @@ ROSTER_RHO_2526 <- 0.30   # 2025-26 same-roster correlation of skins misses (6 r
 ROSTER_RHO_FLOOR <- 0.25  # starting value and floor: this season's estimate can raise it, never lower it. 0.15 fit player
                           # ranges best over 2022-26; 0.25 (Nov 2026) scores the winner better out of sample and holds
                           # mid/late 80% ranges closer to 80% (77-79% vs 73-74%), at the cost of wider early ranges
-MODEL_VERSION <- "2026-11-08 league-total constraint + roster-corr 0.25 from day 1"   # bump when the simulation changes; saved with every forecast
+MODEL_VERSION <- "2026-11-08 schedule sim + roster-corr 0.25 from day 1"   # bump when the simulation changes; saved with every forecast
+                                                                       # (" [league-total fallback]" is appended on days the schedule was unusable)
 LEAGUE_WINS <- 30 * 41    # every simulated season is conditioned to this league total (one win and one loss per game)
 N_SIMS <- 10000
 talent_sd_now <- TALENT_SD_2526
@@ -1080,8 +1081,48 @@ if (draft_complete && !is.null(proj_history) && n_distinct(proj_history$date) > 
   }
 }
 
+# Remaining schedule from ESPN's scoreboard (one request per month). Each remaining game is then simulated between
+# its two teams. If the schedule can't be read, or doesn't line up with the standings, the simulation falls back
+# to the league-total method (each team drawn on its own, then every season conditioned on 1,230 wins).
+HOME_EDGE <- 0.22   # logit home-court edge: home teams won 55.5% of 2022-26 regular-season games (ESPN results)
+ESPN_SCHED_ABBR <- c(GS = "GSW", NO = "NOP", NY = "NYK", SA = "SAS", UTAH = "UTA", WSH = "WAS")
+or_else <- function(x, y) if (is.null(x)) y else x
+fetch_nba_schedule <- function(start = SEASON_START, n_months = 7) {
+  months <- format(seq(as.Date(format(start, "%Y-%m-01")), by = "month", length.out = n_months), "%Y%m")
+  rows <- list()
+  for (m in months) {
+    feed <- jsonlite::fromJSON(sprintf("https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=%s&limit=500", m),
+                               simplifyVector = FALSE)
+    if (length(feed$events) >= 500) stop("ESPN scoreboard hit its 500-event limit for ", m)
+    for (e in feed$events) {
+      if (!identical(as.integer(or_else(e$season$type, 0)), 2L)) next   # regular season only
+      comp <- e$competitions[[1]]
+      side_of <- function(ha) Filter(function(x) identical(x$homeAway, ha), comp$competitors)[[1]]
+      h <- side_of("home"); a <- side_of("away")
+      rows[[length(rows) + 1]] <- tibble(
+        id = e$id, date_utc = e$date,
+        home = or_else(h$team$abbreviation, NA_character_), away = or_else(a$team$abbreviation, NA_character_),
+        status = or_else(comp$status$type$name, NA_character_),
+        note = paste(vapply(or_else(comp$notes, list()), function(n) or_else(n$headline, ""), ""), collapse = ";"))
+    }
+  }
+  abbr_to_team <- setNames(draft_data$team, draft_data$abbr)
+  to_team <- function(x) unname(abbr_to_team[ifelse(x %in% names(ESPN_SCHED_ABBR), ESPN_SCHED_ABBR[x], x)])
+  bind_rows(rows) %>% distinct(id, .keep_all = TRUE) %>%
+    mutate(home = to_team(home), away = to_team(away),
+           date_et = as.Date(format(as.POSIXct(date_utc, format = "%Y-%m-%dT%H:%MZ", tz = "UTC"), tz = "America/New_York"))) %>%
+    filter(!is.na(home), !is.na(away), !grepl("Championship", note))   # TBD Cup slots; the Cup final doesn't count
+}
+nba_schedule <- tryCatch(fetch_nba_schedule(), error = function(e) { message("Schedule fetch failed: ", conditionMessage(e)); NULL })
+# Games not yet in the standings (a postponed game reappears as a new event once it is rescheduled)
+remaining_games <- if (is.null(nba_schedule)) NULL else
+  nba_schedule %>% filter(!status %in% c("STATUS_FINAL", "STATUS_POSTPONED", "STATUS_CANCELED", "STATUS_SUSPENDED", "STATUS_FORFEIT"))
+
 uncertainty <- NULL
 rho_eff <- 0
+rho_strength <- NA_real_
+sim_method <- "league total"
+sched_note <- "schedule not available"
 if (draft_complete) {
   unc_teams <- df_final_projections %>%
     inner_join(draft_data %>% select(team, player), by = "team") %>%
@@ -1092,13 +1133,92 @@ if (draft_complete) {
            rate = if_else(left > 0, pmin(pmax((proj_w - actual_wins) / left, 0.01), 0.99), 0.5),
            sd = sqrt(left * rate * (1 - rate) + (talent_sd_now * (left / 82)^1.5)^2))
 
+  g_now <- mean(unc_teams$actual_wins + unc_teams$actual_losses)
+  rho_eff <- rho_now   # in full from opening night (no phase-in)
+  side <- if_else(unc_teams$skins_pick == "W", 1, -1)
+  nt <- nrow(unc_teams)
+  pidx <- match(unc_teams$player, PLAYERS)
+
+  # Can the remaining schedule be used? Every team's listed games must fit in its games left; the gap (normally
+  # the two NBA Cup games set in December) is played against a league-average opponent.
+  sched_ok <- FALSE
+  if (!is.null(remaining_games) && nt == 30) {
+    hi <- match(remaining_games$home, unc_teams$team); ai <- match(remaining_games$away, unc_teams$team)
+    ok_g <- !is.na(hi) & !is.na(ai); hi <- hi[ok_g]; ai <- ai[ok_g]
+    phantom <- unc_teams$left - (tabulate(hi, nt) + tabulate(ai, nt))
+    sched_ok <- length(hi) > 0 && all(phantom >= 0) && all(phantom <= 6)
+    sched_note <- if (sched_ok) sprintf("%d games left on the schedule (%d team-games not yet scheduled, played vs a league-average side)",
+                                        length(hi), sum(phantom))
+                  else sprintf("schedule didn't match the standings (gap %d to %d games per team)", min(phantom), max(phantom))
+  }
+
+  if (sched_ok) {
+    # Schedule method (Nov 2026): each remaining game is won by home or away, so every simulated season is coherent
+    # game by game and teams on different rosters affect each other only through games they actually play.
+    # Team strengths (logit scale, plus HOME_EDGE) are fit so each team's expected final wins equal its projection.
+    # Each simulated season shifts each team's strength by a talent miss with the same spread as before
+    # (TALENT_SD * (left / 82)^1.5, roster-correlated, scaled so team-level spread matches the old method), and the
+    # strength-scale roster correlation is calibrated so teams on one roster finish as correlated as rho_eff.
+    # Backtest 2022-26 (analysis/backtest_schedule.py): winner log loss 1.357 -> 1.349, late-season 80% ranges held
+    # 77% -> 79% vs the league-total method at the same correlation.
+    tsd <- talent_sd_now * (unc_teams$left / 82)^1.5
+    H <- matrix(0, nt, length(hi)); H[cbind(hi, seq_along(hi))] <- 1
+    A <- matrix(0, nt, length(ai)); A[cbind(ai, seq_along(ai))] <- 1
+    target <- unc_teams$proj_w - unc_teams$actual_wins
+    G_left <- length(hi) + sum(phantom) / 2
+    s <- rep(0, nt)
+    for (it in 1:200) {   # base strengths: expected remaining wins = projected remaining wins
+      p <- plogis(s[hi] - s[ai] + HOME_EDGE); pp <- plogis(s)
+      E <- as.vector(H %*% p + A %*% (1 - p)) + phantom * pp
+      V <- as.vector(H %*% (p * (1 - p)) + A %*% (p * (1 - p))) + phantom * pp * (1 - pp)
+      tgt <- target + (G_left - sum(target)) * V / sum(V)   # targets must add up to the games left
+      s <- s + pmax(pmin((tgt - E) / pmax(V, 1e-6), 1), -1); s <- s - mean(s)
+      if (max(abs(tgt - E)) < 1e-4) break
+    }
+    sched_sim <- function(s, k, rho_s, n, seed) {
+      set.seed(seed)
+      zz <- matrix(rnorm(nt * n), nt); uu <- matrix(rnorm(length(PLAYERS) * n), length(PLAYERS))
+      zz <- sqrt(1 - rho_s) * zz + sqrt(rho_s) * side * uu[pidx, , drop = FALSE]
+      sh <- s + k * tsd / pmax(V, 1e-6) * zz                       # teams x seasons
+      p <- plogis(sh[hi, , drop = FALSE] - sh[ai, , drop = FALSE] + HOME_EDGE)
+      hw <- (matrix(runif(length(p)), nrow(p)) < p) * 1             # 1 = home team won
+      wins <- H %*% hw + A %*% (1 - hw)
+      if (any(phantom > 0)) wins <- wins + matrix(rbinom(nt * n, rep(phantom, n), plogis(sh)), nt)
+      unc_teams$actual_wins + wins
+    }
+    roster_corr <- function(fw) {
+      cm <- suppressWarnings(cor(t(side * fw))); same <- outer(pidx, pidx, "==") & !diag(nt)
+      mean(cm[same], na.rm = TRUE)
+    }
+    sched_fit <- function(rho_s) {
+      # talent scale: summed team variance matches the old method's sd (luck + talent)
+      v0 <- sum(apply(sched_sim(s, 0, rho_s, 3000, 12345), 1, var))
+      v1 <- sum(apply(sched_sim(s, 1, rho_s, 3000, 12345), 1, var))
+      k <- sqrt(max(sum(unc_teams$sd^2) - v0, 0) / max(v1 - v0, 1e-9))
+      # random strength shifts pull expected records toward .500; re-centre so mean wins match projections
+      s2 <- s
+      for (it in 1:6) {
+        gap <- tgt - (rowMeans(sched_sim(s2, k, rho_s, 5000, 4321)) - unc_teams$actual_wins)
+        if (max(abs(gap)) < 0.03) break
+        s2 <- s2 + gap / pmax(V, 1e-6)
+      }
+      list(s = s2, k = k)
+    }
+    rho_strength <- if (rho_eff > 0) min(0.95, rho_eff * 1.6) else 0
+    if (rho_eff > 0) for (it in 1:3) {
+      f <- sched_fit(rho_strength)
+      eff <- roster_corr(sched_sim(f$s, f$k, rho_strength, 3000, 777))
+      if (!is.finite(eff) || eff <= 0) break
+      rho_strength <- min(max(rho_strength * rho_eff / eff, 0), 0.95)
+    }
+    f <- sched_fit(rho_strength)
+    final_w <- sched_sim(f$s, f$k, rho_strength, N_SIMS, as.integer(today))   # same numbers for every run on a given day
+    sim_method <- "schedule"
+  } else {
   set.seed(as.integer(today))  # same numbers for every run on a given day
   z <- matrix(rnorm(nrow(unc_teams) * N_SIMS), nrow = nrow(unc_teams))
   # Shared roster draw: each player's teams lean the same way in skins (W picks up = L picks down in wins)
-  g_now <- mean(unc_teams$actual_wins + unc_teams$actual_losses)
-  rho_eff <- rho_now   # in full from opening night (no phase-in)
   u <- matrix(rnorm(length(PLAYERS) * N_SIMS), nrow = length(PLAYERS))
-  side <- if_else(unc_teams$skins_pick == "W", 1, -1)
   z <- sqrt(1 - rho_eff) * z + sqrt(rho_eff) * side * u[match(unc_teams$player, PLAYERS), , drop = FALSE]
   miss <- unc_teams$sd * z   # each team's miss in wins, teams x simulated seasons
   # Every game is one win and one loss, so the league always finishes with 41 wins per team (1,230). Drawn
@@ -1113,6 +1233,7 @@ if (draft_complete) {
     miss <- miss - outer(rowSums(cov_w) / sum(cov_w), excess)
   }
   final_w <- pmin(pmax(unc_teams$proj_w + miss, unc_teams$actual_wins), unc_teams$actual_wins + unc_teams$left)
+  }
   final_skins <- final_w
   l_rows <- unc_teams$skins_pick == "L"
   final_skins[l_rows, ] <- 82 - final_w[l_rows, ]   # L picks earn skins on losses
@@ -1171,7 +1292,8 @@ current_standings <- player_scores %>%
     range_hi50
   ) %>%
   # Which model made today's forecast (settings change during the season), for scoring it at season end
-  mutate(date = today, model_version = MODEL_VERSION, model_talent_sd = talent_sd_now,
+  mutate(date = today, model_version = if (sim_method == "schedule") MODEL_VERSION else paste(MODEL_VERSION, "[league-total fallback]"),
+         model_talent_sd = talent_sd_now,
          model_rho = rho_now, model_rho_in_use = rho_eff)
 
 # Pre-draft: keep the old history untouched (player-level history needs the draft)
@@ -1273,13 +1395,17 @@ raw_html(
           else if (vegas_carry_dropped > 0) sprintf(" %d team(s) left out of Vegas: no line for over %d days.", vegas_carry_dropped, VEGAS_MAX_CARRY_DAYS) else ""),
   "<dt>BB-Ref, Opta, DARKO, D&amp;T, Crafted</dt><dd>Shown and graded for accuracy but not in the weighted average. Opta (The Analyst), DARKO, Dunks &amp; Threes and Crafted NBA are on trial in 2026-27 and may join the blend next season if they prove accurate.</dd>",
   sprintf(paste0("<dt>Chance to win</dt><dd>%s simulated seasons around the weighted average. It narrows as more games are played. ",
-                 "Uncertainty is based on %s. Each simulated season draws every team's final wins from a normal distribution ",
-                 "around its weighted-average projection, with a spread that combines game-to-game luck in the games left ",
+                 "Uncertainty is based on %s. %s The spread combines game-to-game luck in the games left ",
                  "and the chance the projection misjudges the team (currently %.1f wins over a full season, shrinking as games are played); ",
                  "player totals are then summed across their %d teams. Teams on the same roster can miss together, ",
                  "as they did last season: roster correlation %s, applied from opening night (%.2f in use now).</dd>"),
-          format(N_SIMS, big.mark = ","), uncertainty_note, talent_sd_now, TEAMS_PER_PLAYER,
-          rho_note, rho_eff),
+          format(N_SIMS, big.mark = ","), uncertainty_note,
+          if (sim_method == "schedule") sprintf(paste0("Each simulated season plays out every remaining game on the schedule (%s): ",
+                                                      "team strengths are set so each team's expected final record matches its weighted-average projection, ",
+                                                      "with a home-court edge, and every game has one winner and one loser."), sched_note)
+          else sprintf(paste0("Each simulated season draws every team's final wins around its weighted-average projection, then adjusts ",
+                              "them so the league total is 1,230 wins (fallback: %s)."), sched_note),
+          talent_sd_now, TEAMS_PER_PLAYER, rho_note, rho_eff),
   "</dl></div></details>"
 )
 ```
