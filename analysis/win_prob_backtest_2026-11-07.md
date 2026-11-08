@@ -149,3 +149,42 @@ Winner log loss on a held-out season (fit on 3, score the 4th; equal odds = 1.74
 - The cost is ranges that are too wide: beyond 0.25 the 80% ranges hold 87-96%.
 - Nov 7 inputs: live 75.0 / 10.8 / 14.2 (Eristeo / Adam / Brian); corr 0.25: 71.2 / 11.2 / 17.6;
   exp 1.0 + corr 0.25: 69.8 / 11.8 / 18.5; exp 1.0 + corr 0.35: 67.6 / 11.3 / 21.1.
+
+## Schedule simulation (2026-11-08, `analysis/sim_models.py`, `analysis/backtest_schedule.py`)
+
+Question: the league-total constraint cut Adam's odds roughly in half because his 8 W picks moved with Eristeo's
+7 L picks. Is that real, or an artifact of spreading offsetting wins across all teams instead of along the schedule?
+
+Data: `archive/history/games_2022-26.csv` (ESPN scoreboard, regular season, All-Star and Cup finals removed). All 120
+team-seasons have 82 games and final wins equal to `rosters_and_finals_2022-26.csv`. Each archived team snapshot
+(142 days) gives the real record on that date and the real remaining schedule. The one shortcut: Cup knockout
+matchups weren't known in advance.
+
+Models, all with the same team-level spread (TALENT_SD 8.6, shrink 1.5) and roster correlation 0.25:
+- M0: independent draws (old model).
+- M1: conditioned on 1,230 league wins (live until now).
+- M2: every game simulated between its two teams, strength-scale correlation 0.25.
+- M2c: M2 with the strength-scale correlation calibrated so final team skins are correlated 0.25 within a roster.
+
+Mean over seasons:
+
+| | M0 | M1 | M2 | M2c |
+|---|---|---|---|---|
+| Winner log loss | 1.375 | 1.357 | 1.370 | **1.345** |
+| Pairwise order log loss | 0.518 | 0.518 | **0.514** | 0.517 |
+| 80% held, <15 / 15-30 / 30-50 / 50+ games | 88/87/84/77 | 88/87/83/77 | 88/85/80/**68** | 88/87/84/79 |
+| 50% held | 57% | 55% | 53% | 59% |
+
+Per season, winner log loss (M1 -> M2c): 1.832 -> 1.787, 1.320 -> 1.333, 1.185 -> 1.181, 1.090 -> 1.078.
+Per season, pairwise (M1 -> M2c): .6624 -> .6590, .3574 -> .3634, .6786 -> .6733, .3719 -> .3721.
+
+A first M2 run had a bias: random strength shifts pull expected records toward .500, which cost strong W teams and
+weak L teams skins (players simulated 5-9 skins below projection). The fixed version re-centres strengths so simulated
+team means are within ~0.5 wins of projections. The numbers above are after the fix.
+
+Nov 7 inputs (page code, `analysis/sim_harness.R`): M1 70.5 / 17.7 / 11.8 (Eristeo / Brian / Adam) -> M2c 65.9 / 18.1 / 16.0.
+Correlation with Eristeo: Adam 0.27 -> 0.12, Brian -0.08 -> -0.16. The constraint's effect on Adam is real but about
+half the size the league-total shortcut gave it. Brian still edges Adam because Brian's outcomes are slightly
+negatively tied to Eristeo's and a bit more spread out (SD ~49 vs ~45 skins).
+
+Decision: switch the page to M2c, falling back to M1 when the schedule is unavailable. Season backfilled again.

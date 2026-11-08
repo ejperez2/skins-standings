@@ -151,6 +151,34 @@ beyond 2.5 SD), and widening the early spread helped only in the two seasons wit
 (2022-23, 2023-24) and hurt in the other two, too few seasons to justify a new `TALENT_SD`.
 See `analysis/win_prob_backtest_2026-11-07.md`.
 
+**Schedule simulation (2026-11-08).** Every remaining game is now simulated between its two teams, using the
+remaining schedule from ESPN's scoreboard (one request per month). Team strengths on a logit scale, plus a home-court edge
+(`HOME_EDGE` 0.22, from home teams winning 55.5% of 2022-26 games), are fit so each team's expected final wins equal
+its weighted-average projection. Each simulated season shifts each team's strength by a talent miss with the same
+spread as before (`TALENT_SD * (left/82)^1.5`, roster-correlated). That shift is scaled so team-level spread matches
+the old method, and re-centred because random shifts pull expected records toward .500. The strength-scale roster
+correlation is calibrated each run so teams on one roster finish as correlated as `rho_eff` (0.25 → about 0.37 on the
+strength scale, because games between teams on the same roster cancel part of it). The NBA Cup's two TBD games per
+team are played against a league-average opponent until scheduled. If the schedule can't be read or doesn't fit the
+standings, the page falls back to the league-total method, and `model_version` gets " [league-total fallback]".
+
+Why: the league-total method (below) conditioned each simulated season on 1,230 wins but spread the offsetting wins
+across all 30 teams, not along the schedule. It made Adam's W-heavy roster move with Eristeo's L-heavy one, a correlation
+of 0.27. With the real schedule it is 0.12. On Nov 7 inputs: league total 70.5 / 17.7 / 11.8 → schedule 65.9 / 18.1 /
+16.0 (Eristeo / Brian / Adam). Team-level backtest on every archived snapshot of 2022-26 (`analysis/backtest_schedule.py`:
+real records and remaining schedules from `archive/history/games_2022-26.csv`, which matches all 120 archived final
+records), at the same effective correlation:
+
+| | Independent | League total | Schedule |
+|---|---|---|---|
+| Winner log loss | 1.375 | 1.357 | **1.345** (better than league total in 3 of 4 seasons) |
+| Pairwise order log loss | 0.518 | 0.518 | **0.517** (2 better, 1 worse, 1 tie) |
+| 80% player ranges held, <15 / 15-30 / 30-50 / 50+ games | 88 / 87 / 84 / 77% | 88 / 87 / 83 / 77% | 88 / 87 / 84 / **79%** |
+
+The gains are small but none of the measures got worse on average. The schedule version also needs no approximation
+for who plays whom. Without the correlation calibration (strength-scale 0.25), the schedule model's player ranges were
+too narrow late in the season (68% for an 80% range), so the calibration is part of the method.
+
 **Roster correlation floor 0.25 (2026-11-08).** Leave-one-season-out on 2022-26 (fit on 3 seasons, score the 4th):
 winner log loss 1.407 -> 1.386 overall, 1.608 -> 1.553 at 30-50 games, worst season 1.965 -> 1.869; 80% player
 ranges held 87/86/73/74% -> 91/88/77/79% (<15 / 15-30 / 30-50 / 50-75 games). Better in the two upset seasons,

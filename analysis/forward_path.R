@@ -12,7 +12,8 @@ N_SIMS <- 10000
 hist0 <- read.csv("team_projection_history.csv") %>% mutate(date = as.Date(date))
 d0 <- max(hist0$date); cur <- hist0 %>% filter(date == d0)
 rate <- with(cur, pmin(pmax((weighted - wins) / (82 - wins - losses), 0), 1))
-refit <- grab("talent_sd_now <- TALENT_SD_2526", "uncertainty <- NULL")
+refit <- grab("talent_sd_now <- TALENT_SD_2526", "# Remaining schedule from ESPN")
+remaining_games <- NULL   # synthetic future records do not follow the real schedule: league-total method
 sim <- grab("uncertainty <- NULL", "# --- Step 6")
 out <- list(); synth <- NULL
 for (k in seq(0, 330, by = 3)) {
