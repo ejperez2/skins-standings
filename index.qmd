@@ -1009,13 +1009,13 @@ player_scores <- draft_data %>%
 # Season outcomes are simulated from those team misses and summed into each player's skins.
 # Teams on the same roster may miss together. 2025-26: correlation ~0.30 once teams had played ~20 games.
 # Checked on 2022-23, 2023-24 and 2024-25 player histories (archive/history/): best fit 0.05-0.10 per season,
-# 0.15 over all four, phased in from ~0 at opening night to full by ~25 games (see README).
+# 0.15 over all four. Applied in full from opening night (Nov 2026; it used to phase in from 10 to 25 games,
+# which kept early odds predictably too confident; see README).
 TALENT_SD_2526 <- 8.6   # 2025-26: 9.7-win preseason miss = 4.5 luck + 8.6 misjudged teams
 ROSTER_RHO_2526 <- 0.30   # 2025-26 same-roster correlation of skins misses (6 rosters of 5, 20+ games played)
 ROSTER_RHO_FLOOR <- 0.15  # starting value and floor (best fit over 2022-26): this season's estimate can raise it, never lower it
-MODEL_VERSION <- "2026-10-24 roster-corr 0.15 + vegas-stale guard"   # bump when the simulation changes; saved with every forecast
-RHO_RAMP <- c(10, 25)     # league games played: no roster correlation before 10, full by 25 (2025-26: none before ~15-20;
-                          # applying it from day 1 made early player ranges too wide, 80% ranges held 92-94%)
+MODEL_VERSION <- "2026-11-08 league-total constraint + roster-corr from day 1"   # bump when the simulation changes; saved with every forecast
+LEAGUE_WINS <- 30 * 41    # every simulated season is conditioned to this league total (one win and one loss per game)
 N_SIMS <- 10000
 talent_sd_now <- TALENT_SD_2526
 uncertainty_note <- "last season's projection misses"
@@ -1094,11 +1094,23 @@ if (draft_complete) {
   z <- matrix(rnorm(nrow(unc_teams) * N_SIMS), nrow = nrow(unc_teams))
   # Shared roster draw: each player's teams lean the same way in skins (W picks up = L picks down in wins)
   g_now <- mean(unc_teams$actual_wins + unc_teams$actual_losses)
-  rho_eff <- rho_now * min(max((g_now - RHO_RAMP[1]) / diff(RHO_RAMP), 0), 1)
+  rho_eff <- rho_now   # in full from opening night (no phase-in)
   u <- matrix(rnorm(length(PLAYERS) * N_SIMS), nrow = length(PLAYERS))
   side <- if_else(unc_teams$skins_pick == "W", 1, -1)
   z <- sqrt(1 - rho_eff) * z + sqrt(rho_eff) * side * u[match(unc_teams$player, PLAYERS), , drop = FALSE]
-  final_w <- pmin(pmax(unc_teams$proj_w + unc_teams$sd * z, unc_teams$actual_wins), unc_teams$actual_wins + unc_teams$left)
+  miss <- unc_teams$sd * z   # each team's miss in wins, teams x simulated seasons
+  # Every game is one win and one loss, so the league always finishes with 41 wins per team (1,230). Drawn
+  # independently, a simulated season's total wandered by ~45 wins. Condition each season on the true total:
+  # the joint-normal update moves each team by its share of the covariance with the league total
+  # (its own variance plus its roster-mates' shared part), then the usual clip to wins still possible.
+  if (nrow(unc_teams) == 30) {
+    same_roster <- outer(unc_teams$player, unc_teams$player, "==")
+    diag(same_roster) <- FALSE
+    cov_w <- diag(unc_teams$sd^2) + rho_eff * outer(side * unc_teams$sd, side * unc_teams$sd) * same_roster
+    excess <- colSums(unc_teams$proj_w + miss) - LEAGUE_WINS
+    miss <- miss - outer(rowSums(cov_w) / sum(cov_w), excess)
+  }
+  final_w <- pmin(pmax(unc_teams$proj_w + miss, unc_teams$actual_wins), unc_teams$actual_wins + unc_teams$left)
   final_skins <- final_w
   l_rows <- unc_teams$skins_pick == "L"
   final_skins[l_rows, ] <- 82 - final_w[l_rows, ]   # L picks earn skins on losses
@@ -1263,9 +1275,9 @@ raw_html(
                  "around its weighted-average projection, with a spread that combines game-to-game luck in the games left ",
                  "and the chance the projection misjudges the team (currently %.1f wins over a full season, shrinking as games are played); ",
                  "player totals are then summed across their %d teams. Teams on the same roster can miss together, ",
-                 "as they did last season: roster correlation %s, phased in between %d and %d games played (%.2f in use now).</dd>"),
+                 "as they did last season: roster correlation %s, applied from opening night (%.2f in use now).</dd>"),
           format(N_SIMS, big.mark = ","), uncertainty_note, talent_sd_now, TEAMS_PER_PLAYER,
-          rho_note, RHO_RAMP[1], RHO_RAMP[2], rho_eff),
+          rho_note, rho_eff),
   "</dl></div></details>"
 )
 ```

@@ -109,12 +109,19 @@ Teams on the same roster can miss together. Checked against 2025-26 final record
 well calibrated all season, but player-level 80% ranges held only ~50-60% of outcomes from ~20 games on:
 a roster's skins misses were correlated about 0.30 (`ROSTER_RHO_2526`), far more than random 5-team
 groupings of the same teams (1-4% of shuffles). The simulation adds a shared draw per player, signed by
-pick so W and L teams lean the same way in skins, with correlation `ROSTER_RHO_FLOOR` = 0.15 phased in
-from 10 to 25 league games played (`RHO_RAMP`). With 10-team rosters that widens mid-season player ranges
+pick so W and L teams lean the same way in skins, with correlation `ROSTER_RHO_FLOOR` = 0.15 applied
+in full from opening night. With 10-team rosters that widens mid-season player ranges
 about 1.5x. Once teams have played 12+ games since the first snapshot with 20+ games, the correlation is
 re-estimated from this season's rosters and blended in, reaching full weight after 41 games, but it never
 drops below the 0.15 floor (the best fit over 2022-26, below). In 2025-26 alone, 0.20 still left mid-season ranges too narrow (best fit ~0.3-0.4),
-while applying any correlation from day 1 made early ranges too wide, hence the phase-in.
+while applying any correlation from day 1 made early ranges too wide. Until Nov 2026 the correlation was
+therefore phased in from 10 to 25 league games (`RHO_RAMP`). That was dropped (2026-11-08) because it
+gave the forecast a built-in direction: on Nov 7 the phase-in held the leader's Chance to Win about 12
+points above the day-1 version (87.6% vs 75.0%), a gap that closed by ~25 games with nothing else changing.
+Winner log loss on the 2022-26 player backtest (with the league-total constraint) split 2-2 by season, and
+day-1 correlation was better on average (0-10 games 1.820 vs 1.902, 10-20 games 1.517 vs 1.541) because it
+gives underdogs more credit, which suited the two seasons a longshot won (2022-23, 2023-24). See
+`analysis/win_prob_backtest_2026-11-07.md`.
 
 **Four-season check (Oct 2026).** Three earlier seasons were added from the league's spreadsheets
 (`archive/history/`: ~160 player-level snapshots per season with exact games played and every source,
@@ -122,12 +129,34 @@ plus FanDuel team win totals and final records from Basketball-Reference). Out o
 - Team ranges (`TALENT_SD` 8.6, shrink exponent 1.5): a 4-season re-fit is no better on held-out seasons;
   projection quality varies by season (2023-24 better, 2024-25 worse), which the in-season re-fit handles.
 - Roster correlation is real in every season but 2025-26 was the high year: best fit per season 0.05,
-  0.10, 0.10 (2022-23 to 2024-25) and 0.25 (2025-26); 0.15 over all four. Phasing it in from opening
-  night to ~25 games scores best (0.15 is the floor now; 0.20 was within 0.004 log loss of the best).
+  0.10, 0.10 (2022-23 to 2024-25) and 0.25 (2025-26); 0.15 over all four. That check found phasing it in from
+  opening night to ~25 games scored best on player ranges (0.15 is the floor now; 0.20 was within 0.004 log
+  loss of the best); the Nov 2026 winner backtest disagreed, and the phase-in was dropped (above).
 - Vegas went stale late in seasons (2025-26: every line froze from Mar 17). The page now leaves Vegas out of
   the weighted average when no line has moved for `VEGAS_FREEZE_DAYS` (3; before the freeze, at least one
   line moved every day) and carries a missing team's line for at most `VEGAS_MAX_CARRY_DAYS` (5).
   `team_vegas_history.csv` marks carried values with `scraped = FALSE`.
+
+**League-total constraint (Nov 2026).** Every game is one win and one loss, so the league always finishes
+with 1,230 wins (`LEAGUE_WINS`). Drawn independently, a simulated season's total wandered by about ±45 wins,
+which ignored the fact that one team's win is another team's loss. Each simulated season is now conditioned
+on the true total: every team's miss is shifted by its share of the covariance with the league total
+(joint-normal conditioning, including the roster correlation), then clipped as before. That changes the odds
+in a 3-player league where every team is drafted: a roster heavy in W picks gains when the league total
+runs high, and that can no longer happen. On 2026-11-07 it moved Chance to Win from 85.6/8.4/6.0 to
+87.6/6.2/6.2 (Eristeo/Adam/Brian; Adam has 8 W picks). Backtested on 2022-26 player snapshots it improved
+winner log loss slightly in 3 of 4 seasons and at every stage (0-10, 10-20, 20-41 games). Checked and
+*not* changed: team misses are not fat-tailed (90 preseason team misses 2023-26, excess kurtosis −0.55, none
+beyond 2.5 SD), and widening the early spread helped only in the two seasons with a longshot winner
+(2022-23, 2023-24) and hurt in the other two, too few seasons to justify a new `TALENT_SD`.
+See `analysis/win_prob_backtest_2026-11-07.md`.
+
+**Backfill (2026-11-08).** When the model changed, every saved day of 2026-27 (Oct 19 - Nov 7) was recomputed with
+`analysis/backfill_win_prob.R` so the Chance to Win and range charts show one model all season. Each day uses only
+that day's team snapshot and history (no hindsight); those rows carry `model_version` "... (backfilled 2026-11-08)".
+The team snapshot is taken in the morning while the saved row is the day's last run, so on a recomputed day the
+odds can trail that night's games; re-running the old model this way reproduced its saved odds within 0.5 points on
+average (2.4 at most).
 
 Simulations are seeded by date so every run on a given day shows the same numbers. `win_prob`, `range_lo` and
 `range_hi` (80% range) are saved to `standings_history.csv`, with `range_lo50`/`range_hi50` (50% range) and the
