@@ -95,4 +95,9 @@ Ramp vs. correlation from day 1, player-level backtest with the constraint, winn
 | 0.15 from day 1 | 1.937 | 1.913 | 1.170 | 1.202 | 1.820 | 1.517 |
 
 Same split as widening the spread: day-1 correlation wins in the two upset seasons and loses in the two
-favorite-won seasons. Not changed; it's a judgment call (coherence argues for day 1).
+favorite-won seasons. It's a judgment call (coherence argues for day 1).
+
+**Changed 2026-11-08** at the league's request (prefer the assumption that gave underdogs more credit):
+`RHO_RAMP` removed, roster correlation in full from opening night (`MODEL_VERSION` "2026-11-08 league-total
+constraint + roster-corr from day 1"). 2026-11-07 inputs: Eristeo 75.0%, Adam 10.8%, Brian 14.2%; with stable
+inputs it now rises steadily (76% at ~12 games, 80% at ~19, 87% at ~27) instead of dipping first.
