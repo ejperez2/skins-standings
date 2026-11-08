@@ -131,3 +131,21 @@ At ~9 games per team (* = eventual winner):
   check (RMS z 1.24-1.40 at 30-60 games). Caveat: the backtest lacks the live in-season TALENT_SD and roster
   correlation refits, which raise the spread mid-season when a season's misses run large. It also uses the source
   average for 2022-25, and covers only 4 seasons of 5-6 players.
+
+## Reflecting weak skill in the uncertainty (2026-11-08, `analysis/backtest_uncertainty.py`, `analysis/backtest_range_coverage.py`)
+
+Winner log loss on a held-out season (fit on 3, score the 4th; equal odds = 1.745) and how often 80% player ranges held:
+
+| Shrink exp. | Roster corr. | Log loss (avg) | 30-50 games | Worst season | 80% range held: <15 / 15-30 / 30-50 / 50-75 games |
+|---|---|---|---|---|---|
+| 1.5 (live) | 0.15 (live) | 1.407 | 1.608 | 1.965 | 87 / 86 / 73 / 74% |
+| 1.5 | 0.25 | 1.386 | 1.553 | 1.869 | 91 / 88 / 77 / 79% |
+| 1.0 | 0.25 | 1.374 | 1.498 | 1.790 | 93 / 94 / 87 / 90% |
+| 1.0 | 0.35 | 1.368 | 1.477 | 1.735 | 95 / 96 / 91 / 93% |
+
+- Pulling final odds toward equal odds (weight fit per stage on the other seasons) was worse out of sample in every configuration.
+- More uncertainty helps in 2022-23 and 2023-24 (longshot winners) and hurts a little in 2024-25 and 2025-26.
+  The average favors it because log loss punishes confident misses more than it rewards confident hits.
+- The cost is ranges that are too wide: beyond 0.25 the 80% ranges hold 87-96%.
+- Nov 7 inputs: live 75.0 / 10.8 / 14.2 (Eristeo / Adam / Brian); corr 0.25: 71.2 / 11.2 / 17.6;
+  exp 1.0 + corr 0.25: 69.8 / 11.8 / 18.5; exp 1.0 + corr 0.35: 67.6 / 11.3 / 21.1.
