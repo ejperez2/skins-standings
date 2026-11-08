@@ -1009,12 +1009,14 @@ player_scores <- draft_data %>%
 # Season outcomes are simulated from those team misses and summed into each player's skins.
 # Teams on the same roster may miss together. 2025-26: correlation ~0.30 once teams had played ~20 games.
 # Checked on 2022-23, 2023-24 and 2024-25 player histories (archive/history/): best fit 0.05-0.10 per season,
-# 0.15 over all four. Applied in full from opening night (Nov 2026; it used to phase in from 10 to 25 games,
+# 0.15 over all four (floor raised to 0.25 in Nov 2026, see below). Applied in full from opening night (Nov 2026; it used to phase in from 10 to 25 games,
 # which kept early odds predictably too confident; see README).
 TALENT_SD_2526 <- 8.6   # 2025-26: 9.7-win preseason miss = 4.5 luck + 8.6 misjudged teams
 ROSTER_RHO_2526 <- 0.30   # 2025-26 same-roster correlation of skins misses (6 rosters of 5, 20+ games played)
-ROSTER_RHO_FLOOR <- 0.15  # starting value and floor (best fit over 2022-26): this season's estimate can raise it, never lower it
-MODEL_VERSION <- "2026-11-08 league-total constraint + roster-corr from day 1"   # bump when the simulation changes; saved with every forecast
+ROSTER_RHO_FLOOR <- 0.25  # starting value and floor: this season's estimate can raise it, never lower it. 0.15 fit player
+                          # ranges best over 2022-26; 0.25 (Nov 2026) scores the winner better out of sample and holds
+                          # mid/late 80% ranges closer to 80% (77-79% vs 73-74%), at the cost of wider early ranges
+MODEL_VERSION <- "2026-11-08 league-total constraint + roster-corr 0.25 from day 1"   # bump when the simulation changes; saved with every forecast
 LEAGUE_WINS <- 30 * 41    # every simulated season is conditioned to this league total (one win and one loss per game)
 N_SIMS <- 10000
 talent_sd_now <- TALENT_SD_2526
