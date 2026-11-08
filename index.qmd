@@ -1016,7 +1016,7 @@ ROSTER_RHO_2526 <- 0.30   # 2025-26 same-roster correlation of skins misses (6 r
 ROSTER_RHO_FLOOR <- 0.25  # starting value and floor: this season's estimate can raise it, never lower it. 0.15 fit player
                           # ranges best over 2022-26; 0.25 (Nov 2026) scores the winner better out of sample and holds
                           # mid/late 80% ranges closer to 80% (77-79% vs 73-74%), at the cost of wider early ranges
-MODEL_VERSION <- "2026-11-08 schedule sim + roster-corr 0.25 from day 1"   # bump when the simulation changes; saved with every forecast
+MODEL_VERSION <- "2026-11-08 schedule sim + roster-corr 0.25 from day 1 + split ties"   # bump when the simulation changes; saved with every forecast
                                                                        # (" [league-total fallback]" is appended on days the schedule was unusable)
 LEAGUE_WINS <- 30 * 41    # every simulated season is conditioned to this league total (one win and one loss per game)
 N_SIMS <- 10000
@@ -1238,11 +1238,13 @@ if (draft_complete) {
   l_rows <- unc_teams$skins_pick == "L"
   final_skins[l_rows, ] <- 82 - final_w[l_rows, ]   # L picks earn skins on losses
   sim_player <- rowsum(final_skins, unc_teams$player)   # players x simulated seasons
-  sim_winner <- rownames(sim_player)[apply(sim_player, 2, which.max)]
+  # Ties for first (whole-number skins make them possible, ~1% of seasons) are split evenly between the tied players
+  is_top <- sim_player == matrix(apply(sim_player, 2, max), nrow(sim_player), ncol(sim_player), byrow = TRUE)
+  win_share <- rowSums(sweep(is_top, 2, colSums(is_top), "/"))
 
   uncertainty <- tibble(
     player = rownames(sim_player),
-    win_prob = as.numeric(table(factor(sim_winner, levels = rownames(sim_player)))) / N_SIMS,
+    win_prob = as.numeric(win_share) / N_SIMS,
     lo80 = apply(sim_player, 1, quantile, 0.10),
     lo50 = apply(sim_player, 1, quantile, 0.25),
     hi50 = apply(sim_player, 1, quantile, 0.75),

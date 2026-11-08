@@ -188,3 +188,30 @@ half the size the league-total shortcut gave it. Brian still edges Adam because 
 negatively tied to Eristeo's and a bit more spread out (SD ~49 vs ~45 skins).
 
 Decision: switch the page to M2c, falling back to M1 when the schedule is unavailable. Season backfilled again.
+
+## Four improvements tested (2026-11-08)
+
+1. **Tie-breaking (adopted).** Ties for first in ~0.8% of simulated seasons were all credited to the first player
+   alphabetically. They are now split evenly. Nov 7: Adam 16.0 -> 15.8, Brian 18.0, Eristeo 66.2.
+2. **Synthetic leagues (built).** `synthetic_leagues.py` re-drafts each season into 200 three-player leagues (snake,
+   drafter noise ±2 wins, matching the 2026-27 draft) and scores M1 / M2c / shrink / parameter-uncertainty variants on
+   every other snapshot (14,400 forecasts per model).
+   - With the live correlation (0.25), every model is badly under-confident in these leagues: 57% forecasts won 75-77%,
+     and 80% ranges held 95-99%.
+   - Cause: re-drafted rosters' realised correlation is about 0.06, against real rosters' 0.00 / 0.33 / 0.12 / 0.13
+     (2022-26, from ~20 games) and the model's 0.25.
+   - With the correlation matched (0.05), ranges are close to nominal (83/84/93/84%), but favourites still win more
+     than stated (53% -> 61% at 15-30 games).
+   - Summaries: `synthetic_summary_rho025.txt`, `synthetic_summary_rho005.txt`.
+3. **Projections (not changed).**
+   - Source weights re-fit leave-one-season-out did worse out of sample at every stage. Best weights jump between
+     seasons, and equal weights only edge the current blend.
+   - A stage-wise pull toward .500 (λ 0.79-0.94 early, fit on other seasons) raised held-out team error at every stage
+     on average, and did worse in 3 of 4 seasons in synthetic leagues.
+4. **Parameter uncertainty (not adopted).**
+   - Method: per simulated season, TALENT_SD × lognormal(0, 0.28) (the season-to-season spread of the projection-error
+     size in 2023-26) and ρ ~ Beta(mean 0.25, sd 0.10).
+   - Synthetic leagues: better in all 4 seasons (log loss 0.7367 -> 0.7290).
+   - Real leagues: worse in 3 of 4 (1.345 -> 1.352), and pairwise worse in 3 of 4.
+   - It sharpens favourites, which suits the under-confident synthetic setting but not the real leagues, where
+     favourites have underperformed.

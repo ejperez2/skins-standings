@@ -151,6 +151,27 @@ beyond 2.5 SD), and widening the early spread helped only in the two seasons wit
 (2022-23, 2023-24) and hurt in the other two, too few seasons to justify a new `TALENT_SD`.
 See `analysis/win_prob_backtest_2026-11-07.md`.
 
+**Full specification:** `analysis/MODEL_SPEC.md` (model type, every step and setting, assumptions, limitations).
+
+**Improvements tested (2026-11-08).**
+- **Ties for first are split evenly.** They happen in ~0.8% of simulated seasons because skins are whole numbers;
+  before, they all went to the first name alphabetically (+0.25 points to Adam on Nov 7). Adopted.
+- **Re-weighting the sources** (`analysis/backtest_source_weights.py`, 2023-26 player snapshots, leave-one-season-out):
+  weights re-fit on two seasons did worse on the third at every stage (e.g. 15-30 games RMSE 18.5 vs 16.3 skins).
+  Equal weights were 1-2% better than the current blend on average but only in 5 of 11 held-out cases. Not changed.
+- **Pulling projections toward .500 early** (`analysis/backtest_shrink.py`, team level, leave-one-season-out):
+  held-out error worse on average at every stage (<15 games 72.3 vs 69.5). Not adopted.
+- **Parameter uncertainty** (drawing `TALENT_SD` and the roster correlation per simulated season): better in
+  synthetic leagues in all four seasons (`analysis/synthetic_summary_rho005.txt`). Slightly worse on the real
+  leagues (`analysis/backtest_param_uncertainty.py`: winner log loss 1.345 -> 1.352, 3 of 4 seasons worse). It makes
+  favourites slightly more likely. Not adopted.
+- **Synthetic-league harness** (`analysis/synthetic_leagues.py`): re-drafts each past season into 200 three-player
+  leagues with a snake draft that matches this league's 2026-27 draft (rank correlation 0.91 between pick number and
+  value). Finding: re-drafted rosters' teams miss together much less than real rosters' do (about 0.06 vs 0.15;
+  `analysis/roster_corr_real_vs_synthetic.py`). So the harness can test team-level changes (with a matched
+  correlation) but not the roster correlation itself. Real rosters' average is below the 0.25 setting, which leans
+  toward underdogs by choice.
+
 **Schedule simulation (2026-11-08).** Every remaining game is now simulated between its two teams, using the
 remaining schedule from ESPN's scoreboard (one request per month). Team strengths on a logit scale, plus a home-court edge
 (`HOME_EDGE` 0.22, from home teams winning 55.5% of 2022-26 games), are fit so each team's expected final wins equal
