@@ -151,6 +151,13 @@ beyond 2.5 SD), and widening the early spread helped only in the two seasons wit
 (2022-23, 2023-24) and hurt in the other two, too few seasons to justify a new `TALENT_SD`.
 See `analysis/win_prob_backtest_2026-11-07.md`.
 
+**Backfill (2026-11-08).** When the model changed, every saved day of 2026-27 (Oct 19 - Nov 7) was recomputed with
+`analysis/backfill_win_prob.R` so the Chance to Win and range charts show one model all season. Each day uses only
+that day's team snapshot and history (no hindsight); those rows carry `model_version` "... (backfilled 2026-11-08)".
+The team snapshot is taken in the morning while the saved row is the day's last run, so on a recomputed day the
+odds can trail that night's games; re-running the old model this way reproduced its saved odds within 0.5 points on
+average (2.4 at most).
+
 Simulations are seeded by date so every run on a given day shows the same numbers. `win_prob`, `range_lo` and
 `range_hi` (80% range) are saved to `standings_history.csv`, with `range_lo50`/`range_hi50` (50% range) and the
 settings that produced them: `model_version` (`MODEL_VERSION`, bumped whenever the simulation changes),
