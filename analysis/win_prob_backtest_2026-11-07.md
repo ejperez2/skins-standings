@@ -101,3 +101,33 @@ favorite-won seasons. It's a judgment call (coherence argues for day 1).
 `RHO_RAMP` removed, roster correlation in full from opening night (`MODEL_VERSION` "2026-11-08 league-total
 constraint + roster-corr from day 1"). 2026-11-07 inputs: Eristeo 75.0%, Adam 10.8%, Brian 14.2%; with stable
 inputs it now rises steadily (76% at ~12 games, 80% at ~19, 87% at ~27) instead of dipping first.
+
+## New model re-check by stage (2026-11-08, `analysis/backtest_by_stage.py`)
+
+Player-level backtest of the live model (league-total constraint, roster correlation 0.15 from day 1).
+
+At ~9 games per team (* = eventual winner):
+- 2022-23: Thomas 40%, Eristeo 21%, Adam 16%*, Kenneth 14%, Brian 8%
+- 2023-24: Matt 34%, Kenneth 24%, Eristeo 18%, Adam 10%, Thomas 7%*, Brian 7%
+- 2024-25: Brian 37%*, Thomas 19%, Matt 18%, Adam 9%, Eristeo 9%, Kenneth 8%
+- 2025-26: Eristeo 24%, Adam 23%*, Brian 22%, Matt 21%, Thomas 7%, Kenneth 3%
+
+| Games/team | Winner's average prob. | Top pick won | Log loss (equal odds = 1.75) | Seasons beating equal odds |
+|---|---|---|---|---|
+| 9 | 21% | 1/4 | 1.72 | 2/4 |
+| 15 | 26% | 2/4 | 1.49 | 2/4 |
+| 20 | 31% | 2/4 | 1.26 | 3/4 |
+| 25 | 29% | 1/4 | 1.28 | 4/4 |
+| 30 | 21% | 0/4 | 1.58 | 2/4 |
+| 41 | 22% | 0/4 | 1.73 | 2/4 |
+| 50 | 33% | 1/4 | 1.36 | 3/4 |
+| 70 | 70% | 4/4 | 0.36 | 4/4 |
+
+- Early (<15 games) odds are roughly calibrated: predicted 7% -> won 10%, 17% -> 18%, 33% -> 26%. They are honest
+  but carry little information: about the same as equal odds at 9 games.
+- 20-25 games is the first point where the model beats equal odds in (nearly) every season.
+- 30-50 games looks over-confident: the favorite (48-63% on average) lost in all four seasons (2022-23 Eristeo,
+  2023-24 Matt, 2024-25 Adam, 2025-26 Matt). Snapshots given 50-75% won 10% of the time. This matches the spread
+  check (RMS z 1.24-1.40 at 30-60 games). Caveat: the backtest lacks the live in-season TALENT_SD and roster
+  correlation refits, which raise the spread mid-season when a season's misses run large. It also uses the source
+  average for 2022-25, and covers only 4 seasons of 5-6 players.
