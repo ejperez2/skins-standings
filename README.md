@@ -509,6 +509,14 @@ top of `index.qmd` and the page behaviour in a `<script>` block at the bottom. S
 6. **Rosters**: tabs for one player at a time (opens on your roster, else the leader). Each team shows skins-misses,
    skins % projection (green/red vs the weighted average) and projected skins; tap a team for every source.
 7. **All 30 teams** (folded, with draft order from `draft_pick`; sortable by tapping a header) and **Projection accuracy** (folded).
+8. **NBA standings** (folded, last on the page): the real league table (not skins). Pick a projection (default: average of
+   all sources; or any single source / the weighted average) to see current W-L, projected W-L, conference seed, NBA rank,
+   seed and projected-wins range across sources, playoff / play-in / lottery status, draft-lottery order and the rest-of-season win rate
+   needed. East/West filter; sortable. Built in the browser from an embedded JSON (`#sk-nba-data`).
+
+Standings table: a Skins / Skins % toggle shows each projected value as the share of a player's 820 games it implies.
+Chart y axes are fixed: Projection 410-610 skins, Skins % 50-80% (values outside are clipped). Projection accuracy
+is graded once teams average 5 games since the projection (`MIN_GAMES`), published Nov 10, 2026.
 
 Player colors are Paul Tol's vibrant hues lightened for the dark background (checked for color-blind separation
 and contrast):

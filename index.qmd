@@ -28,6 +28,7 @@ editor: visual
 .sk-meta { font-size: 14px; color: #999; margin: 0; }
 .sk-who { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; color: var(--sk-muted); margin: 12px 0; }
 .sk-who[hidden] { display: none; }
+.sk-tog { display: flex; align-items: center; justify-content: flex-end; gap: 8px; font-size: 13px; color: var(--sk-muted); margin: -4px 0 8px 0; }
 .sk-seg { display: inline-flex; border: 1px solid var(--sk-line); border-radius: 8px; overflow: hidden; flex: none; }
 .sk-seg button { font: inherit; font-size: 14px; color: inherit; background: transparent; border: 0; padding: 5px 12px; cursor: pointer; white-space: nowrap; }
 .sk-seg button + button { border-left: 1px solid var(--sk-line); }
@@ -152,6 +153,14 @@ details[open] > .sk-rrow .sk-chev { transform: rotate(90deg); }
 .sk-empty { padding: 36px 8px; text-align: center; color: var(--sk-muted); font-size: 14px; }
 .sk-footer { font-size: 14px; margin: 28px 0 12px 0; padding: 8px 16px 0 16px; border-top: 1px solid rgba(128,128,128,0.35); opacity: 0.85; }
 
+.sk-nbactl { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.sk-nbactl label { font-size: 13px; color: var(--sk-muted); display: inline-flex; align-items: center; gap: 6px; }
+.sk-nbactl select { font-size: 14px; color: inherit; background: var(--sk-surface); border: 1px solid var(--sk-line); border-radius: 6px; padding: 4px 8px; }
+#sk-nba td:nth-child(-n+2), #sk-nba th:nth-child(-n+2) { text-align: left; }
+#sk-nba .sk-rg { display: inline-block; position: relative; width: 70px; height: 6px; background: var(--sk-bar); border-radius: 3px; vertical-align: middle; margin-left: 6px; }
+#sk-nba .sk-rg i { position: absolute; top: 0; height: 100%; background: var(--sk-muted); border-radius: 3px; }
+#sk-nba .sk-rg b { position: absolute; top: -2px; width: 3px; height: 10px; margin-left: -1px; background: var(--sk-accent); border-radius: 1px; }
+.sk-pill.mid { background: var(--sk-mine); color: var(--sk-accent); }
 @media (max-width: 480px) {
   .sk-table th, .sk-table td { padding: 7px 6px; }
   table.sk-table { font-size: 14px; }
@@ -1487,7 +1496,7 @@ st_rows <- list(
   list("Skins", ps$`Actual Skins`, league_total_skins / length(PLAYERS), sk_f0, "sk-key"),
   list("Skins %", ps$`Skins %`, league_skins_pct, sk_pct, ""),
   list("Skins % projection", ps$`% Projected`, col_mean(ps$`% Projected`), sk_f1, ""),
-  "Projected final skins",
+  "<span id=\"sk-grp-lbl\">Projected final skins</span>",
   list("Weighted avg", ps$`Weighted Average`, col_mean(ps$`Weighted Average`), sk_f1, "sk-key"),
   list("Vegas", ps$`Vegas Consensus`, col_mean(ps$`Vegas Consensus`), sk_f1, ""),
   list("TR", ps$TR, col_mean(ps$TR), sk_f1, ""),
@@ -1502,22 +1511,26 @@ st_rows <- list(
   list("Max", ps$`Max Proj`, col_mean(ps$`Max Proj`), sk_f1, "")
 )
 n_cols <- length(standing_order) + 2
+SKINS_DENOM <- 82 * TEAMS_PER_PLAYER   # games a player's skins come from, to turn projected skins into a skins %
 st_body <- vapply(st_rows, function(r) {
   if (is.character(r)) return(sprintf("<tr class=\"sk-grp\"><th colspan=\"%d\">%s</th></tr>", n_cols, r))
   vals <- r[[2]]
+  is_proj <- identical(r[[4]], sk_f1)   # projected-skins rows can also be shown as the skins % they imply
   best <- if (all(is.na(vals)) || max(vals, na.rm = TRUE) == min(vals, na.rm = TRUE)) NA else max(vals, na.rm = TRUE)
-  cells <- sprintf("<td data-player=\"%s\"%s>%s</td>", standing_order,
-                   if_else(!is.na(best) & !is.na(vals) & vals == best, " class=\"sk-top\"", ""), r[[4]](vals))
-  sprintf("<tr class=\"%s\"><td>%s</td>%s<td class=\"sk-avg\">%s</td></tr>",
-          r[[5]], sk_src_label(r[[1]]), paste(cells, collapse = ""), r[[4]](r[[3]]))
+  pct_attr <- function(x) if (is_proj) sprintf(" data-sk=\"%s\" data-pct=\"%s\"", sk_f1(x), sk_pct(x / SKINS_DENOM)) else ""
+  cells <- sprintf("<td data-player=\"%s\"%s%s>%s</td>", standing_order,
+                   if_else(!is.na(best) & !is.na(vals) & vals == best, " class=\"sk-top\"", ""), pct_attr(vals), r[[4]](vals))
+  sprintf("<tr class=\"%s\"><td>%s</td>%s<td class=\"sk-avg\"%s>%s</td></tr>",
+          r[[5]], sk_src_label(r[[1]]), paste(cells, collapse = ""), pct_attr(r[[3]]), r[[4]](r[[3]]))
 }, character(1))
 
 raw_html(
   "<h2 class=\"sk-h\">Standings</h2>",
+  "<div class=\"sk-tog\"><span>Projected rows as</span><span class=\"sk-seg\" id=\"sk-stog\"><button type=\"button\" data-m=\"sk\" aria-pressed=\"true\">Skins</button><button type=\"button\" data-m=\"pct\">Skins %</button></span></div>",
   "<div class=\"sk-tablewrap\"><table class=\"sk-table\" id=\"sk-standings\" data-quarto-disable-processing=\"true\"><thead><tr><th></th>",
   paste(sprintf("<th data-player=\"%s\">%s%s</th>", standing_order, vapply(standing_order, sk_dot, ""), standing_order), collapse = ""),
   "<th class=\"sk-avg\">Avg</th></tr></thead><tbody>", paste(st_body, collapse = ""), "</tbody></table></div>",
-  "<p class=\"sk-note\">Skins % projection = each team's skins % &times; 82, added up. Projected rows are final-season skins from each source; bold = best in the row. Avg = league average per player.</p>"
+  sprintf("<p class=\"sk-note\">Skins %% projection = each team's skins %% &times; 82, added up. Projected rows are final-season skins from each source; bold = best in the row. Avg = league average per player. Toggle to Skins %% to see the share of a player's %d games each projection implies.</p>", SKINS_DENOM)
 )
 ```
 
@@ -1687,7 +1700,7 @@ raw_html("<details class=\"sk-fold\"><summary>Projection accuracy</summary><div 
 #   miss = |actual wins since D - expected wins since D|, averaged over teams (in wins)
 ACC_SOURCES <- c(tr = "TeamRankings", espn = "ESPN BPI", cbs = "CBS", vegas = "Vegas", br = "BB-Ref", opta = "Opta", darko = "DARKO", dnt = "Dunks & Threes", crafted = "Crafted NBA",
                  weighted = "Weighted Average", baseline = "Baseline: .500 rest of season")
-MIN_GAMES <- 12   # average games per team since the projection before a window is graded (~4 weeks)
+MIN_GAMES <- 5   # average games per team since the projection before a window is graded (~2 weeks; published Nov 10, 2026 at ~10 games)
 acc_p <- function(txt, size = 14) cat(sprintf("<p style='font-size:%dpx; margin-top:4px; margin-bottom:6px;'>%s</p>\n", size, txt))
 
 h <- if (is.null(proj_history)) NULL else proj_history %>% mutate(baseline = wins + 0.5 * (82 - wins - losses))
@@ -1741,7 +1754,7 @@ if (is.null(h) || nrow(h) == 0) {
   }
 
   if (!any(enough)) {
-    acc_p(paste0("Will have enough data around mid-November. This section will evaluate the accuracy of the projection models. ",
+    acc_p(paste0("Not enough games yet to grade. This section evaluates the accuracy of the projection models. ",
                  "Every source&rsquo;s projected wins are saved daily and each is graded: the average miss between a team&rsquo;s actual wins ",
                  "and the wins its projection implied for those games."))
   } else {
@@ -1782,6 +1795,8 @@ if (is.null(h) || nrow(h) == 0) {
                   format(opening, "%b %d"), games_txt[["opening"]],
                   if (enough[["last30"]]) sprintf("since %s, %s games per team", format(last30, "%b %d"), games_txt[["last30"]])
                   else "not enough games yet"), 13)
+    if (max(sapply(scores, function(x) if (is.null(x)) 0 else x$games[1])) < 20)
+      acc_p("Early-season sample: with only about 10 games per team, gaps of a few hundredths between sources are mostly noise. Read it as a rough first look; it firms up as games pile up.", 13)
     if (length(late_start) > 0)
       acc_p(paste0("* Not tracked on opening night; graded since its first saved projection (",
                    paste(sprintf("%s: %s", ACC_SOURCES[names(late_start)],
@@ -1846,6 +1861,36 @@ if (is.null(h) || nrow(h) == 0) {
 
 ```{r accuracy-close, echo=FALSE, results='asis'}
 raw_html("</div></details>")
+```
+
+```{r nba-standings, echo=FALSE, results='asis'}
+# NBA standings (not skins): every team's record, with a final-record projection from any source (or the average of them all).
+# Seeds, ranks and the sortable table are computed in the browser from the embedded JSON.
+EAST_ABBR <- c("ATL", "BOS", "BKN", "CHA", "CHI", "CLE", "DET", "IND", "MIA", "MIL", "NYK", "ORL", "PHI", "TOR", "WAS")
+nba_tbl <- df_final_projections %>%
+  left_join(draft_data %>% select(team, player), by = "team") %>%
+  transmute(t = team, a = abbr, c = if_else(abbr %in% EAST_ABBR, "E", "W"), pl = player, pk = skins_pick,
+            w = actual_wins, l = actual_losses,
+            wa = if_else(skins_pick == "W", weighted_average, 82 - weighted_average),
+            v = vegas_proj_wins, tr = tr_proj_w, es = espn_proj_w, cb = cbs_proj_w, br = br_proj_w,
+            op = opta_proj_w, dk = darko_proj_w, dt = dnt_proj_w, cr = crafted_proj_w)
+nba_json <- jsonlite::toJSON(list(teams = nba_tbl, colors = as.list(colorblind_colors)),
+                             dataframe = "rows", na = "null", digits = 4, auto_unbox = TRUE)
+
+raw_html(
+  "<details class=\"sk-fold\" id=\"sk-nba-fold\"><summary>NBA standings<small>projected finish, seeds and draft lottery</small></summary><div class=\"sk-inner\">",
+  "<div class=\"sk-nbactl\"><label>Projection <select id=\"sk-nba-src\" aria-label=\"Projection source\"></select></label>",
+  "<span class=\"sk-seg\" id=\"sk-nba-conf\"><button type=\"button\" data-c=\"\" aria-pressed=\"true\">NBA</button><button type=\"button\" data-c=\"E\">East</button><button type=\"button\" data-c=\"W\">West</button></span></div>",
+  "<p class=\"sk-note\" id=\"sk-nba-desc\" style=\"margin:0 0 8px 0;\"></p>",
+  "<div class=\"sk-tablewrap\"><table class=\"sk-table\" id=\"sk-nba\" data-quarto-disable-processing=\"true\"><thead><tr></tr></thead><tbody></tbody></table></div>",
+  "<p class=\"sk-note\">Tap a header to sort. Projected W/L are final-season records from the chosen source; <b>Average</b> is the mean of every source that has the team. ",
+  "Seed = rank within the conference by projected wins (ties broken by current record); NBA rank is the same across all 30 teams. ",
+  "<b>Seed range</b> and <b>Proj W range</b> show the best and worst case across the individual sources. ",
+  "Status: seeds 1&ndash;6 playoffs, 7&ndash;10 play-in, 11+ lottery. <b>Draft #</b> numbers the lottery teams from the worst projected record (1) up; the real lottery then shuffles the top picks. ",
+  "<b>Rest W%</b> = win rate a team needs over its remaining games to hit the projection (above .500 means it must play better than it has).</p>",
+  "</div></details>",
+  "<script type=\"application/json\" id=\"sk-nba-data\">", nba_json, "</script>"
+)
 ```
 
 ```{=html}
@@ -1922,6 +1967,7 @@ raw_html("</div></details>")
       opts: [["wa", "Weighted avg"], ["v", "Vegas"], ["tr", "TR"], ["es", "ESPN"], ["cb", "CBS"], ["br", "BB-Ref"], ["op", "Opta"], ["dk", "DARKO"], ["dt", "D&amp;T"], ["cr", "Crafted"], ["avg", "Source avg"], ["mx", "Max"], ["pace", "Skins % projection"]],
       dsc: function (o) { return o === "wa" ? "Weighted average with the 4-in-5 likely range (dashed). Pick yourself above to see just your range." : o === "pace" ? "Each team's skins % × 82, added up." : "Projected final skins from this source."; },
       get: function (r, o) { return o === "pace" && !(r.pace > 0) ? null : r[o]; }, band: function (o) { return o === "wa"; },
+      dom: [410, 610], ticks: [410, 460, 510, 560, 610],
       games: function (o) { return o === "pace"; }, fmt: f0, tip: f1 },
     race: { ttl: "Skins race", opts: [["gap", "vs. league average"], ["sk", "Total skins"]],
       dsc: function (o) { return o === "gap" ? "Above zero means ahead of the average player. The gap between lines is the lead." : "Skins so far."; },
@@ -1929,6 +1975,7 @@ raw_html("</div></details>")
       zero: function (o) { return o === "gap"; }, games: function () { return true; },
       fmt: function (v, o) { return (o === "gap" && v > 0 ? "+" : "") + v.toFixed(0); } },
     pct: { ttl: "Skins %", dsc: function () { return "Share of games so far that earned a skin."; },
+      dom: [0.5, 0.8], ticks: [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8],
       get: function (r) { return r.pct > 0 ? r.pct : null; }, games: function () { return true; },
       fmt: function (v) { return (100 * v).toFixed(1) + "%"; } },
     win: { ttl: "Chance to win", dsc: function () { return "From " + D.sims.toLocaleString() + " simulated seasons each day. Built on one season of data, so treat it as rough."; },
@@ -1983,6 +2030,7 @@ raw_html("</div></details>")
     var t0 = pts[0].t, t1 = pts[pts.length - 1].t;
     var xs = function (i) { return m.l + (t1 === t0 ? 0.5 : (pts[i].t - t0) / (t1 - t0)) * (W - m.l - m.r); };
     var ys = function (v) { return m.t + (1 - (v - y0) / ((y1 - y0) || 1)) * (Hh - m.t - m.b); };
+    var cy = function (v) { return Math.max(m.t, Math.min(Hh - m.b, ys(v))); };
     var fmtD = function (d) { return new Date(d + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }); };
     var n = pts.length;
     var xIdx = n <= 4 ? pts.map(function (_, i) { return i; }) : [0, Math.round((n - 1) / 3), Math.round(2 * (n - 1) / 3), n - 1];
@@ -2011,6 +2059,8 @@ raw_html("</div></details>")
     xIdx.forEach(function (i) {
       svg += '<text x="' + xs(i) + '" y="' + (Hh - 6) + '" text-anchor="' + (i === 0 && n > 1 ? "start" : i === n - 1 && n > 1 ? "end" : "middle") + '">' + fmtD(pts[i].d) + "</text>";
     });
+    // Fixed y ranges (Projection, Skins %, To win) cut off anything outside them rather than rescaling
+    if (c.dom) svg += '<clipPath id="skclip"><rect x="' + m.l + '" y="' + m.t + '" width="' + (W - m.l - m.r) + '" height="' + (Hh - m.t - m.b) + '"/></clipPath><g clip-path="url(#skclip)">';
     // Likely-range bands overlap heavily early in the season: once a player picks themselves, only their band is drawn
     series.forEach(function (s) {
       if (me && s.p !== me) return;
@@ -2022,12 +2072,13 @@ raw_html("</div></details>")
     });
     series.forEach(function (s) { svg += '<path d="' + line(s.v) + '" fill="none" stroke="' + COLORS[s.p] + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
       '<path d="' + bridge(s.v) + '" fill="none" stroke="' + COLORS[s.p] + '" stroke-width="1.5" stroke-dasharray="4 4" stroke-linecap="round"/>'; });
+    if (c.dom) svg += "</g>";
     var ends = [];
-    series.forEach(function (s) { var last = -1; s.v.forEach(function (v, i) { if (v != null) last = i; }); if (last >= 0) ends.push({ s: s, i: last, y: ys(s.v[last]) }); });
+    series.forEach(function (s) { var last = -1; s.v.forEach(function (v, i) { if (v != null) last = i; }); if (last >= 0) ends.push({ s: s, i: last, y: cy(s.v[last]) }); });
     ends.sort(function (a, b) { return a.y - b.y; });
     for (var k = 1; k < ends.length; k++) if (ends[k].y - ends[k - 1].y < 15) ends[k].y = ends[k - 1].y + 15;
     ends.forEach(function (e) {
-      svg += '<circle cx="' + xs(e.i) + '" cy="' + ys(e.s.v[e.i]) + '" r="4" fill="' + COLORS[e.s.p] + '" stroke="#2b2b2b" stroke-width="2"/>' +
+      svg += '<circle cx="' + xs(e.i) + '" cy="' + cy(e.s.v[e.i]) + '" r="4" fill="' + COLORS[e.s.p] + '" stroke="#2b2b2b" stroke-width="2"/>' +
         '<text class="sk-end" x="' + (xs(e.i) + 8) + '" y="' + (e.y + 4) + '">' + esc(e.s.p.slice(0, 3)) + " " + fmt(e.s.v[e.i]) + "</text>";
     });
     svg += '<line class="sk-xh" y1="' + m.t + '" y2="' + (Hh - m.b) + '" stroke="#888" stroke-width="1" visibility="hidden"/>' +
@@ -2059,9 +2110,149 @@ raw_html("</div></details>")
     drawChart();
   }
 
+  window.__skApplyMe = applyMe;
   renderPicker();
   applyMe();
   showRoster(me || (rt && rt.getAttribute("data-default")) || PLAYERS[0]);
+})();
+</script>
+```
+
+```{=html}
+<script>
+// Standings table: toggle projected rows between skins and the skins % they imply
+(function () {
+  var tog = document.getElementById("sk-stog"), tbl = document.getElementById("sk-standings");
+  if (!tog || !tbl) return;
+  var lbl = document.getElementById("sk-grp-lbl");
+  tog.addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    var pct = b.getAttribute("data-m") === "pct";
+    tog.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-pressed", x === b); });
+    tbl.querySelectorAll("td[data-sk]").forEach(function (td) { td.textContent = td.getAttribute(pct ? "data-pct" : "data-sk"); });
+    if (lbl) lbl.textContent = pct ? "Projected final skins %" : "Projected final skins";
+  });
+})();
+
+// NBA standings table: pick a projection (or the average), see projected record, seed and rank; sortable
+(function () {
+  var el = document.getElementById("sk-nba-data"), tbl = document.getElementById("sk-nba");
+  if (!el || !tbl) return;
+  var D = JSON.parse(el.textContent), T = D.teams, COLORS = D.colors;
+  var SRC = [["wa", "Weighted avg"], ["v", "Vegas"], ["tr", "TeamRankings"], ["es", "ESPN BPI"], ["cb", "CBS"], ["br", "BB-Ref"], ["op", "Opta"], ["dk", "DARKO"], ["dt", "Dunks & Threes"], ["cr", "Crafted NBA"]]
+    .filter(function (s) { return T.some(function (t) { return t[s[0]] != null; }); });   // skip sources with no numbers yet (e.g. CBS before it publishes)
+  var AVG = SRC.map(function (s) { return s[0]; }).filter(function (k) { return k !== "wa"; });
+  var state = { src: "avg", conf: "", key: "rank", dir: 1 };
+  var sel = document.getElementById("sk-nba-src"), confEl = document.getElementById("sk-nba-conf"), desc = document.getElementById("sk-nba-desc");
+  var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
+  sel.innerHTML = '<option value="avg">Average of all sources</option>' + SRC.map(function (s) { return '<option value="' + s[0] + '">' + esc(s[1]) + "</option>"; }).join("");
+
+  function mean(t, keys) { var s = 0, n = 0; keys.forEach(function (k) { if (t[k] != null) { s += t[k]; n++; } }); return n ? s / n : null; }
+  function val(t, src) { return src === "avg" ? mean(t, AVG) : t[src]; }
+  var pctNow = function (t) { var g = t.w + t.l; return g ? t.w / g : 0.5; };
+  // Ranks 1..n by projected wins for the given source within the given teams (higher wins first; ties by current record, then name)
+  function rankBy(list, src) {
+    var arr = list.filter(function (t) { return val(t, src) != null; });
+    arr.sort(function (a, b) { return (val(b, src) - val(a, src)) || (pctNow(b) - pctNow(a)) || a.t.localeCompare(b.t); });
+    var out = {}; arr.forEach(function (t, i) { out[t.t] = i + 1; });
+    return out;
+  }
+  var conf = function (c) { return T.filter(function (t) { return t.c === c; }); };
+  // Seed range uses only sources that cover all 30 teams, so ranks are comparable
+  var FULL = SRC.map(function (s) { return s[0]; }).filter(function (k) { return T.every(function (t) { return t[k] != null; }); });
+  var seedBySrc = {};
+  SRC.map(function (s) { return s[0]; }).concat(["avg"]).forEach(function (k) { seedBySrc[k] = {}; ["E", "W"].forEach(function (c) { var r = rankBy(conf(c), k); Object.keys(r).forEach(function (n) { seedBySrc[k][n] = r[n]; }); }); });
+
+  var COLS = [
+    ["team", "Team", 0], ["conf", "Conf", 0], ["w", "W", 1], ["l", "L", 2], ["pw", "Proj W", 1], ["pl", "Proj L", 2], ["seed", "Seed", 2], ["rank", "NBA rank", 2],
+    ["sr", "Seed range", 2], ["rg", "Proj W range", 1], ["st", "Status", 2], ["draft", "Draft #", 2], ["ros", "Rest W%", 1]
+  ];   // [key, label, first sort: 0 text, 1 high-first, 2 low-first]
+  tbl.tHead.rows[0].innerHTML = COLS.map(function (c) { return '<th><button type="button" data-k="' + c[0] + '" data-m="' + c[2] + '">' + c[1] + "</button></th>"; }).join("");
+
+  function build() {
+    var src = state.src;
+    var seed = seedBySrc[src] || {}, rank = rankBy(T, src);
+    var lottery = T.filter(function (t) { return seed[t.t] >= 11; }).sort(function (a, b) { return rank[b.t] - rank[a.t]; });
+    var draft = {}; lottery.forEach(function (t, i) { draft[t.t] = i + 1; });
+    return T.map(function (t) {
+      var v = val(t, src), g = t.w + t.l, left = 82 - g;
+      var lo = null, hi = null, loS = null, hiS = null;
+      SRC.forEach(function (s) { var x = t[s[0]]; if (x == null) return; if (lo == null || x < lo) lo = x; if (hi == null || x > hi) hi = x; });
+      FULL.forEach(function (k) { var x = seedBySrc[k][t.t]; if (loS == null || x < loS) loS = x; if (hiS == null || x > hiS) hiS = x; });
+      var sd = seed[t.t];
+      return { t: t, v: v, seed: sd, rank: rank[t.t], lo: lo, hi: hi, loS: loS, hiS: hiS,
+        st: sd == null ? 9 : sd <= 6 ? 1 : sd <= 10 ? 2 : 3, draft: draft[t.t],
+        ros: v != null && left > 0 ? (v - t.w) / left : null };
+    });
+  }
+  var fmtPct = function (x) { return x == null ? "&ndash;" : (x * 100).toFixed(0) + "%"; };
+  function cell(r, k) {
+    var t = r.t;
+    switch (k) {
+      case "team": return '<td data-player="' + esc(t.pl || "") + '"><span class="sk-pname"><i class="sk-dot" style="--c:' + (COLORS[t.pl] || "#888") + '"></i><b title="' + esc(t.t) + '">' + esc(t.a) + "</b></span></td>";
+      case "conf": return "<td>" + (t.c === "E" ? "East" : "West") + "</td>";
+      case "w": return "<td>" + t.w + "</td>";
+      case "l": return "<td>" + t.l + "</td>";
+      case "pw": return "<td><b>" + (r.v == null ? "&ndash;" : r.v.toFixed(1)) + "</b></td>";
+      case "pl": return "<td>" + (r.v == null ? "&ndash;" : (82 - r.v).toFixed(1)) + "</td>";
+      case "seed": return "<td>" + (r.seed == null ? "&ndash;" : r.seed) + "</td>";
+      case "rank": return "<td>" + (r.rank == null ? "&ndash;" : r.rank) + "</td>";
+      case "sr": return "<td>" + (r.loS == null ? "&ndash;" : r.loS === r.hiS ? r.loS : r.loS + "&ndash;" + r.hiS) + "</td>";
+      case "rg":
+        if (r.lo == null) return "<td>&ndash;</td>";
+        var sc = function (x) { return Math.max(0, Math.min(100, (x - 10) / 60 * 100)); };
+        return "<td>" + r.lo.toFixed(1) + "&ndash;" + r.hi.toFixed(1) + '<span class="sk-rg"><i style="left:' + sc(r.lo) + "%;width:" + Math.max(2, sc(r.hi) - sc(r.lo)) + '%"></i>' +
+          (r.v != null ? '<b style="left:' + sc(r.v) + '%"></b>' : "") + "</span></td>";
+      case "st": return "<td>" + (r.st === 1 ? '<span class="sk-pill pos">Playoffs</span>' : r.st === 2 ? '<span class="sk-pill mid">Play-in</span>' : r.st === 3 ? '<span class="sk-pill neg">Lottery</span>' : "&ndash;") + "</td>";
+      case "draft": return "<td>" + (r.draft || "&ndash;") + "</td>";
+      case "ros": return "<td>" + fmtPct(r.ros) + "</td>";
+    }
+  }
+  var sortVal = function (r, k) {
+    switch (k) {
+      case "team": return r.t.t; case "conf": return r.t.c; case "w": return r.t.w; case "l": return r.t.l;
+      case "pw": return r.v; case "pl": return r.v == null ? null : 82 - r.v; case "seed": return r.seed; case "rank": return r.rank;
+      case "sr": return r.loS; case "rg": return r.hi == null ? null : r.hi - r.lo; case "st": return r.st; case "draft": return r.draft; case "ros": return r.ros;
+    }
+  };
+
+  function draw() {
+    var rows = build().filter(function (r) { return !state.conf || r.t.c === state.conf; });
+    var k = state.key, dir = state.dir;
+    rows.sort(function (a, b) {
+      var x = sortVal(a, k), y = sortVal(b, k);
+      if (x == null && y == null) return 0; if (x == null) return 1; if (y == null) return -1;
+      var d = typeof x === "string" ? x.localeCompare(y) : x - y;
+      return d * dir || a.rank - b.rank;
+    });
+    tbl.tBodies[0].innerHTML = rows.map(function (r) {
+      return '<tr data-player="' + esc(r.t.pl || "") + '">' + COLS.map(function (c) { return cell(r, c[0]); }).join("") + "</tr>";
+    }).join("");
+    tbl.tHead.querySelectorAll("button").forEach(function (b) {
+      b.removeAttribute("aria-sort");
+      if (b.getAttribute("data-k") === k) b.setAttribute("aria-sort", dir > 0 ? "ascending" : "descending");
+    });
+    var n = SRC.length;
+    desc.textContent = state.src === "avg"
+      ? "Average of every available projection (" + AVG.length + " sources; the weighted average is separate). Range columns show the lowest and highest source for each team."
+      : "Projected final record from " + SRC.filter(function (s) { return s[0] === state.src; })[0][1] + ". Range columns still span all " + n + " sources." +
+        (T.some(function (t) { return t[state.src] == null; }) ? " This source is missing some teams, so seeds are ranked among the teams it covers." : "");
+    if (window.__skApplyMe) window.__skApplyMe();
+  }
+  sel.addEventListener("change", function () { state.src = sel.value; draw(); });
+  confEl.addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    state.conf = b.getAttribute("data-c");
+    confEl.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-pressed", x === b); });
+    draw();
+  });
+  tbl.tHead.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-k]"); if (!b) return;
+    var k = b.getAttribute("data-k"), m = +b.getAttribute("data-m");
+    if (state.key === k) state.dir = -state.dir; else { state.key = k; state.dir = m === 1 ? -1 : 1; }
+    draw();
+  });
+  draw();
 })();
 </script>
 ```
