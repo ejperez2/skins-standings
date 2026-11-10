@@ -157,12 +157,18 @@ details[open] > .sk-rrow .sk-chev { transform: rotate(90deg); }
 .sk-nbactl label { font-size: 13px; color: var(--sk-muted); display: inline-flex; align-items: center; gap: 6px; }
 .sk-nbactl select { font-size: 14px; color: inherit; background: var(--sk-surface); border: 1px solid var(--sk-line); border-radius: 6px; padding: 4px 8px; }
 #sk-nba td:nth-child(-n+2), #sk-nba th:nth-child(-n+2) { text-align: left; }
-#sk-nba .sk-rg { display: inline-block; position: relative; width: 70px; height: 6px; background: var(--sk-bar); border-radius: 3px; vertical-align: middle; margin-left: 6px; }
+#sk-nba th, #sk-nba td { padding: 8px 6px; }
+#sk-nba th { letter-spacing: .03em; }
+details.sk-more { margin: 8px 0 0 0; font-size: 12.5px; color: var(--sk-muted); }
+details.sk-more > summary { cursor: pointer; }
+#sk-nba .sk-rg { display: inline-block; position: relative; width: 36px; height: 6px; background: var(--sk-bar); border-radius: 3px; vertical-align: middle; margin-left: 4px; }
 #sk-nba .sk-rg i { position: absolute; top: 0; height: 100%; background: var(--sk-muted); border-radius: 3px; }
 #sk-nba .sk-rg b { position: absolute; top: -2px; width: 3px; height: 10px; margin-left: -1px; background: var(--sk-accent); border-radius: 1px; }
 .sk-pill.mid { background: var(--sk-mine); color: var(--sk-accent); }
 @media (max-width: 480px) {
   .sk-table th, .sk-table td { padding: 7px 6px; }
+  #sk-nba .sk-rg, #sk-nba th:nth-child(2), #sk-nba td:nth-child(2), #sk-nba th:nth-child(6), #sk-nba td:nth-child(6) { display: none; }
+  #sk-nba th, #sk-nba td { padding: 7px 4px; }
   table.sk-table { font-size: 14px; }
   #sk-standings .sk-avg { display: none; }
   #sk-all th, #sk-all td { padding: 7px 4px; }
@@ -1530,7 +1536,7 @@ raw_html(
   "<div class=\"sk-tablewrap\"><table class=\"sk-table\" id=\"sk-standings\" data-quarto-disable-processing=\"true\"><thead><tr><th></th>",
   paste(sprintf("<th data-player=\"%s\">%s%s</th>", standing_order, vapply(standing_order, sk_dot, ""), standing_order), collapse = ""),
   "<th class=\"sk-avg\">Avg</th></tr></thead><tbody>", paste(st_body, collapse = ""), "</tbody></table></div>",
-  sprintf("<p class=\"sk-note\">Skins %% projection = each team's skins %% &times; 82, added up. Projected rows are final-season skins from each source; bold = best in the row. Avg = league average per player. Toggle to Skins %% to see the share of a player's %d games each projection implies.</p>", SKINS_DENOM)
+  sprintf("<p class=\"sk-note\">Skins %% projection = each team's skins %% &times; 82, added up. Projected rows are final-season skins from each source; bold = best in the row. Avg = league average per player. Toggle to Skins %% to see the share of a player's %d games each projection implies. Skins %% projection can sit a little off the actual Skins %% because it averages each team's rate equally, while Skins %% counts every game played, and teams have played different numbers of games.</p>", SKINS_DENOM)
 )
 ```
 
@@ -1795,6 +1801,11 @@ if (is.null(h) || nrow(h) == 0) {
                   format(opening, "%b %d"), games_txt[["opening"]],
                   if (enough[["last30"]]) sprintf("since %s, %s games per team", format(last30, "%b %d"), games_txt[["last30"]])
                   else "not enough games yet"), 13)
+    acc_p(paste0("<b>What the number means:</b> for each team we take a projection, work out how many wins it expected over the games ",
+                 "played since, and compare that with the wins the team actually got. The gap is the miss. The table shows the average miss ",
+                 "per team, in wins, so 1.50 means the source was off by about one and a half wins per team over that stretch. ",
+                 "Only games played after the projection was saved count, so no source gets credit for results it already knew. ",
+                 "The .500 baseline simply assumes every team wins half its remaining games; a source has to beat it to be adding anything."), 13)
     if (max(sapply(scores, function(x) if (is.null(x)) 0 else x$games[1])) < 20)
       acc_p("Early-season sample: with only about 10 games per team, gaps of a few hundredths between sources are mostly noise. Read it as a rough first look; it firms up as games pile up.", 13)
     if (length(late_start) > 0)
@@ -1874,7 +1885,14 @@ nba_tbl <- df_final_projections %>%
             wa = if_else(skins_pick == "W", weighted_average, 82 - weighted_average),
             v = vegas_proj_wins, tr = tr_proj_w, es = espn_proj_w, cb = cbs_proj_w, br = br_proj_w,
             op = opta_proj_w, dk = darko_proj_w, dt = dnt_proj_w, cr = crafted_proj_w)
-nba_json <- jsonlite::toJSON(list(teams = nba_tbl, colors = as.list(colorblind_colors)),
+# Projection dropdown order: best (lowest average miss) first, from the Projection accuracy table above
+acc_js_key <- c(vegas = "v", tr = "tr", espn = "es", cbs = "cb", br = "br", opta = "op", darko = "dk", dnt = "dt", crafted = "cr", weighted = "wa")
+acc_rank <- if (exists("acc") && is.data.frame(acc)) {
+  a <- acc[acc$key %in% names(acc_js_key), ]
+  a <- a[order(coalesce(a$last30, a$opening)), ]
+  setNames(as.list(round(coalesce(a$last30, a$opening), 2)), unname(acc_js_key[a$key]))
+} else list()
+nba_json <- jsonlite::toJSON(list(teams = nba_tbl, colors = as.list(colorblind_colors), miss = acc_rank),
                              dataframe = "rows", na = "null", digits = 4, auto_unbox = TRUE)
 
 raw_html(
@@ -1883,11 +1901,11 @@ raw_html(
   "<span class=\"sk-seg\" id=\"sk-nba-conf\"><button type=\"button\" data-c=\"\" aria-pressed=\"true\">NBA</button><button type=\"button\" data-c=\"E\">East</button><button type=\"button\" data-c=\"W\">West</button></span></div>",
   "<p class=\"sk-note\" id=\"sk-nba-desc\" style=\"margin:0 0 8px 0;\"></p>",
   "<div class=\"sk-tablewrap\"><table class=\"sk-table\" id=\"sk-nba\" data-quarto-disable-processing=\"true\"><thead><tr></tr></thead><tbody></tbody></table></div>",
-  "<p class=\"sk-note\">Tap a header to sort. Projected W/L are final-season records from the chosen source; <b>Average</b> is the mean of every source that has the team. ",
+  "<details class=\"sk-more\"><summary>How to read this</summary><p class=\"sk-note\">Tap a header to sort. Projected W/L are final-season records from the chosen source; <b>Average</b> is the mean of every source that has the team. ",
+  "The projection list is ordered by accuracy so far (average miss in wins, from Projection accuracy above). ",
   "Seed = rank within the conference by projected wins (ties broken by current record); NBA rank is the same across all 30 teams. ",
   "<b>Seed range</b> and <b>Proj W range</b> show the best and worst case across the individual sources. ",
-  "Status: seeds 1&ndash;6 playoffs, 7&ndash;10 play-in, 11+ lottery. <b>Draft #</b> numbers the lottery teams from the worst projected record (1) up; the real lottery then shuffles the top picks. ",
-  "<b>Rest W%</b> = win rate a team needs over its remaining games to hit the projection (above .500 means it must play better than it has).</p>",
+  "Status: seeds 1&ndash;6 playoffs, 7&ndash;10 play-in, 11+ lottery.</p></details>",
   "</div></details>",
   "<script type=\"application/json\" id=\"sk-nba-data\">", nba_json, "</script>"
 )
@@ -2138,14 +2156,16 @@ raw_html(
 (function () {
   var el = document.getElementById("sk-nba-data"), tbl = document.getElementById("sk-nba");
   if (!el || !tbl) return;
-  var D = JSON.parse(el.textContent), T = D.teams, COLORS = D.colors;
+  var D = JSON.parse(el.textContent), T = D.teams, COLORS = D.colors, MISS = D.miss || {};
   var SRC = [["wa", "Weighted avg"], ["v", "Vegas"], ["tr", "TeamRankings"], ["es", "ESPN BPI"], ["cb", "CBS"], ["br", "BB-Ref"], ["op", "Opta"], ["dk", "DARKO"], ["dt", "Dunks & Threes"], ["cr", "Crafted NBA"]]
     .filter(function (s) { return T.some(function (t) { return t[s[0]] != null; }); });   // skip sources with no numbers yet (e.g. CBS before it publishes)
+  // Order by accuracy so far (lowest miss first); sources not graded yet go last
+  SRC.sort(function (a, b) { var x = MISS[a[0]], y = MISS[b[0]]; return (x == null ? 99 : x) - (y == null ? 99 : y); });
   var AVG = SRC.map(function (s) { return s[0]; }).filter(function (k) { return k !== "wa"; });
   var state = { src: "avg", conf: "", key: "rank", dir: 1 };
   var sel = document.getElementById("sk-nba-src"), confEl = document.getElementById("sk-nba-conf"), desc = document.getElementById("sk-nba-desc");
   var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
-  sel.innerHTML = '<option value="avg">Average of all sources</option>' + SRC.map(function (s) { return '<option value="' + s[0] + '">' + esc(s[1]) + "</option>"; }).join("");
+  sel.innerHTML = '<option value="avg">Average of all sources</option>' + SRC.map(function (s) { return '<option value="' + s[0] + '">' + esc(s[1]) + (MISS[s[0]] != null ? " (miss " + MISS[s[0]].toFixed(2) + ")" : "") + "</option>"; }).join("");
 
   function mean(t, keys) { var s = 0, n = 0; keys.forEach(function (k) { if (t[k] != null) { s += t[k]; n++; } }); return n ? s / n : null; }
   function val(t, src) { return src === "avg" ? mean(t, AVG) : t[src]; }
@@ -2164,28 +2184,24 @@ raw_html(
   SRC.map(function (s) { return s[0]; }).concat(["avg"]).forEach(function (k) { seedBySrc[k] = {}; ["E", "W"].forEach(function (c) { var r = rankBy(conf(c), k); Object.keys(r).forEach(function (n) { seedBySrc[k][n] = r[n]; }); }); });
 
   var COLS = [
-    ["team", "Team", 0], ["conf", "Conf", 0], ["w", "W", 1], ["l", "L", 2], ["pw", "Proj W", 1], ["pl", "Proj L", 2], ["seed", "Seed", 2], ["rank", "NBA rank", 2],
-    ["sr", "Seed range", 2], ["rg", "Proj W range", 1], ["st", "Status", 2], ["draft", "Draft #", 2], ["ros", "Rest W%", 1]
+    ["team", "Team", 0], ["conf", "Conf", 0], ["w", "W", 1], ["l", "L", 2], ["pw", "Proj W", 1], ["pl", "Proj L", 2], ["seed", "Seed", 2], ["sr", "Seed range", 2],
+    ["rank", "NBA rank", 2], ["rg", "Proj W range", 1], ["st", "Status", 2]
   ];   // [key, label, first sort: 0 text, 1 high-first, 2 low-first]
   tbl.tHead.rows[0].innerHTML = COLS.map(function (c) { return '<th><button type="button" data-k="' + c[0] + '" data-m="' + c[2] + '">' + c[1] + "</button></th>"; }).join("");
 
   function build() {
     var src = state.src;
     var seed = seedBySrc[src] || {}, rank = rankBy(T, src);
-    var lottery = T.filter(function (t) { return seed[t.t] >= 11; }).sort(function (a, b) { return rank[b.t] - rank[a.t]; });
-    var draft = {}; lottery.forEach(function (t, i) { draft[t.t] = i + 1; });
     return T.map(function (t) {
-      var v = val(t, src), g = t.w + t.l, left = 82 - g;
+      var v = val(t, src);
       var lo = null, hi = null, loS = null, hiS = null;
       SRC.forEach(function (s) { var x = t[s[0]]; if (x == null) return; if (lo == null || x < lo) lo = x; if (hi == null || x > hi) hi = x; });
       FULL.forEach(function (k) { var x = seedBySrc[k][t.t]; if (loS == null || x < loS) loS = x; if (hiS == null || x > hiS) hiS = x; });
       var sd = seed[t.t];
       return { t: t, v: v, seed: sd, rank: rank[t.t], lo: lo, hi: hi, loS: loS, hiS: hiS,
-        st: sd == null ? 9 : sd <= 6 ? 1 : sd <= 10 ? 2 : 3, draft: draft[t.t],
-        ros: v != null && left > 0 ? (v - t.w) / left : null };
+        st: sd == null ? 9 : sd <= 6 ? 1 : sd <= 10 ? 2 : 3 };
     });
   }
-  var fmtPct = function (x) { return x == null ? "&ndash;" : (x * 100).toFixed(0) + "%"; };
   function cell(r, k) {
     var t = r.t;
     switch (k) {
@@ -2201,18 +2217,16 @@ raw_html(
       case "rg":
         if (r.lo == null) return "<td>&ndash;</td>";
         var sc = function (x) { return Math.max(0, Math.min(100, (x - 10) / 60 * 100)); };
-        return "<td>" + r.lo.toFixed(1) + "&ndash;" + r.hi.toFixed(1) + '<span class="sk-rg"><i style="left:' + sc(r.lo) + "%;width:" + Math.max(2, sc(r.hi) - sc(r.lo)) + '%"></i>' +
+        return "<td>" + (Math.round(r.lo) === Math.round(r.hi) ? Math.round(r.lo) : Math.round(r.lo) + "&ndash;" + Math.round(r.hi)) + '<span class="sk-rg"><i style="left:' + sc(r.lo) + "%;width:" + Math.max(2, sc(r.hi) - sc(r.lo)) + '%"></i>' +
           (r.v != null ? '<b style="left:' + sc(r.v) + '%"></b>' : "") + "</span></td>";
       case "st": return "<td>" + (r.st === 1 ? '<span class="sk-pill pos">Playoffs</span>' : r.st === 2 ? '<span class="sk-pill mid">Play-in</span>' : r.st === 3 ? '<span class="sk-pill neg">Lottery</span>' : "&ndash;") + "</td>";
-      case "draft": return "<td>" + (r.draft || "&ndash;") + "</td>";
-      case "ros": return "<td>" + fmtPct(r.ros) + "</td>";
     }
   }
   var sortVal = function (r, k) {
     switch (k) {
       case "team": return r.t.t; case "conf": return r.t.c; case "w": return r.t.w; case "l": return r.t.l;
       case "pw": return r.v; case "pl": return r.v == null ? null : 82 - r.v; case "seed": return r.seed; case "rank": return r.rank;
-      case "sr": return r.loS; case "rg": return r.hi == null ? null : r.hi - r.lo; case "st": return r.st; case "draft": return r.draft; case "ros": return r.ros;
+      case "sr": return r.loS; case "rg": return r.hi == null ? null : r.hi - r.lo; case "st": return r.st;
     }
   };
 
