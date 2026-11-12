@@ -1536,7 +1536,7 @@ raw_html(
   "<div class=\"sk-tablewrap\"><table class=\"sk-table\" id=\"sk-standings\" data-quarto-disable-processing=\"true\"><thead><tr><th></th>",
   paste(sprintf("<th data-player=\"%s\">%s%s</th>", standing_order, vapply(standing_order, sk_dot, ""), standing_order), collapse = ""),
   "<th class=\"sk-avg\">Avg</th></tr></thead><tbody>", paste(st_body, collapse = ""), "</tbody></table></div>",
-  sprintf("<p class=\"sk-note\">Skins %% projection = each team's skins %% &times; 82, added up. Projected rows are final-season skins from each source; bold = best in the row. Avg = league average per player. Toggle to Skins %% to see the share of a player's %d games each projection implies. Skins %% projection can sit a little off the actual Skins %% because it averages each team's rate equally, while Skins %% counts every game played, and teams have played different numbers of games.</p>", SKINS_DENOM)
+  sprintf("<details class=\"sk-more\"><summary>About these numbers</summary><p class=\"sk-note\">Skins %% projection = each team's skins %% &times; 82, added up. Projected rows are final-season skins from each source; bold = best in the row. Avg = league average per player. Toggle to Skins %% to see the share of a player's %d games each projection implies. Skins %% projection can sit a little off the actual Skins %% because it averages each team's rate equally, while Skins %% counts every game played, and teams have played different numbers of games.</p></details>", SKINS_DENOM)
 )
 ```
 
@@ -1795,6 +1795,7 @@ if (is.null(h) || nrow(h) == 0) {
              paste(sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
                            acc_display$Source, acc_display$opening, acc_display$last30, acc_display$weight), collapse = ""),
              "</tbody></table></div>")
+    raw_html("<details class=\"sk-more\"><summary>About these numbers</summary>")
     acc_p(sprintf(paste0("Average miss in wins per team, grading only games played <i>after</i> each projection was saved ",
                          "(opening night: %s, %s games per team; last 30 days: %s). Lower is better; best source in bold. ",
                          "The .500 baseline shows how much the projections beat a coin flip."),
@@ -1813,6 +1814,7 @@ if (is.null(h) || nrow(h) == 0) {
                    paste(sprintf("%s: %s", ACC_SOURCES[names(late_start)],
                                  vapply(late_start, function(x) format(x$date, "%b %d"), "")), collapse = "; "),
                    "). Opta, DARKO, Dunks &amp; Threes and Crafted NBA are tracked for accuracy only and are not in the weighted average."), 13)
+    raw_html("</details>")
 
     # Suggested weights: TR/ESPN/CBS mix (5% steps) with the smallest miss over the most recent graded window
     key_w <- if (enough[["last30"]]) "last30" else "opening"
@@ -1911,6 +1913,112 @@ raw_html(
 )
 ```
 
+```{r league-outlook-open, echo=FALSE, results='asis'}
+raw_html("<details class=\"sk-fold\"><summary>League skins % outlook<small>where the league total should finish</small></summary><div class=\"sk-inner\">")
+```
+
+```{r league-outlook, echo=FALSE, results='asis', fig.width=7, fig.height=4.2, dpi=150, warning=FALSE, message=FALSE}
+# Where will the league-wide skins % finish? Compares this season's running number with (a) what the pre-game Vegas
+# moneylines implied for the same games and (b) how the running number drifted to the final in 2022-23 .. 2025-26.
+# Per-game moneyline odds live in the Daily Matchups repo (Expected_Skins = no-vig implied win probability of the skins side).
+lp_p <- function(txt) cat(sprintf("<p style='font-size:13px; margin-top:4px; margin-bottom:6px;'>%s</p>\n", txt))
+MATCHUPS_RAW <- "https://raw.githubusercontent.com/ejperez2/Daily-Skins-Matchups/main/skins_history/"
+lp <- tryCatch({
+  # Past seasons: every game for each drafted team, scored for that team's pick
+  g <- read.csv("archive/history/games_2022-26.csv", stringsAsFactors = FALSE)
+  r <- read.csv("archive/history/rosters_and_finals_2022-26.csv", stringsAsFactors = FALSE)
+  long <- bind_rows(
+    data.frame(season = g$season, date = as.Date(g$date_et), team = g$home, win = g$home_win, stringsAsFactors = FALSE),
+    data.frame(season = g$season, date = as.Date(g$date_et), team = g$away, win = 1 - g$home_win, stringsAsFactors = FALSE)) %>%
+    inner_join(r %>% select(season, team = team_bbr, pick), by = c("season", "team")) %>%
+    mutate(skin = if_else(pick == "W", win, 1 - win)) %>%
+    arrange(season, date) %>%
+    group_by(season) %>%
+    mutate(i = row_number(), cum = cumsum(skin) / i, wk = as.integer(date - min(date)) %/% 7 + 1L, n = n(), final = last(cum)) %>%
+    ungroup()
+
+  # This season: one CSV per day from Daily Matchups (a day without games has no file)
+  days <- seq(SEASON_START, today, by = "day")
+  cur <- bind_rows(lapply(days, function(d) tryCatch({
+    x <- read.csv(paste0(MATCHUPS_RAW, format(d), ".csv"), stringsAsFactors = FALSE)
+    x$Date <- as.Date(x$Date); x[, c("Date", "Pick", "Expected_Skins", "Actual_Skins")]
+  }, error = function(e) NULL, warning = function(w) NULL)))
+  cur <- cur %>% filter(!is.na(Actual_Skins), !is.na(Expected_Skins)) %>% arrange(Date)
+  if (nrow(cur) < 30) NULL else list(long = long, cur = cur)
+}, error = function(e) { message("League outlook skipped: ", conditionMessage(e)); NULL })
+
+if (is.null(lp)) {
+  lp_p("Not available yet (needs the per-game moneyline history from Daily Matchups).")
+} else {
+  long <- lp$long; cur <- lp$cur
+  N_TOT <- 82 * length(PLAYERS) * TEAMS_PER_PLAYER
+  n <- nrow(cur); A <- sum(cur$Actual_Skins); E <- sum(cur$Expected_Skins)
+  act <- A / n; expd <- E / n; done <- n / N_TOT
+  pk <- cur %>% group_by(Pick) %>% summarise(n = n(), a = mean(Actual_Skins), e = mean(Expected_Skins), .groups = "drop")
+  pick_txt <- function(k) { x <- pk[pk$Pick == k, ]; if (nrow(x) == 0) NA_character_ else sprintf("%s picks %.1f%% vs %.1f%% expected (%d games)", k, 100 * x$a, 100 * x$e, x$n) }
+
+  # Past seasons: finals, and how far off the running number was at this same point of the season
+  fin <- long %>% group_by(season) %>% summarise(final = first(final), .groups = "drop")
+  off <- long %>% group_by(season) %>% summarise(off = cum[max(1, round(first(n) * done))] - first(final), .groups = "drop")
+
+  # Final league skins % if the rest of the season runs at rate q (all games not yet played)
+  final_at <- function(q) (A + q * (N_TOT - n)) / N_TOT
+  sd_rest <- sqrt(expd * (1 - expd) * (N_TOT - n)) / N_TOT
+  sc <- tibble(label = c("Vegas-implied rate", "Last 4 seasons' average", "57%", "55%", "62%"),
+               q = c(expd, mean(fin$final), 0.57, 0.55, 0.62)) %>% arrange(desc(q))
+  sc$final <- final_at(sc$q)
+
+  lp_p(sprintf("<b>So far:</b> %.1f%% of games earned a skin (%d of %d, %.1f%% of the season). The pre-game Vegas moneylines (no-vig consensus) implied %.1f%% for the same games, so the league is running <b>%+.1f points (about %+.0f skins)</b> above the market.",
+               100 * act, round(A), n, 100 * done, 100 * expd, 100 * (act - expd), A - E))
+  both_hot <- all(pk$a > pk$e)
+  lp_p(sprintf("%s; %s.%s", pick_txt("W"), pick_txt("L"),
+               if (both_hot) " Both sides are beating the market, so it is not only a hot start for the W teams (an L pick scores when its team loses)." else ""))
+  raw_html("<div class=\"sk-tablewrap\"><table class=\"sk-table\" data-quarto-disable-processing=\"true\"><thead><tr><th>Rest of season at</th><th>Skins %</th><th>Final league skins %</th></tr></thead><tbody>",
+           paste(sprintf("<tr><td>%s</td><td>%.1f%%</td><td>%.1f%%</td></tr>", sc$label, 100 * sc$q, 100 * sc$final), collapse = ""),
+           "</tbody></table></div>")
+  lp_p(sprintf("Only %.1f%% of the season is played, so the final is mostly still ahead: it is the %d skins banked plus whatever the other %d games earn. With the rest of the season at the Vegas-implied rate, chance alone still moves the final by about &plusmn;%.1f points (one standard deviation).",
+               100 * done, round(A), N_TOT - n, 100 * sd_rest))
+  lp_p(sprintf("<b>History:</b> the league finished at %s (%s). At this same point of those seasons the running number was %.1f to %+.1f points from its final, but this season is %+.1f above the market, more than any of them.",
+               paste(sprintf("%.1f%%", 100 * range(fin$final)), collapse = " to "), paste(fin$season, collapse = ", "),
+               100 * min(off$off), 100 * max(off$off), 100 * (act - expd)))
+
+  # Chart: running league skins % by week of the season, and how far past seasons' running number was from their final
+  hw <- long %>% group_by(season, wk) %>% summarise(v = last(cum), final = first(final), .groups = "drop")
+  cw <- cur %>% mutate(wk = as.integer(Date - SEASON_START) %/% 7 + 1L) %>% arrange(Date) %>%
+    mutate(a = cumsum(Actual_Skins) / row_number(), e = cumsum(Expected_Skins) / row_number()) %>%
+    group_by(wk) %>% summarise(a = last(a), e = last(e), .groups = "drop")
+  P1 <- "League skins % so far"; P2 <- "Past seasons: running number minus final (points)"
+  pd <- bind_rows(
+    hw %>% transmute(panel = P1, series = season, wk, v = 100 * v),
+    cw %>% transmute(panel = P1, series = "2026-27 actual", wk, v = 100 * a),
+    cw %>% transmute(panel = P1, series = "2026-27 Vegas-expected", wk, v = 100 * e),
+    hw %>% transmute(panel = P2, series = season, wk, v = 100 * (v - final)))
+  pd$panel <- factor(pd$panel, levels = c(P1, P2))
+  hist_cols <- c("2022-23" = "#8A939D", "2023-24" = "#4C9BE8", "2024-25" = "#E0B04A", "2025-26" = "#9C8AE0")
+  print(
+    ggplot(pd, aes(wk, v, color = series, linetype = series == "2026-27 Vegas-expected", linewidth = grepl("2026-27", series))) +
+      geom_hline(data = data.frame(panel = factor(P2, levels = c(P1, P2)), y = 0), aes(yintercept = y), color = "#888888", linewidth = 0.4) +
+      geom_line() + geom_point(data = pd %>% filter(grepl("2026-27", series)), size = 2) +
+      facet_wrap(~panel, scales = "free_y", ncol = 1) +
+      scale_color_manual(values = c(hist_cols, "2026-27 actual" = "#E26A54", "2026-27 Vegas-expected" = "#EEEEEE")) +
+      scale_linetype_manual(values = c(`FALSE` = "solid", `TRUE` = "dashed"), guide = "none") +
+      scale_linewidth_manual(values = c(`FALSE` = 0.7, `TRUE` = 1.2), guide = "none") +
+      labs(x = "Week of season", y = NULL, color = NULL) +
+      guides(color = guide_legend(nrow = 2)) +
+      theme_minimal(base_size = 12) +
+      theme(legend.position = "bottom", strip.text = element_text(face = "bold", hjust = 0, color = "#dddddd"),
+            plot.background = element_rect(fill = "#2b2b2b", color = NA),
+            panel.grid.minor = element_blank(), panel.grid.major = element_line(color = "#3a3a3a"),
+            text = element_text(color = "#dddddd"), axis.text = element_text(color = "#aaaaaa"))
+  )
+  lp_p("Moneylines are the market's pre-game view; games still in progress are left out. Early in a season the running number swings a lot (a few points in the first few weeks), so read the table as a range, not a forecast.")
+}
+```
+
+```{r league-outlook-close, echo=FALSE, results='asis'}
+raw_html("</div></details>")
+```
+
 ```{=html}
 <script>
 // Standings page behaviour: "I'm" picker (shared with Daily Matchups via localStorage skinsMe), roster tabs,
@@ -1985,7 +2093,15 @@ raw_html(
       opts: [["wa", "Weighted avg"], ["v", "Vegas"], ["tr", "TR"], ["es", "ESPN"], ["cb", "CBS"], ["br", "BB-Ref"], ["op", "Opta"], ["dk", "DARKO"], ["dt", "D&amp;T"], ["cr", "Crafted"], ["avg", "Source avg"], ["mx", "Max"], ["pace", "Skins % projection"]],
       dsc: function (o) { return o === "wa" ? "Weighted average with the 4-in-5 likely range (dashed). Pick yourself above to see just your range." : o === "pace" ? "Each team's skins % × 82, added up." : "Projected final skins from this source."; },
       get: function (r, o) { return o === "pace" && !(r.pace > 0) ? null : r[o]; }, band: function (o) { return o === "wa"; },
-      dom: [410, 610], ticks: [410, 460, 510, 560, 610],
+      // Most sources share one tight axis so they compare at a glance; a few get their own: BB-Ref (low, starts at 410),
+      // Weighted avg (room for its likely range), Max and Skins % projection (start at 410). up/down: grow if data leaves the range
+      domFn: function (o) {
+        if (o === "wa") return { d: [410, 610], s: 50 };
+        if (o === "br") return { d: [410, 530], s: 30, up: true };
+        if (o === "mx") return { d: [410, 590], s: 30, up: true };
+        if (o === "pace") return { d: [410, 590], s: 30 };
+        return { d: [440, 560], s: 30, up: true, down: true };
+      },
       games: function (o) { return o === "pace"; }, fmt: f0, tip: f1 },
     race: { ttl: "Skins race", opts: [["gap", "vs. league average"], ["sk", "Total skins"]],
       dsc: function (o) { return o === "gap" ? "Above zero means ahead of the average player. The gap between lines is the lead." : "Skins so far."; },
@@ -2041,9 +2157,17 @@ raw_html(
 
     var W = Math.max(280, plot.clientWidth || 600), Hh = Math.round(Math.min(320, Math.max(220, W * 0.58)));
     var m = { l: 44, r: 76, t: 10, b: 24 };
-    var y0 = c.dom ? c.dom[0] : Math.min.apply(null, vals), y1 = c.dom ? c.dom[1] : Math.max.apply(null, vals);
+    var spec = c.domFn ? c.domFn(o) : null, fixed = c.dom || (spec && spec.d);
+    var y0 = fixed ? fixed[0] : Math.min.apply(null, vals), y1 = fixed ? fixed[1] : Math.max.apply(null, vals);
+    if (spec) {
+      var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+      while (spec.up && hi > y1) y1 += spec.s;
+      while (spec.down && lo < y0) y0 -= spec.s;
+    }
     if (c.zero && c.zero(o)) { y0 = Math.min(y0, 0); y1 = Math.max(y1, 0); }
-    var yt = c.ticks || niceTicks(y0, y1);
+    var yt = c.ticks;
+    if (!yt && spec) { yt = []; for (var tv = y0; tv <= y1 + 1e-6; tv += spec.s) yt.push(tv); }
+    if (!yt) yt = niceTicks(y0, y1);
     y0 = Math.min(y0, yt[0]); y1 = Math.max(y1, yt[yt.length - 1]);
     var t0 = pts[0].t, t1 = pts[pts.length - 1].t;
     var xs = function (i) { return m.l + (t1 === t0 ? 0.5 : (pts[i].t - t0) / (t1 - t0)) * (W - m.l - m.r); };
@@ -2078,7 +2202,7 @@ raw_html(
       svg += '<text x="' + xs(i) + '" y="' + (Hh - 6) + '" text-anchor="' + (i === 0 && n > 1 ? "start" : i === n - 1 && n > 1 ? "end" : "middle") + '">' + fmtD(pts[i].d) + "</text>";
     });
     // Fixed y ranges (Projection, Skins %, To win) cut off anything outside them rather than rescaling
-    if (c.dom) svg += '<clipPath id="skclip"><rect x="' + m.l + '" y="' + m.t + '" width="' + (W - m.l - m.r) + '" height="' + (Hh - m.t - m.b) + '"/></clipPath><g clip-path="url(#skclip)">';
+    if (fixed) svg += '<clipPath id="skclip"><rect x="' + m.l + '" y="' + m.t + '" width="' + (W - m.l - m.r) + '" height="' + (Hh - m.t - m.b) + '"/></clipPath><g clip-path="url(#skclip)">';
     // Likely-range bands overlap heavily early in the season: once a player picks themselves, only their band is drawn
     series.forEach(function (s) {
       if (me && s.p !== me) return;
@@ -2090,7 +2214,7 @@ raw_html(
     });
     series.forEach(function (s) { svg += '<path d="' + line(s.v) + '" fill="none" stroke="' + COLORS[s.p] + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
       '<path d="' + bridge(s.v) + '" fill="none" stroke="' + COLORS[s.p] + '" stroke-width="1.5" stroke-dasharray="4 4" stroke-linecap="round"/>'; });
-    if (c.dom) svg += "</g>";
+    if (fixed) svg += "</g>";
     var ends = [];
     series.forEach(function (s) { var last = -1; s.v.forEach(function (v, i) { if (v != null) last = i; }); if (last >= 0) ends.push({ s: s, i: last, y: cy(s.v[last]) }); });
     ends.sort(function (a, b) { return a.y - b.y; });
