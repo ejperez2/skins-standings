@@ -140,6 +140,7 @@ details[open] > .sk-rrow .sk-chev { transform: rotate(90deg); }
 .sk-cdsc { font-size: 12.5px; color: var(--sk-muted); margin: 0 0 6px 0; }
 .sk-chart select { font-size: 14px; color: inherit; background: var(--sk-surface); border: 1px solid var(--sk-line); border-radius: 6px; padding: 4px 8px; }
 .sk-chart select[hidden] { display: none; }
+#sk-bpi-sel { font-size: 14px; color: inherit; background: var(--sk-surface); border: 1px solid var(--sk-line); border-radius: 6px; padding: 4px 8px; color-scheme: dark; }
 .sk-cleg { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; margin-bottom: 4px; }
 .sk-cleg span { display: inline-flex; align-items: center; gap: 6px; }
 .sk-plot { position: relative; touch-action: pan-y; }
@@ -1540,59 +1541,6 @@ raw_html(
 )
 ```
 
-```{r bpi-trends, echo=FALSE, results='asis', warning=FALSE, message=FALSE}
-# Chicago Bulls and Dallas Mavericks: ESPN BPI playoff %, play-in %, projected seed, projected draft slot and 1st-pick %,
-# saved once a day (the latest run of each Chicago date wins) so the trend can be charted. ESPN keeps no history,
-# so the chart starts with the first saved day.
-BPI_TEAMS <- c("Chicago Bulls", "Dallas Mavericks")
-bpi_file <- "bpi_history.csv"
-bpi_cols <- c("playoff", "playin", "seed", "draft", "first")
-bpi_today <- tryCatch({
-  # Primary: ESPN's JSON feed (same numbers as the projections page; the page itself is often a bot check from GitHub's runners)
-  out <- tryCatch({
-    j <- fromJSON(content(GET(url_espn_api, user_agent("Mozilla/5.0"), timeout(30)), as = "text", encoding = "UTF-8"), simplifyVector = FALSE)
-    nm <- unlist(Filter(function(x) x$name == "projections", j$categories)[[1]]$names)
-    bind_rows(lapply(j$teams, function(t) {
-      if (!t$team$displayName %in% BPI_TEAMS) return(NULL)
-      v <- Filter(function(x) x$name == "projections", t$categories)[[1]]$values
-      g <- function(n) { x <- v[[match(n, nm)]]; if (is.null(x)) NA_real_ else as.numeric(x) }
-      tibble(team = t$team$displayName, playoff = g("probmakeplayoffs"), playin = g("playinchance"),
-             seed = g("playoffseed"), draft = g("projdraftslot"), first = g("probno1draftpick"))
-    }))
-  }, error = function(e) { message("BPI feed failed, trying the page: ", conditionMessage(e)); NULL })
-  if (is.null(out) || nrow(out) < 2) {
-    # Fallback: the projections page (a team-name table next to a stats table)
-    pg <- read_html(content(GET(url_espn, user_agent("Mozilla/5.0")), as = "text", encoding = "UTF-8"))
-    tb <- html_table(pg)
-    x <- bind_cols(tb[[1]], tb[[2]])
-    out <- tibble(team = x$Team, playoff = as.numeric(x$`PLAYOFF%`), playin = as.numeric(x$`PLAYIN%`),
-                  seed = as.numeric(x$`PROJ SEED`), draft = as.numeric(x$`PROJ DRAFT`), first = as.numeric(x$`1ST PICK%`)) %>%
-      filter(team %in% BPI_TEAMS)
-  }
-  if (nrow(out) != length(BPI_TEAMS) || any(is.na(out$playoff))) stop("incomplete BPI data")
-  out %>% mutate(date = as.character(today), .before = 1)
-}, error = function(e) { message("ESPN BPI trends skipped: ", conditionMessage(e)); NULL })
-
-bpi_hist <- if (file.exists(bpi_file)) read.csv(bpi_file, stringsAsFactors = FALSE) else
-  data.frame(date = character(), team = character(), playoff = numeric(), playin = numeric(), seed = numeric(), draft = numeric(), first = numeric())
-if (!is.null(bpi_today)) {
-  bpi_hist <- bind_rows(bpi_hist %>% filter(!(date == as.character(today) & team %in% bpi_today$team)), bpi_today) %>% arrange(date, team)
-  write.csv(bpi_hist, bpi_file, row.names = FALSE)
-}
-bpi_json <- jsonlite::toJSON(list(teams = BPI_TEAMS, rows = bpi_hist), dataframe = "rows", na = "null", auto_unbox = TRUE, digits = 4)
-raw_html(
-  "<details class=\"sk-fold\"><summary>Bulls &amp; Mavs: ESPN BPI trends<small>playoff, play-in, seed and draft odds over time</small></summary><div class=\"sk-inner\">",
-  "<div class=\"sk-crow\"><div><div class=\"sk-cttl\" id=\"sk-bpi-ttl\"></div><p class=\"sk-cdsc\" id=\"sk-bpi-dsc\"></p></div>",
-  "<select id=\"sk-bpi-sel\" aria-label=\"BPI measure\"></select></div>",
-  "<div class=\"sk-cleg\" id=\"sk-bpi-leg\"></div>",
-  "<div class=\"sk-plot\" id=\"sk-bpi-plot\"><div class=\"sk-empty\">Charts need JavaScript.</div></div>",
-  sprintf("<details class=\"sk-more\"><summary>About these numbers</summary><p class=\"sk-note\">From ESPN's BPI projections (<a href=\"%s\">espn.com/nba/bpi</a>), saved once a day; ESPN keeps no history, so the trend starts on %s. Playoff %% is the chance to make the playoffs (including through the play-in). Projected seed and draft slot are ESPN's averages across its simulations.</p></details>",
-          url_espn, if (nrow(bpi_hist) > 0) format(as.Date(min(bpi_hist$date)), "%b %d") else "the first saved day"),
-  "</div></details>",
-  "<script type=\"application/json\" id=\"sk-bpi-data\">", bpi_json, "</script>"
-)
-```
-
 ```{r season-charts, echo=FALSE, results='asis'}
 # Interactive charts (drawn in the browser from standings_history.csv, embedded below as JSON)
 for (col in c("win_prob", "range_lo", "range_hi", "max_projection", "opta", "darko", "dnt", "crafted")) if (!col %in% names(history)) history[[col]] <- NA_real_
@@ -1967,6 +1915,59 @@ raw_html(
 )
 ```
 
+```{r bpi-trends, echo=FALSE, results='asis', warning=FALSE, message=FALSE}
+# Chicago Bulls and Dallas Mavericks: ESPN BPI playoff %, play-in %, projected seed, projected draft slot and 1st-pick %,
+# saved once a day (the latest run of each Chicago date wins) so the trend can be charted. ESPN keeps no history,
+# so the chart starts with the first saved day.
+BPI_TEAMS <- c("Chicago Bulls", "Dallas Mavericks")
+bpi_file <- "bpi_history.csv"
+bpi_cols <- c("playoff", "playin", "seed", "draft", "first")
+bpi_today <- tryCatch({
+  # Primary: ESPN's JSON feed (same numbers as the projections page; the page itself is often a bot check from GitHub's runners)
+  out <- tryCatch({
+    j <- fromJSON(content(GET(url_espn_api, user_agent("Mozilla/5.0"), timeout(30)), as = "text", encoding = "UTF-8"), simplifyVector = FALSE)
+    nm <- unlist(Filter(function(x) x$name == "projections", j$categories)[[1]]$names)
+    bind_rows(lapply(j$teams, function(t) {
+      if (!t$team$displayName %in% BPI_TEAMS) return(NULL)
+      v <- Filter(function(x) x$name == "projections", t$categories)[[1]]$values
+      g <- function(n) { x <- v[[match(n, nm)]]; if (is.null(x)) NA_real_ else as.numeric(x) }
+      tibble(team = t$team$displayName, playoff = g("probmakeplayoffs"), playin = g("playinchance"),
+             seed = g("playoffseed"), draft = g("projdraftslot"), first = g("probno1draftpick"))
+    }))
+  }, error = function(e) { message("BPI feed failed, trying the page: ", conditionMessage(e)); NULL })
+  if (is.null(out) || nrow(out) < 2) {
+    # Fallback: the projections page (a team-name table next to a stats table)
+    pg <- read_html(content(GET(url_espn, user_agent("Mozilla/5.0")), as = "text", encoding = "UTF-8"))
+    tb <- html_table(pg)
+    x <- bind_cols(tb[[1]], tb[[2]])
+    out <- tibble(team = x$Team, playoff = as.numeric(x$`PLAYOFF%`), playin = as.numeric(x$`PLAYIN%`),
+                  seed = as.numeric(x$`PROJ SEED`), draft = as.numeric(x$`PROJ DRAFT`), first = as.numeric(x$`1ST PICK%`)) %>%
+      filter(team %in% BPI_TEAMS)
+  }
+  if (nrow(out) != length(BPI_TEAMS) || any(is.na(out$playoff))) stop("incomplete BPI data")
+  out %>% mutate(date = as.character(today), .before = 1)
+}, error = function(e) { message("ESPN BPI trends skipped: ", conditionMessage(e)); NULL })
+
+bpi_hist <- if (file.exists(bpi_file)) read.csv(bpi_file, stringsAsFactors = FALSE) else
+  data.frame(date = character(), team = character(), playoff = numeric(), playin = numeric(), seed = numeric(), draft = numeric(), first = numeric())
+if (!is.null(bpi_today)) {
+  bpi_hist <- bind_rows(bpi_hist %>% filter(!(date == as.character(today) & team %in% bpi_today$team)), bpi_today) %>% arrange(date, team)
+  write.csv(bpi_hist, bpi_file, row.names = FALSE)
+}
+bpi_json <- jsonlite::toJSON(list(teams = BPI_TEAMS, rows = bpi_hist), dataframe = "rows", na = "null", auto_unbox = TRUE, digits = 4)
+raw_html(
+  "<details class=\"sk-fold\"><summary>Bulls &amp; Mavs: ESPN BPI trends<small>playoff, play-in, seed and draft odds over time</small></summary><div class=\"sk-inner\">",
+  "<div class=\"sk-crow\"><div><div class=\"sk-cttl\" id=\"sk-bpi-ttl\"></div><p class=\"sk-cdsc\" id=\"sk-bpi-dsc\"></p></div>",
+  "<select id=\"sk-bpi-sel\" aria-label=\"BPI measure\"></select></div>",
+  "<div class=\"sk-cleg\" id=\"sk-bpi-leg\"></div>",
+  "<div class=\"sk-plot\" id=\"sk-bpi-plot\"><div class=\"sk-empty\">Charts need JavaScript.</div></div>",
+  sprintf("<details class=\"sk-more\"><summary>About these numbers</summary><p class=\"sk-note\">From ESPN's BPI projections (<a href=\"%s\">espn.com/nba/bpi</a>), saved once a day.</p></details>",
+          url_espn),
+  "</div></details>",
+  "<script type=\"application/json\" id=\"sk-bpi-data\">", bpi_json, "</script>"
+)
+```
+
 ```{r league-outlook-open, echo=FALSE, results='asis'}
 raw_html("<details class=\"sk-fold\"><summary>League skins % outlook<small>where the league total should finish</small></summary><div class=\"sk-inner\">")
 ```
@@ -2076,7 +2077,17 @@ raw_html("</div></details>")
     ser.forEach(function (s) { s.pts.forEach(function (p) { if (p[1] != null) { xs.push(p[0]); vs.push(p[1]); } }); });
     if (!xs.length) { host.innerHTML = '<div class="sk-empty">No data yet.</div>'; return; }
     var x0 = Math.min.apply(null, xs.concat(o.xmin == null ? [] : [o.xmin])), x1 = Math.max.apply(null, xs);
-    var yt = o.yt || niceTicks(Math.min.apply(null, vs), Math.max.apply(null, vs)), y0 = yt[0], y1 = yt[yt.length - 1];
+    var lo = Math.min.apply(null, vs), hi = Math.max.apply(null, vs);
+    if (o.yfit) {   // tight range around the data (padded), re-fit every draw; clamped to hard limits like 0-100%
+      var pad = Math.max((hi - lo) * 0.15, o.yfit.floor);
+      lo -= pad; hi += pad;
+      if (o.yfit.min != null) lo = Math.max(lo, o.yfit.min);
+      if (o.yfit.max != null) hi = Math.min(hi, o.yfit.max);
+    }
+    var yt = o.yt || niceTicks(lo, hi);
+    if (o.yfit && o.yfit.min != null) yt = yt.filter(function (t) { return t >= o.yfit.min; });
+    if (o.yfit && o.yfit.max != null) yt = yt.filter(function (t) { return t <= o.yfit.max; });
+    var y0 = yt[0], y1 = yt[yt.length - 1];
     var X = function (x) { return m.l + (x1 === x0 ? 0.5 : (x - x0) / (x1 - x0)) * (W - m.l - m.r); };
     var Y = function (v) { var f = (v - y0) / ((y1 - y0) || 1); return m.t + (o.rev ? f : 1 - f) * (Hh - m.t - m.b); };
     var svg = '<svg width="' + W + '" height="' + Hh + '" viewBox="0 0 ' + W + " " + Hh + '" role="img">';
@@ -2176,7 +2187,7 @@ raw_html("</div></details>")
       var lo = Math.min.apply(null, days), hi = Math.max.apply(null, days), xt = [];
       if (days.length) for (var k = 0; k <= 3; k++) { var d = Math.round(lo + (hi - lo) * k / 3); if (!xt.length || xt[xt.length - 1][0] !== d) xt.push([d, dayLbl(d)]); }
       line(plot, ser, { fmt: m.f, tick: m.pct ? function (t) { return t + "%"; } : function (t) { return t.toFixed(t % 1 ? 1 : 0); },
-        yt: m.pct ? [0, 25, 50, 75, 100] : null, rev: !!m.rev, xt: xt, tipTitle: dayLbl });
+        yfit: { floor: m.pct ? 1 : 0.5, min: m.pct ? 0 : null, max: m.pct ? 100 : null }, rev: !!m.rev, xt: xt, tipTitle: dayLbl });
     }
     jobs.push(draw);
     sel.addEventListener("change", function () { key = sel.value; draw(); });
