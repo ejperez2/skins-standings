@@ -1540,6 +1540,59 @@ raw_html(
 )
 ```
 
+```{r bpi-trends, echo=FALSE, results='asis', warning=FALSE, message=FALSE}
+# Chicago Bulls and Dallas Mavericks: ESPN BPI playoff %, play-in %, projected seed, projected draft slot and 1st-pick %,
+# saved once a day (the latest run of each Chicago date wins) so the trend can be charted. ESPN keeps no history,
+# so the chart starts with the first saved day.
+BPI_TEAMS <- c("Chicago Bulls", "Dallas Mavericks")
+bpi_file <- "bpi_history.csv"
+bpi_cols <- c("playoff", "playin", "seed", "draft", "first")
+bpi_today <- tryCatch({
+  # Primary: ESPN's JSON feed (same numbers as the projections page; the page itself is often a bot check from GitHub's runners)
+  out <- tryCatch({
+    j <- fromJSON(content(GET(url_espn_api, user_agent("Mozilla/5.0"), timeout(30)), as = "text", encoding = "UTF-8"), simplifyVector = FALSE)
+    nm <- unlist(Filter(function(x) x$name == "projections", j$categories)[[1]]$names)
+    bind_rows(lapply(j$teams, function(t) {
+      if (!t$team$displayName %in% BPI_TEAMS) return(NULL)
+      v <- Filter(function(x) x$name == "projections", t$categories)[[1]]$values
+      g <- function(n) { x <- v[[match(n, nm)]]; if (is.null(x)) NA_real_ else as.numeric(x) }
+      tibble(team = t$team$displayName, playoff = g("probmakeplayoffs"), playin = g("playinchance"),
+             seed = g("playoffseed"), draft = g("projdraftslot"), first = g("probno1draftpick"))
+    }))
+  }, error = function(e) { message("BPI feed failed, trying the page: ", conditionMessage(e)); NULL })
+  if (is.null(out) || nrow(out) < 2) {
+    # Fallback: the projections page (a team-name table next to a stats table)
+    pg <- read_html(content(GET(url_espn, user_agent("Mozilla/5.0")), as = "text", encoding = "UTF-8"))
+    tb <- html_table(pg)
+    x <- bind_cols(tb[[1]], tb[[2]])
+    out <- tibble(team = x$Team, playoff = as.numeric(x$`PLAYOFF%`), playin = as.numeric(x$`PLAYIN%`),
+                  seed = as.numeric(x$`PROJ SEED`), draft = as.numeric(x$`PROJ DRAFT`), first = as.numeric(x$`1ST PICK%`)) %>%
+      filter(team %in% BPI_TEAMS)
+  }
+  if (nrow(out) != length(BPI_TEAMS) || any(is.na(out$playoff))) stop("incomplete BPI data")
+  out %>% mutate(date = as.character(today), .before = 1)
+}, error = function(e) { message("ESPN BPI trends skipped: ", conditionMessage(e)); NULL })
+
+bpi_hist <- if (file.exists(bpi_file)) read.csv(bpi_file, stringsAsFactors = FALSE) else
+  data.frame(date = character(), team = character(), playoff = numeric(), playin = numeric(), seed = numeric(), draft = numeric(), first = numeric())
+if (!is.null(bpi_today)) {
+  bpi_hist <- bind_rows(bpi_hist %>% filter(!(date == as.character(today) & team %in% bpi_today$team)), bpi_today) %>% arrange(date, team)
+  write.csv(bpi_hist, bpi_file, row.names = FALSE)
+}
+bpi_json <- jsonlite::toJSON(list(teams = BPI_TEAMS, rows = bpi_hist), dataframe = "rows", na = "null", auto_unbox = TRUE, digits = 4)
+raw_html(
+  "<details class=\"sk-fold\"><summary>Bulls &amp; Mavs: ESPN BPI trends<small>playoff, play-in, seed and draft odds over time</small></summary><div class=\"sk-inner\">",
+  "<div class=\"sk-crow\"><div><div class=\"sk-cttl\" id=\"sk-bpi-ttl\"></div><p class=\"sk-cdsc\" id=\"sk-bpi-dsc\"></p></div>",
+  "<select id=\"sk-bpi-sel\" aria-label=\"BPI measure\"></select></div>",
+  "<div class=\"sk-cleg\" id=\"sk-bpi-leg\"></div>",
+  "<div class=\"sk-plot\" id=\"sk-bpi-plot\"><div class=\"sk-empty\">Charts need JavaScript.</div></div>",
+  sprintf("<details class=\"sk-more\"><summary>About these numbers</summary><p class=\"sk-note\">From ESPN's BPI projections (<a href=\"%s\">espn.com/nba/bpi</a>), saved once a day; ESPN keeps no history, so the trend starts on %s. Playoff %% is the chance to make the playoffs (including through the play-in). Projected seed and draft slot are ESPN's averages across its simulations.</p></details>",
+          url_espn, if (nrow(bpi_hist) > 0) format(as.Date(min(bpi_hist$date)), "%b %d") else "the first saved day"),
+  "</div></details>",
+  "<script type=\"application/json\" id=\"sk-bpi-data\">", bpi_json, "</script>"
+)
+```
+
 ```{r season-charts, echo=FALSE, results='asis'}
 # Interactive charts (drawn in the browser from standings_history.csv, embedded below as JSON)
 for (col in c("win_prob", "range_lo", "range_hi", "max_projection", "opta", "darko", "dnt", "crafted")) if (!col %in% names(history)) history[[col]] <- NA_real_
@@ -1985,7 +2038,7 @@ if (is.null(lp)) {
     group_by(wk) %>% summarise(a = last(a), e = last(e), .groups = "drop")
   lo_json <- jsonlite::toJSON(list(
     hist = unname(lapply(split(hw, hw$season), function(d) list(s = d$season[1], wk = d$wk, v = round(100 * d$v, 2), off = round(100 * (d$v - d$final), 2)))),
-    cur = list(wk = cw$wk, a = round(100 * cw$a, 2), e = round(100 * cw$e, 2))), auto_unbox = TRUE, na = "null")
+    start = format(SEASON_START), cur = list(wk = cw$wk, a = round(100 * cw$a, 2), e = round(100 * cw$e, 2))), auto_unbox = TRUE, na = "null")
   raw_html(
     "<div id=\"sk-lo\"><div class=\"sk-cttl\">League skins % so far, by week of the season</div>",
     "<div class=\"sk-cleg\" id=\"sk-lo-leg\"></div><div class=\"sk-plot\" id=\"sk-lo-a\"><div class=\"sk-empty\">Charts need JavaScript.</div></div>",
@@ -2002,22 +2055,12 @@ raw_html("</div></details>")
 
 ```{=html}
 <script>
-// League skins % outlook charts: weekly running number (past seasons, this season, Vegas-expected) with hover tooltips
+// Interactive line charts for the League skins % outlook and the Bulls & Mavs BPI trends (same look as the season charts)
 (function () {
-  var el = document.getElementById("sk-lo-data"); if (!el) return;
-  var D = JSON.parse(el.textContent), A = function (x) { return [].concat(x == null ? [] : x); };
-  var COL = { "2022-23": "#8A939D", "2023-24": "#4C9BE8", "2024-25": "#E0B04A", "2025-26": "#9C8AE0" };
-  var NOW = "2026-27 actual", EXP = "2026-27 Vegas-expected";
-  var zip = function (w, v) { return A(w).map(function (x, i) { return [x, A(v)[i]]; }); };
-  var pct = function (v) { return v.toFixed(1) + "%"; }, sgn = function (v) { return (v > 0 ? "+" : "") + v.toFixed(1); };
-  function build(kind) {
-    var out = D.hist.map(function (h) { return { n: h.s, c: COL[h.s] || "#999", w: 1.6, pts: zip(h.wk, kind === "off" ? h.off : h.v) }; });
-    if (kind !== "off") {
-      out.push({ n: NOW, c: "#E26A54", w: 2.6, dots: true, pts: zip(D.cur.wk, D.cur.a) });
-      out.push({ n: EXP, c: "#EEEEEE", w: 2, dash: "5 4", dots: true, pts: zip(D.cur.wk, D.cur.e) });
-    }
-    return out;
-  }
+  var A = function (x) { return [].concat(x == null ? [] : x); };
+  var MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  var dayN = function (iso) { var p = iso.split("-"); return Math.round(Date.UTC(+p[0], +p[1] - 1, +p[2]) / 864e5); };
+  var dayLbl = function (n) { var d = new Date(n * 864e5); return MON[d.getUTCMonth()] + " " + d.getUTCDate(); };
   function niceTicks(a, b) {
     if (a === b) { a -= 1; b += 1; }
     var step0 = (b - a) / 4, mag = Math.pow(10, Math.floor(Math.log10(step0)));
@@ -2026,21 +2069,23 @@ raw_html("</div></details>")
     if (t[t.length - 1] < b) t.push(+(t[t.length - 1] + step).toFixed(6));
     return t;
   }
-  function draw(host, ser, fmt, zero) {
-    var W = Math.max(280, host.clientWidth || 600), Hh = Math.round(Math.min(280, Math.max(200, W * 0.5))), m = { l: 44, r: 12, t: 10, b: 24 };
-    var xs = [], vs = zero ? [0] : [];
+  // ser: [{n, c, w, dash, dots, pts: [[x, y]]}]; o: {fmt, zero, yt (ticks), rev (flip y), xt: [[x, label]], tipTitle(x)}
+  function line(host, ser, o) {
+    var W = Math.max(280, host.clientWidth || 600), Hh = Math.round(Math.min(280, Math.max(200, W * 0.5))), m = { l: 44, r: 14, t: 10, b: 24 };
+    var xs = [], vs = o.zero ? [0] : [];
     ser.forEach(function (s) { s.pts.forEach(function (p) { if (p[1] != null) { xs.push(p[0]); vs.push(p[1]); } }); });
-    var x0 = 1, x1 = Math.max.apply(null, xs), yt = niceTicks(Math.min.apply(null, vs), Math.max.apply(null, vs));
-    var y0 = yt[0], y1 = yt[yt.length - 1];
-    var X = function (x) { return m.l + (x - x0) / ((x1 - x0) || 1) * (W - m.l - m.r); };
-    var Y = function (v) { return m.t + (1 - (v - y0) / ((y1 - y0) || 1)) * (Hh - m.t - m.b); };
+    if (!xs.length) { host.innerHTML = '<div class="sk-empty">No data yet.</div>'; return; }
+    var x0 = Math.min.apply(null, xs.concat(o.xmin == null ? [] : [o.xmin])), x1 = Math.max.apply(null, xs);
+    var yt = o.yt || niceTicks(Math.min.apply(null, vs), Math.max.apply(null, vs)), y0 = yt[0], y1 = yt[yt.length - 1];
+    var X = function (x) { return m.l + (x1 === x0 ? 0.5 : (x - x0) / (x1 - x0)) * (W - m.l - m.r); };
+    var Y = function (v) { var f = (v - y0) / ((y1 - y0) || 1); return m.t + (o.rev ? f : 1 - f) * (Hh - m.t - m.b); };
     var svg = '<svg width="' + W + '" height="' + Hh + '" viewBox="0 0 ' + W + " " + Hh + '" role="img">';
     yt.forEach(function (t) {
-      svg += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + Y(t) + '" y2="' + Y(t) + '" stroke="' + (zero && t === 0 ? "#888" : "#3a3a3a") + '"/>' +
-        '<text x="' + (m.l - 6) + '" y="' + (Y(t) + 4) + '" text-anchor="end">' + (zero ? sgn(t) : t.toFixed(t % 1 ? 1 : 0)) + "</text>";
+      svg += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + Y(t) + '" y2="' + Y(t) + '" stroke="' + (o.zero && t === 0 ? "#888" : "#3a3a3a") + '"/>' +
+        '<text x="' + (m.l - 6) + '" y="' + (Y(t) + 4) + '" text-anchor="end">' + o.tick(t) + "</text>";
     });
-    [1, 5, 10, 15, 20, 25].filter(function (w) { return w <= x1; }).forEach(function (w) {
-      svg += '<text x="' + X(w) + '" y="' + (Hh - 6) + '" text-anchor="' + (w === x1 ? "end" : w === 1 ? "start" : "middle") + '">Wk ' + w + "</text>";
+    o.xt.filter(function (t) { return t[0] >= x0 && t[0] <= x1; }).forEach(function (t, i, all) {
+      svg += '<text x="' + X(t[0]) + '" y="' + (Hh - 6) + '" text-anchor="' + (all.length > 1 && i === all.length - 1 ? "end" : i === 0 && all.length > 1 ? "start" : "middle") + '">' + t[1] + "</text>";
     });
     ser.forEach(function (s) {
       var d = s.pts.map(function (p, i) { return (i ? "L" : "M") + X(p[0]).toFixed(1) + " " + Y(p[1]).toFixed(1); }).join("");
@@ -2052,31 +2097,91 @@ raw_html("</div></details>")
     host.innerHTML = svg + '<div class="sk-tip" hidden></div>';
     var hit = host.querySelector(".sk-hit"), xh = host.querySelector(".sk-xh"), tip = host.querySelector(".sk-tip");
     var show = function (e) {
-      var wk = Math.max(x0, Math.min(x1, Math.round(x0 + (e.clientX - host.getBoundingClientRect().left - m.l) / ((W - m.l - m.r) || 1) * (x1 - x0))));
+      var px = e.clientX - host.getBoundingClientRect().left, best = null;
+      xs.forEach(function (x) { if (best == null || Math.abs(X(x) - px) < Math.abs(X(best) - px)) best = x; });
       var rows = [];
-      ser.forEach(function (s) { s.pts.forEach(function (p) { if (p[0] === wk && p[1] != null) rows.push({ n: s.n, c: s.c, v: p[1] }); }); });
+      ser.forEach(function (s) { s.pts.forEach(function (p) { if (p[0] === best && p[1] != null) rows.push({ n: s.n, c: s.c, v: p[1] }); }); });
       if (!rows.length) { tip.hidden = true; xh.setAttribute("visibility", "hidden"); return; }
-      rows.sort(function (a, b) { return b.v - a.v; });
-      xh.setAttribute("x1", X(wk)); xh.setAttribute("x2", X(wk)); xh.setAttribute("visibility", "visible");
-      tip.innerHTML = '<div style="color:var(--sk-muted)">Week ' + wk + "</div>" +
-        rows.map(function (r) { return '<div><i class="sk-dot" style="--c:' + r.c + '"></i>' + r.n + "<b>" + fmt(r.v) + "</b></div>"; }).join("");
+      rows.sort(function (a, b) { return o.rev ? a.v - b.v : b.v - a.v; });
+      xh.setAttribute("x1", X(best)); xh.setAttribute("x2", X(best)); xh.setAttribute("visibility", "visible");
+      tip.innerHTML = '<div style="color:var(--sk-muted)">' + o.tipTitle(best) + "</div>" +
+        rows.map(function (r) { return '<div><i class="sk-dot" style="--c:' + r.c + '"></i>' + r.n + "<b>" + o.fmt(r.v) + "</b></div>"; }).join("");
       tip.hidden = false;
       var tw = tip.offsetWidth;
-      tip.style.left = Math.max(0, Math.min(W - tw, X(wk) + (X(wk) > W / 2 ? -tw - 10 : 10))) + "px";
+      tip.style.left = Math.max(0, Math.min(W - tw, X(best) + (X(best) > W / 2 ? -tw - 10 : 10))) + "px";
     };
     hit.addEventListener("pointermove", show);
     hit.addEventListener("pointerdown", show);
     hit.addEventListener("pointerleave", function () { tip.hidden = true; xh.setAttribute("visibility", "hidden"); });
   }
-  var a = document.getElementById("sk-lo-a"), b = document.getElementById("sk-lo-b"), leg = document.getElementById("sk-lo-leg");
-  var sa = build("v"), sb = build("off");
-  leg.innerHTML = sa.map(function (s) { return '<span><i class="sk-dot" style="--c:' + s.c + '"></i>' + s.n + "</span>"; }).join("");
-  function all() { draw(a, sa, pct, false); draw(b, sb, sgn, true); }
-  // The charts sit in a closed <details>: draw once it opens (and on resize) so the width is known
-  var fold = a.closest("details");
-  if (fold) fold.addEventListener("toggle", function () { if (fold.open) all(); });
-  var rz; window.addEventListener("resize", function () { clearTimeout(rz); rz = setTimeout(function () { if (!fold || fold.open) all(); }, 120); });
-  all();
+  var jobs = [];
+  var redraw = function () { jobs.forEach(function (f) { f(); }); };
+  var rz; window.addEventListener("resize", function () { clearTimeout(rz); rz = setTimeout(redraw, 120); });
+  // Charts sit in closed <details>: draw when one opens so the width is known
+  document.addEventListener("toggle", function (e) { if (e.target.open) redraw(); }, true);
+
+  // --- League skins % outlook: x axis is the week of the season, shown as that week's date this season ---
+  var lo = document.getElementById("sk-lo-data");
+  if (lo) (function () {
+    var D = JSON.parse(lo.textContent), start = dayN(D.start);
+    var COL = { "2022-23": "#8A939D", "2023-24": "#4C9BE8", "2024-25": "#E0B04A", "2025-26": "#9C8AE0" };
+    var zip = function (w, v) { return A(w).map(function (x, i) { return [x, A(v)[i]]; }); };
+    var pct = function (v) { return v.toFixed(1) + "%"; }, sgn = function (v) { return (v > 0 ? "+" : "") + v.toFixed(1); };
+    var wkDay = function (w) { return dayLbl(start + 7 * (w - 1)); };
+    function build(kind) {
+      var out = D.hist.map(function (h) { return { n: h.s, c: COL[h.s] || "#999", w: 1.6, pts: zip(h.wk, kind === "off" ? h.off : h.v) }; });
+      if (kind !== "off") {
+        out.push({ n: "2026-27 actual", c: "#E26A54", w: 2.6, dots: true, pts: zip(D.cur.wk, D.cur.a) });
+        out.push({ n: "2026-27 Vegas-expected", c: "#EEEEEE", w: 2, dash: "5 4", dots: true, pts: zip(D.cur.wk, D.cur.e) });
+      }
+      return out;
+    }
+    var xt = [1, 5, 9, 13, 17, 21, 25].map(function (w) { return [w, wkDay(w)]; });
+    var tipTitle = function (w) { return "Week " + w + " &middot; " + wkDay(w); };
+    var a = document.getElementById("sk-lo-a"), b = document.getElementById("sk-lo-b"), leg = document.getElementById("sk-lo-leg");
+    var sa = build("v"), sb = build("off");
+    leg.innerHTML = sa.map(function (s) { return '<span><i class="sk-dot" style="--c:' + s.c + '"></i>' + s.n + "</span>"; }).join("");
+    var fold = a.closest("details");
+    jobs.push(function () {
+      if (fold && !fold.open) return;
+      line(a, sa, { fmt: pct, tick: function (t) { return t.toFixed(t % 1 ? 1 : 0); }, xt: xt, tipTitle: tipTitle, xmin: 1 });
+      line(b, sb, { fmt: sgn, tick: sgn, zero: true, xt: xt, tipTitle: tipTitle, xmin: 1 });
+    });
+  })();
+
+  // --- Bulls & Mavs ESPN BPI trends: pick a measure, both teams over time ---
+  var bd = document.getElementById("sk-bpi-data");
+  if (bd) (function () {
+    var D = JSON.parse(bd.textContent), rows = A(D.rows), COLS = ["#E26A54", "#4C9BE8"];
+    var P = function (v) { return v.toFixed(1) + "%"; }, N1 = function (v) { return v.toFixed(1); };
+    var M = {
+      playoff: { l: "Playoff %", d: "Chance to make the playoffs, including through the play-in.", f: P, pct: true },
+      playin: { l: "Play-in %", d: "Chance to finish in the play-in range (seeds 7-10).", f: P, pct: true },
+      seed: { l: "Projected seed", d: "Average conference seed across ESPN's simulations. Seed 1 is at the top.", f: N1, rev: true },
+      draft: { l: "Projected draft slot", d: "Average draft position across ESPN's simulations. Pick 1 is at the top.", f: N1, rev: true },
+      first: { l: "1st pick %", d: "Chance of winning the top pick in the lottery.", f: P, pct: true }
+    };
+    var sel = document.getElementById("sk-bpi-sel"), ttl = document.getElementById("sk-bpi-ttl"), dsc = document.getElementById("sk-bpi-dsc");
+    var plot = document.getElementById("sk-bpi-plot"), leg = document.getElementById("sk-bpi-leg"), key = "playoff";
+    sel.innerHTML = Object.keys(M).map(function (k) { return '<option value="' + k + '">' + M[k].l + "</option>"; }).join("");
+    leg.innerHTML = D.teams.map(function (t, i) { return '<span><i class="sk-dot" style="--c:' + COLS[i] + '"></i>' + t + "</span>"; }).join("");
+    var fold = plot.closest("details");
+    function draw() {
+      if (fold && !fold.open) return;
+      var m = M[key], days = rows.map(function (r) { return dayN(r.date); });
+      ttl.textContent = m.l; dsc.textContent = m.d;
+      var ser = D.teams.map(function (t, i) {
+        return { n: t, c: COLS[i], w: 2.4, dots: true, pts: rows.filter(function (r) { return r.team === t && r[key] != null; }).map(function (r) { return [dayN(r.date), r[key]]; }) };
+      });
+      var lo = Math.min.apply(null, days), hi = Math.max.apply(null, days), xt = [];
+      if (days.length) for (var k = 0; k <= 3; k++) { var d = Math.round(lo + (hi - lo) * k / 3); if (!xt.length || xt[xt.length - 1][0] !== d) xt.push([d, dayLbl(d)]); }
+      line(plot, ser, { fmt: m.f, tick: m.pct ? function (t) { return t + "%"; } : function (t) { return t.toFixed(t % 1 ? 1 : 0); },
+        yt: m.pct ? [0, 25, 50, 75, 100] : null, rev: !!m.rev, xt: xt, tipTitle: dayLbl });
+    }
+    jobs.push(draw);
+    sel.addEventListener("change", function () { key = sel.value; draw(); });
+  })();
+  redraw();
 })();
 </script>
 ```
