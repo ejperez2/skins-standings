@@ -1662,11 +1662,12 @@ roster_html <- vapply(PLAYERS, function(p) {
 }, character(1))
 
 raw_html(
-  "<h2 class=\"sk-h\">Rosters</h2>",
+  "<details class=\"sk-fold\"><summary>Rosters<small>tap a team for every source</small></summary><div class=\"sk-inner\">",
   sprintf("<div class=\"sk-who\"><span class=\"sk-seg\" id=\"sk-rtabs\" data-default=\"%s\">%s</span></div>", standing_order[1],
           paste(sprintf("<button type=\"button\" data-p=\"%s\">%s</button>", PLAYERS, PLAYERS), collapse = "")),
   paste(roster_html, collapse = ""),
-  "<p class=\"sk-note\">Skins = skins so far. % Proj = skins % projection (skins % &times; 82), green when ahead of the projection. Proj = weighted-average final skins. Tap a team for every source.</p>"
+  "<p class=\"sk-note\">Skins = skins so far. % Proj = skins % projection (skins % &times; 82), green when ahead of the projection. Proj = weighted-average final skins. Tap a team for every source.</p>",
+  "</div></details>"
 )
 ```
 
@@ -1963,21 +1964,16 @@ if (is.null(lp)) {
 
   # Final league skins % if the rest of the season runs at rate q (all games not yet played)
   final_at <- function(q) (A + q * (N_TOT - n)) / N_TOT
-  sd_rest <- sqrt(expd * (1 - expd) * (N_TOT - n)) / N_TOT
   sc <- tibble(label = c("Vegas-implied rate", "Last 4 seasons' average", "57%", "55%", "62%"),
                q = c(expd, mean(fin$final), 0.57, 0.55, 0.62)) %>% arrange(desc(q))
   sc$final <- final_at(sc$q)
 
   lp_p(sprintf("<b>So far:</b> %.1f%% of games earned a skin (%d of %d, %.1f%% of the season). The pre-game Vegas moneylines (no-vig consensus) implied %.1f%% for the same games, so the league is running <b>%+.1f points (about %+.0f skins)</b> above the market.",
                100 * act, round(A), n, 100 * done, 100 * expd, 100 * (act - expd), A - E))
-  both_hot <- all(pk$a > pk$e)
-  lp_p(sprintf("%s; %s.%s", pick_txt("W"), pick_txt("L"),
-               if (both_hot) " Both sides are beating the market, so it is not only a hot start for the W teams (an L pick scores when its team loses)." else ""))
+  lp_p(sprintf("%s; %s.", pick_txt("W"), pick_txt("L")))
   raw_html("<div class=\"sk-tablewrap\"><table class=\"sk-table\" data-quarto-disable-processing=\"true\"><thead><tr><th>Rest of season at</th><th>Skins %</th><th>Final league skins %</th></tr></thead><tbody>",
            paste(sprintf("<tr><td>%s</td><td>%.1f%%</td><td>%.1f%%</td></tr>", sc$label, 100 * sc$q, 100 * sc$final), collapse = ""),
            "</tbody></table></div>")
-  lp_p(sprintf("Only %.1f%% of the season is played, so the final is mostly still ahead: it is the %d skins banked plus whatever the other %d games earn. With the rest of the season at the Vegas-implied rate, chance alone still moves the final by about &plusmn;%.1f points (one standard deviation).",
-               100 * done, round(A), N_TOT - n, 100 * sd_rest))
   lp_p(sprintf("<b>History:</b> the league finished at %s (%s). At this same point of those seasons the running number was %.1f to %+.1f points from its final, but this season is %+.1f above the market, more than any of them.",
                paste(sprintf("%.1f%%", 100 * range(fin$final)), collapse = " to "), paste(fin$season, collapse = ", "),
                100 * min(off$off), 100 * max(off$off), 100 * (act - expd)))
@@ -1987,36 +1983,102 @@ if (is.null(lp)) {
   cw <- cur %>% mutate(wk = as.integer(Date - SEASON_START) %/% 7 + 1L) %>% arrange(Date) %>%
     mutate(a = cumsum(Actual_Skins) / row_number(), e = cumsum(Expected_Skins) / row_number()) %>%
     group_by(wk) %>% summarise(a = last(a), e = last(e), .groups = "drop")
-  P1 <- "League skins % so far"; P2 <- "Past seasons: running number minus final (points)"
-  pd <- bind_rows(
-    hw %>% transmute(panel = P1, series = season, wk, v = 100 * v),
-    cw %>% transmute(panel = P1, series = "2026-27 actual", wk, v = 100 * a),
-    cw %>% transmute(panel = P1, series = "2026-27 Vegas-expected", wk, v = 100 * e),
-    hw %>% transmute(panel = P2, series = season, wk, v = 100 * (v - final)))
-  pd$panel <- factor(pd$panel, levels = c(P1, P2))
-  hist_cols <- c("2022-23" = "#8A939D", "2023-24" = "#4C9BE8", "2024-25" = "#E0B04A", "2025-26" = "#9C8AE0")
-  print(
-    ggplot(pd, aes(wk, v, color = series, linetype = series == "2026-27 Vegas-expected", linewidth = grepl("2026-27", series))) +
-      geom_hline(data = data.frame(panel = factor(P2, levels = c(P1, P2)), y = 0), aes(yintercept = y), color = "#888888", linewidth = 0.4) +
-      geom_line() + geom_point(data = pd %>% filter(grepl("2026-27", series)), size = 2) +
-      facet_wrap(~panel, scales = "free_y", ncol = 1) +
-      scale_color_manual(values = c(hist_cols, "2026-27 actual" = "#E26A54", "2026-27 Vegas-expected" = "#EEEEEE")) +
-      scale_linetype_manual(values = c(`FALSE` = "solid", `TRUE` = "dashed"), guide = "none") +
-      scale_linewidth_manual(values = c(`FALSE` = 0.7, `TRUE` = 1.2), guide = "none") +
-      labs(x = "Week of season", y = NULL, color = NULL) +
-      guides(color = guide_legend(nrow = 2)) +
-      theme_minimal(base_size = 12) +
-      theme(legend.position = "bottom", strip.text = element_text(face = "bold", hjust = 0, color = "#dddddd"),
-            plot.background = element_rect(fill = "#2b2b2b", color = NA),
-            panel.grid.minor = element_blank(), panel.grid.major = element_line(color = "#3a3a3a"),
-            text = element_text(color = "#dddddd"), axis.text = element_text(color = "#aaaaaa"))
-  )
+  lo_json <- jsonlite::toJSON(list(
+    hist = unname(lapply(split(hw, hw$season), function(d) list(s = d$season[1], wk = d$wk, v = round(100 * d$v, 2), off = round(100 * (d$v - d$final), 2)))),
+    cur = list(wk = cw$wk, a = round(100 * cw$a, 2), e = round(100 * cw$e, 2))), auto_unbox = TRUE, na = "null")
+  raw_html(
+    "<div id=\"sk-lo\"><div class=\"sk-cttl\">League skins % so far, by week of the season</div>",
+    "<div class=\"sk-cleg\" id=\"sk-lo-leg\"></div><div class=\"sk-plot\" id=\"sk-lo-a\"><div class=\"sk-empty\">Charts need JavaScript.</div></div>",
+    "<div class=\"sk-cttl\" style=\"margin-top:12px\">Past seasons: running number minus final (points)</div>",
+    "<div class=\"sk-plot\" id=\"sk-lo-b\"></div></div>",
+    "<script type=\"application/json\" id=\"sk-lo-data\">", lo_json, "</script>")
   lp_p("Moneylines are the market's pre-game view; games still in progress are left out. Early in a season the running number swings a lot (a few points in the first few weeks), so read the table as a range, not a forecast.")
 }
 ```
 
 ```{r league-outlook-close, echo=FALSE, results='asis'}
 raw_html("</div></details>")
+```
+
+```{=html}
+<script>
+// League skins % outlook charts: weekly running number (past seasons, this season, Vegas-expected) with hover tooltips
+(function () {
+  var el = document.getElementById("sk-lo-data"); if (!el) return;
+  var D = JSON.parse(el.textContent), A = function (x) { return [].concat(x == null ? [] : x); };
+  var COL = { "2022-23": "#8A939D", "2023-24": "#4C9BE8", "2024-25": "#E0B04A", "2025-26": "#9C8AE0" };
+  var NOW = "2026-27 actual", EXP = "2026-27 Vegas-expected";
+  var zip = function (w, v) { return A(w).map(function (x, i) { return [x, A(v)[i]]; }); };
+  var pct = function (v) { return v.toFixed(1) + "%"; }, sgn = function (v) { return (v > 0 ? "+" : "") + v.toFixed(1); };
+  function build(kind) {
+    var out = D.hist.map(function (h) { return { n: h.s, c: COL[h.s] || "#999", w: 1.6, pts: zip(h.wk, kind === "off" ? h.off : h.v) }; });
+    if (kind !== "off") {
+      out.push({ n: NOW, c: "#E26A54", w: 2.6, dots: true, pts: zip(D.cur.wk, D.cur.a) });
+      out.push({ n: EXP, c: "#EEEEEE", w: 2, dash: "5 4", dots: true, pts: zip(D.cur.wk, D.cur.e) });
+    }
+    return out;
+  }
+  function niceTicks(a, b) {
+    if (a === b) { a -= 1; b += 1; }
+    var step0 = (b - a) / 4, mag = Math.pow(10, Math.floor(Math.log10(step0)));
+    var step = [1, 2, 2.5, 5, 10].map(function (m) { return m * mag; }).filter(function (s) { return s >= step0; })[0];
+    var t = []; for (var v = Math.floor(a / step) * step; v <= b + step * 1e-6; v += step) t.push(+v.toFixed(6));
+    if (t[t.length - 1] < b) t.push(+(t[t.length - 1] + step).toFixed(6));
+    return t;
+  }
+  function draw(host, ser, fmt, zero) {
+    var W = Math.max(280, host.clientWidth || 600), Hh = Math.round(Math.min(280, Math.max(200, W * 0.5))), m = { l: 44, r: 12, t: 10, b: 24 };
+    var xs = [], vs = zero ? [0] : [];
+    ser.forEach(function (s) { s.pts.forEach(function (p) { if (p[1] != null) { xs.push(p[0]); vs.push(p[1]); } }); });
+    var x0 = 1, x1 = Math.max.apply(null, xs), yt = niceTicks(Math.min.apply(null, vs), Math.max.apply(null, vs));
+    var y0 = yt[0], y1 = yt[yt.length - 1];
+    var X = function (x) { return m.l + (x - x0) / ((x1 - x0) || 1) * (W - m.l - m.r); };
+    var Y = function (v) { return m.t + (1 - (v - y0) / ((y1 - y0) || 1)) * (Hh - m.t - m.b); };
+    var svg = '<svg width="' + W + '" height="' + Hh + '" viewBox="0 0 ' + W + " " + Hh + '" role="img">';
+    yt.forEach(function (t) {
+      svg += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + Y(t) + '" y2="' + Y(t) + '" stroke="' + (zero && t === 0 ? "#888" : "#3a3a3a") + '"/>' +
+        '<text x="' + (m.l - 6) + '" y="' + (Y(t) + 4) + '" text-anchor="end">' + (zero ? sgn(t) : t.toFixed(t % 1 ? 1 : 0)) + "</text>";
+    });
+    [1, 5, 10, 15, 20, 25].filter(function (w) { return w <= x1; }).forEach(function (w) {
+      svg += '<text x="' + X(w) + '" y="' + (Hh - 6) + '" text-anchor="' + (w === x1 ? "end" : w === 1 ? "start" : "middle") + '">Wk ' + w + "</text>";
+    });
+    ser.forEach(function (s) {
+      var d = s.pts.map(function (p, i) { return (i ? "L" : "M") + X(p[0]).toFixed(1) + " " + Y(p[1]).toFixed(1); }).join("");
+      svg += '<path d="' + d + '" fill="none" stroke="' + s.c + '" stroke-width="' + s.w + '" stroke-linejoin="round" stroke-linecap="round"' + (s.dash ? ' stroke-dasharray="' + s.dash + '"' : "") + "/>";
+      if (s.dots) s.pts.forEach(function (p) { svg += '<circle cx="' + X(p[0]) + '" cy="' + Y(p[1]) + '" r="3.5" fill="' + s.c + '" stroke="#2b2b2b" stroke-width="1.5"/>'; });
+    });
+    svg += '<line class="sk-xh" y1="' + m.t + '" y2="' + (Hh - m.b) + '" stroke="#888" visibility="hidden"/>' +
+      '<rect class="sk-hit" x="' + m.l + '" y="0" width="' + (W - m.l - m.r) + '" height="' + Hh + '" fill="transparent"/></svg>';
+    host.innerHTML = svg + '<div class="sk-tip" hidden></div>';
+    var hit = host.querySelector(".sk-hit"), xh = host.querySelector(".sk-xh"), tip = host.querySelector(".sk-tip");
+    var show = function (e) {
+      var wk = Math.max(x0, Math.min(x1, Math.round(x0 + (e.clientX - host.getBoundingClientRect().left - m.l) / ((W - m.l - m.r) || 1) * (x1 - x0))));
+      var rows = [];
+      ser.forEach(function (s) { s.pts.forEach(function (p) { if (p[0] === wk && p[1] != null) rows.push({ n: s.n, c: s.c, v: p[1] }); }); });
+      if (!rows.length) { tip.hidden = true; xh.setAttribute("visibility", "hidden"); return; }
+      rows.sort(function (a, b) { return b.v - a.v; });
+      xh.setAttribute("x1", X(wk)); xh.setAttribute("x2", X(wk)); xh.setAttribute("visibility", "visible");
+      tip.innerHTML = '<div style="color:var(--sk-muted)">Week ' + wk + "</div>" +
+        rows.map(function (r) { return '<div><i class="sk-dot" style="--c:' + r.c + '"></i>' + r.n + "<b>" + fmt(r.v) + "</b></div>"; }).join("");
+      tip.hidden = false;
+      var tw = tip.offsetWidth;
+      tip.style.left = Math.max(0, Math.min(W - tw, X(wk) + (X(wk) > W / 2 ? -tw - 10 : 10))) + "px";
+    };
+    hit.addEventListener("pointermove", show);
+    hit.addEventListener("pointerdown", show);
+    hit.addEventListener("pointerleave", function () { tip.hidden = true; xh.setAttribute("visibility", "hidden"); });
+  }
+  var a = document.getElementById("sk-lo-a"), b = document.getElementById("sk-lo-b"), leg = document.getElementById("sk-lo-leg");
+  var sa = build("v"), sb = build("off");
+  leg.innerHTML = sa.map(function (s) { return '<span><i class="sk-dot" style="--c:' + s.c + '"></i>' + s.n + "</span>"; }).join("");
+  function all() { draw(a, sa, pct, false); draw(b, sb, sgn, true); }
+  // The charts sit in a closed <details>: draw once it opens (and on resize) so the width is known
+  var fold = a.closest("details");
+  if (fold) fold.addEventListener("toggle", function () { if (fold.open) all(); });
+  var rz; window.addEventListener("resize", function () { clearTimeout(rz); rz = setTimeout(function () { if (!fold || fold.open) all(); }, 120); });
+  all();
+})();
+</script>
 ```
 
 ```{=html}
@@ -2100,7 +2162,7 @@ raw_html("</div></details>")
         if (o === "br") return { d: [410, 530], s: 30, up: true };
         if (o === "mx") return { d: [410, 590], s: 30, up: true };
         if (o === "pace") return { d: [410, 590], s: 30 };
-        return { d: [440, 560], s: 30, up: true, down: true };
+        return { d: [450, 570], s: 30, up: true };
       },
       games: function (o) { return o === "pace"; }, fmt: f0, tip: f1 },
     race: { ttl: "Skins race", opts: [["gap", "vs. league average"], ["sk", "Total skins"]],
@@ -2290,6 +2352,7 @@ raw_html("</div></details>")
   var sel = document.getElementById("sk-nba-src"), confEl = document.getElementById("sk-nba-conf"), desc = document.getElementById("sk-nba-desc");
   var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
   sel.innerHTML = '<option value="avg">Average of all sources</option>' + SRC.map(function (s) { return '<option value="' + s[0] + '">' + esc(s[1]) + (MISS[s[0]] != null ? " (miss " + MISS[s[0]].toFixed(2) + ")" : "") + "</option>"; }).join("");
+  if (SRC.some(function (s) { return s[0] === "v"; })) { state.src = "v"; sel.value = "v"; }   // default to Vegas
 
   function mean(t, keys) { var s = 0, n = 0; keys.forEach(function (k) { if (t[k] != null) { s += t[k]; n++; } }); return n ? s / n : null; }
   function val(t, src) { return src === "avg" ? mean(t, AVG) : t[src]; }
