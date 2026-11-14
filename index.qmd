@@ -1,12 +1,12 @@
 ---
-title: "Skins Standings"
+pagetitle: "Skins Standings"
 format:
   html:
     theme: darkly
     self-contained: true
     include-before-body:
       text: |
-        <nav class='sk-nav'><strong>Standings</strong><a href='https://ejperez2.github.io/Daily-Skins-Matchups/'>Daily Matchups</a><button id='refresh-btn' class='sk-btn' type='button' style='display:none;'>Refresh now</button><span id='refresh-msg' style='font-size:13px; opacity:0.85;'></span><span class='sk-who' hidden>I'm <span class='sk-seg' id='sk-me'></span></span></nav>
+        <nav class='sk-nav'><strong>Standings</strong><a href='https://ejperez2.github.io/Daily-Skins-Matchups/'>Daily Matchups</a><button id='refresh-btn' class='sk-btn' type='button' style='display:none;'>Refresh now</button><span id='refresh-msg' style='font-size:13px; opacity:0.85;'></span></nav>
     include-after-body:
       text: |
         <footer class='sk-footer'>Past seasons &middot; 2025-26: <a href='https://ejperez2.github.io/skins-standings/2025-26/'>Standings</a> &middot; <a href='https://ejperez2.github.io/Daily-Skins-Matchups/2025-26/'>Matchups</a></footer>
@@ -23,7 +23,10 @@ editor: visual
   --sk-good: #6fd497; --sk-good-bg: #173726; --sk-bad: #ff8a92; --sk-bad-bg: #3d1d21;
 }
 .sk-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 15px; margin: 0 0 6px 0; padding: 6px 0; border-bottom: 1px solid rgba(128,128,128,0.35); }
-.sk-nav .sk-who { margin: 0 0 0 auto; }
+.sk-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; margin: 10px 0 6px 0; }
+.sk-head h1 { font-size: 20px; margin: 0; line-height: 1.2; }
+.sk-head .sk-who { margin: 0; gap: 0; font-size: 0; }   /* the "I'm" label is dropped here so the picker shares the title's row */
+.sk-head .sk-seg button { font-size: 13px; padding: 5px 7px; }
 .sk-btn { font-size: 13px; padding: 2px 10px; cursor: pointer; color: inherit; background: transparent; border: 1px solid rgba(128,128,128,0.6); border-radius: 4px; }
 .sk-meta { font-size: 14px; color: #999; margin: 0; }
 .sk-who { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; color: var(--sk-muted); margin: 12px 0; }
@@ -43,12 +46,12 @@ editor: visual
 .sk-track { height: 6px; background: var(--sk-bar); border-radius: 3px; overflow: hidden; }
 .sk-track span { display: block; height: 100%; background: var(--sk-muted); border-radius: 3px; }
 
-.sk-caveat { font-size: 13.5px; line-height: 1.45; background: var(--sk-mine); border: 1px solid var(--sk-accent); border-radius: 10px; padding: 9px 12px; margin: 0 0 8px 0; }
+.sk-caveat { font-size: 12.5px; line-height: 1.4; color: var(--sk-muted); border-left: 2px solid var(--sk-line); padding: 1px 0 1px 10px; margin: 0 0 10px 0; }
 .sk-caveat strong { color: var(--sk-accent); }
 
 details.sk-fold { background: var(--sk-surface); border: 1px solid var(--sk-line); border-radius: 10px; margin: 10px 0 0 0; }
 details.sk-fold > summary { cursor: pointer; padding: 10px 12px; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--sk-muted); }
-details.sk-fold > summary small { font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 12.5px; margin-left: 6px; }
+details.sk-fold > summary small { display: block; font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 12.5px; margin: 2px 0 0 0; }
 details.sk-fold[open] > summary { border-bottom: 1px solid var(--sk-line); }
 details.sk-fold > .sk-inner { padding: 10px 12px; font-size: 14px; }
 details.sk-fold > .sk-inner p { margin: 0 0 8px 0; }
@@ -140,6 +143,8 @@ details[open] > .sk-rrow .sk-chev { transform: rotate(90deg); }
 .sk-cdsc { font-size: 12.5px; color: var(--sk-muted); margin: 0 0 6px 0; }
 .sk-chart select { font-size: 14px; color: inherit; background: var(--sk-surface); border: 1px solid var(--sk-line); border-radius: 6px; padding: 4px 8px; }
 .sk-chart select[hidden] { display: none; }
+.sk-citog { justify-content: flex-start; margin: 2px 0 6px 0; }
+.sk-citog[hidden] { display: none; }
 #sk-bpi-sel { font-size: 14px; color: inherit; background: var(--sk-surface); border: 1px solid var(--sk-line); border-radius: 6px; padding: 4px 8px; color-scheme: dark; }
 .sk-cleg { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; margin-bottom: 4px; }
 .sk-cleg span { display: inline-flex; align-items: center; gap: 6px; }
@@ -152,7 +157,9 @@ details[open] > .sk-rrow .sk-chev { transform: rotate(90deg); }
 .sk-tip b { margin-left: auto; padding-left: 10px; }
 .sk-tip[hidden] { display: none; }
 .sk-empty { padding: 36px 8px; text-align: center; color: var(--sk-muted); font-size: 14px; }
-.sk-footer { font-size: 14px; margin: 28px 0 12px 0; padding: 8px 16px 0 16px; border-top: 1px solid rgba(128,128,128,0.35); opacity: 0.85; }
+/* Quarto reserves a 60px grid row under the content; drop it so the footer sits close to the last section */
+.page-columns.page-rows-contents { grid-template-rows: [content-top] auto [content-bottom] 0 [page-bottom] !important; }
+.sk-footer { font-size: 14px; margin: 16px 0 12px 0; padding: 8px 16px 0 16px; border-top: 1px solid rgba(128,128,128,0.35); opacity: 0.85; }
 
 .sk-nbactl { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .sk-nbactl label { font-size: 13px; color: var(--sk-muted); display: inline-flex; align-items: center; gap: 6px; }
@@ -162,6 +169,9 @@ details[open] > .sk-rrow .sk-chev { transform: rotate(90deg); }
 #sk-nba th { letter-spacing: .03em; }
 details.sk-more { margin: 8px 0 0 0; font-size: 12.5px; color: var(--sk-muted); }
 details.sk-more > summary { cursor: pointer; }
+details.sk-how { margin: 2px 0 0 0; }
+details.sk-how > .sk-inner { font-size: 14px; color: inherit; background: var(--sk-surface); border: 1px solid var(--sk-line); border-radius: 10px; padding: 10px 12px; margin-top: 6px; }
+details.sk-how > .sk-inner p { margin: 0 0 8px 0; }
 #sk-nba .sk-rg { display: inline-block; position: relative; width: 36px; height: 6px; background: var(--sk-bar); border-radius: 3px; vertical-align: middle; margin-left: 4px; }
 #sk-nba .sk-rg i { position: absolute; top: 0; height: 100%; background: var(--sk-muted); border-radius: 3px; }
 #sk-nba .sk-rg b { position: absolute; top: -2px; width: 3px; height: 10px; margin-left: -1px; background: var(--sk-accent); border-radius: 1px; }
@@ -224,6 +234,7 @@ details.sk-more > summary { cursor: pointer; }
 
 ```{r timestamp, echo=FALSE, results='asis'}
 ts <- format(Sys.time(), "%A, %B %d, %Y at %I:%M %p %Z", tz = "America/Chicago")
+cat("<div class='sk-head'><h1>Skins Standings</h1><span class='sk-who' hidden>I'm <span class='sk-seg' id='sk-me'></span></span></div>\n")
 cat(sprintf("<p class='sk-meta'><strong>Last updated:</strong> %s</p>", ts))
 ```
 
@@ -1433,7 +1444,7 @@ raw_html(sprintf(
 
 ```{r how-it-works, echo=FALSE, results='asis'}
 raw_html(
-  "<details class=\"sk-fold\"><summary>How it works</summary><div class=\"sk-inner\">",
+  "<details class=\"sk-more sk-how\"><summary>How it works</summary><div class=\"sk-inner\">",
   sprintf("<p><strong><a href='https://bdubcodes.net/posts/the-nba-skins-game'>Skins Game</a>:</strong> players draft all 30 NBA teams and root for each team's WINS or its LOSSES. Every time your chosen outcome happens (e.g. you picked losses for the Spurs and they lose), you get a skin. Whoever has the most skins at the end of the regular season wins. This season is a three-player league (%s) with %d teams each.</p>",
           paste(PLAYERS, collapse = ", "), TEAMS_PER_PLAYER),
   "<dl class=\"sk-facts\">",
@@ -1521,6 +1532,37 @@ if (!draft_complete) {
 knitr::opts_chunk$set(eval = draft_complete)
 ```
 
+```{r season-charts, echo=FALSE, results='asis'}
+# Interactive charts (drawn in the browser from standings_history.csv, embedded below as JSON)
+for (col in c("win_prob", "range_lo", "range_hi", "max_projection", "opta", "darko", "dnt", "crafted")) if (!col %in% names(history)) history[[col]] <- NA_real_
+chart_hist <- history %>%
+  filter(player %in% PLAYERS) %>%
+  arrange(date, player) %>%
+  transmute(d = format(date, "%Y-%m-%d"), p = player, sk = actual_skins, pct = skins_pct, pace = pct_projected,
+            wa = weighted_average, v = vegas_consensus, tr = team_rankings, es = espn_bpi, cb = cbs_sports,
+            br = basketball_reference, op = opta, dk = darko, dt = dnt, cr = crafted, avg = projection_average, mx = max_projection,
+            win = win_prob, lo = range_lo, hi = range_hi)
+chart_json <- jsonlite::toJSON(list(players = PLAYERS, colors = as.list(colorblind_colors), sims = N_SIMS, hist = chart_hist),
+                               dataframe = "rows", na = "null", digits = 4, auto_unbox = TRUE)
+
+raw_html(
+  "<h2 class=\"sk-h\">Season charts</h2>",
+  "<div class=\"sk-chart\" id=\"sk-chart\">",
+  "<div class=\"sk-ctabs\"><span class=\"sk-seg\" id=\"sk-ctabs\">",
+  "<button type=\"button\" data-c=\"proj\" aria-pressed=\"true\">Projection</button>",
+  "<button type=\"button\" data-c=\"race\">Race</button>",
+  "<button type=\"button\" data-c=\"pct\">Skins %</button>",
+  "<button type=\"button\" data-c=\"win\">To win</button></span></div>",
+  "<div class=\"sk-crow\"><div><div class=\"sk-cttl\" id=\"sk-cttl\"></div><p class=\"sk-cdsc\" id=\"sk-cdsc\"></p></div>",
+  "<select id=\"sk-copt\" aria-label=\"Chart series\" hidden></select></div>",
+  "<div class=\"sk-tog sk-citog\" id=\"sk-citog\" hidden><span>Likely range</span><span class=\"sk-seg\" id=\"sk-ci\"><button type=\"button\" data-ci=\"0\" aria-pressed=\"true\">Off</button><button type=\"button\" data-ci=\"1\" aria-pressed=\"false\">On</button></span></div>",
+  "<div class=\"sk-cleg\" id=\"sk-cleg\"></div>",
+  "<div class=\"sk-plot\" id=\"sk-plot\"><div class=\"sk-empty\">Charts need JavaScript.</div></div>",
+  "</div>",
+  "<script type=\"application/json\" id=\"sk-data\">", chart_json, "</script>"
+)
+```
+
 ```{r standings, echo=FALSE, results='asis'}
 # Standings: players across (leader first), stats and projection sources down - fits a phone without scrolling
 standing_order <- player_scores %>% arrange(desc(`Actual Skins`), desc(`Weighted Average`)) %>% pull(player)
@@ -1574,36 +1616,6 @@ raw_html(
 )
 ```
 
-```{r season-charts, echo=FALSE, results='asis'}
-# Interactive charts (drawn in the browser from standings_history.csv, embedded below as JSON)
-for (col in c("win_prob", "range_lo", "range_hi", "max_projection", "opta", "darko", "dnt", "crafted")) if (!col %in% names(history)) history[[col]] <- NA_real_
-chart_hist <- history %>%
-  filter(player %in% PLAYERS) %>%
-  arrange(date, player) %>%
-  transmute(d = format(date, "%Y-%m-%d"), p = player, sk = actual_skins, pct = skins_pct, pace = pct_projected,
-            wa = weighted_average, v = vegas_consensus, tr = team_rankings, es = espn_bpi, cb = cbs_sports,
-            br = basketball_reference, op = opta, dk = darko, dt = dnt, cr = crafted, avg = projection_average, mx = max_projection,
-            win = win_prob, lo = range_lo, hi = range_hi)
-chart_json <- jsonlite::toJSON(list(players = PLAYERS, colors = as.list(colorblind_colors), sims = N_SIMS, hist = chart_hist),
-                               dataframe = "rows", na = "null", digits = 4, auto_unbox = TRUE)
-
-raw_html(
-  "<h2 class=\"sk-h\">Season charts</h2>",
-  "<div class=\"sk-chart\" id=\"sk-chart\">",
-  "<div class=\"sk-ctabs\"><span class=\"sk-seg\" id=\"sk-ctabs\">",
-  "<button type=\"button\" data-c=\"proj\" aria-pressed=\"true\">Projection</button>",
-  "<button type=\"button\" data-c=\"race\">Race</button>",
-  "<button type=\"button\" data-c=\"pct\">Skins %</button>",
-  "<button type=\"button\" data-c=\"win\">To win</button></span></div>",
-  "<div class=\"sk-crow\"><div><div class=\"sk-cttl\" id=\"sk-cttl\"></div><p class=\"sk-cdsc\" id=\"sk-cdsc\"></p></div>",
-  "<select id=\"sk-copt\" aria-label=\"Chart series\" hidden></select></div>",
-  "<div class=\"sk-cleg\" id=\"sk-cleg\"></div>",
-  "<div class=\"sk-plot\" id=\"sk-plot\"><div class=\"sk-empty\">Charts need JavaScript.</div></div>",
-  "</div>",
-  "<script type=\"application/json\" id=\"sk-data\">", chart_json, "</script>"
-)
-```
-
 ```{r chance-to-win, echo=FALSE, results='asis'}
 # Chance to win: title odds bar, then one card per player with the likely range on a shared scale
 if (!is.null(uncertainty)) {
@@ -1647,8 +1659,7 @@ if (!is.null(uncertainty)) {
 
   raw_html(
     "<h2 class=\"sk-h\">Chance to win</h2>",
-    "<div class=\"sk-caveat\" role=\"note\">The model behind these probabilities is built on just one season of data (2025-26). ",
-    "Expect it to be inaccurate, especially early in the season.</div>",
+    "<div class=\"sk-caveat\" role=\"note\">Built on one season of data (2025-26); expect it to be off, especially early in the season.</div>",
     if (!is.null(views$pre)) paste0(
       "<div class=\"sk-tog\"><span>Projections</span><span class=\"sk-seg\" id=\"sk-hot\">",
       "<button type=\"button\" data-v=\"now\" aria-pressed=\"true\">Today</button>",
@@ -1924,6 +1935,92 @@ if (is.null(h) || nrow(h) == 0) {
 raw_html("</div></details>")
 ```
 
+```{r league-outlook-open, echo=FALSE, results='asis'}
+raw_html("<details class=\"sk-fold\"><summary>League skins % outlook<small>where the league total should finish</small></summary><div class=\"sk-inner\">")
+```
+
+```{r league-outlook, echo=FALSE, results='asis', fig.width=7, fig.height=4.2, dpi=150, warning=FALSE, message=FALSE}
+# Where will the league-wide skins % finish? Compares this season's running number with (a) what the pre-game Vegas
+# moneylines implied for the same games and (b) how the running number drifted to the final in 2022-23 .. 2025-26.
+# Per-game moneyline odds live in the Daily Matchups repo (Expected_Skins = no-vig implied win probability of the skins side).
+lp_p <- function(txt) cat(sprintf("<p style='font-size:13px; margin-top:4px; margin-bottom:6px;'>%s</p>\n", txt))
+MATCHUPS_RAW <- "https://raw.githubusercontent.com/ejperez2/Daily-Skins-Matchups/main/skins_history/"
+lp <- tryCatch({
+  # Past seasons: every game for each drafted team, scored for that team's pick
+  g <- read.csv("archive/history/games_2022-26.csv", stringsAsFactors = FALSE)
+  r <- read.csv("archive/history/rosters_and_finals_2022-26.csv", stringsAsFactors = FALSE)
+  long <- bind_rows(
+    data.frame(season = g$season, date = as.Date(g$date_et), team = g$home, win = g$home_win, stringsAsFactors = FALSE),
+    data.frame(season = g$season, date = as.Date(g$date_et), team = g$away, win = 1 - g$home_win, stringsAsFactors = FALSE)) %>%
+    inner_join(r %>% select(season, team = team_bbr, pick), by = c("season", "team")) %>%
+    mutate(skin = if_else(pick == "W", win, 1 - win)) %>%
+    arrange(season, date) %>%
+    group_by(season) %>%
+    mutate(i = row_number(), cum = cumsum(skin) / i, wk = as.integer(date - min(date)) %/% 7 + 1L, n = n(), final = last(cum)) %>%
+    ungroup()
+
+  # This season: one CSV per day from Daily Matchups (a day without games has no file)
+  days <- seq(SEASON_START, today, by = "day")
+  cur <- bind_rows(lapply(days, function(d) tryCatch({
+    x <- read.csv(paste0(MATCHUPS_RAW, format(d), ".csv"), stringsAsFactors = FALSE)
+    x$Date <- as.Date(x$Date); x[, c("Date", "Pick", "Expected_Skins", "Actual_Skins")]
+  }, error = function(e) NULL, warning = function(w) NULL)))
+  cur <- cur %>% filter(!is.na(Actual_Skins), !is.na(Expected_Skins)) %>% arrange(Date)
+  if (nrow(cur) < 30) NULL else list(long = long, cur = cur)
+}, error = function(e) { message("League outlook skipped: ", conditionMessage(e)); NULL })
+
+if (is.null(lp)) {
+  lp_p("Not available yet (needs the per-game moneyline history from Daily Matchups).")
+} else {
+  long <- lp$long; cur <- lp$cur
+  N_TOT <- 82 * length(PLAYERS) * TEAMS_PER_PLAYER
+  n <- nrow(cur); A <- sum(cur$Actual_Skins); E <- sum(cur$Expected_Skins)
+  act <- A / n; expd <- E / n; done <- n / N_TOT
+  pk <- cur %>% group_by(Pick) %>% summarise(n = n(), a = mean(Actual_Skins), e = mean(Expected_Skins), .groups = "drop")
+  pick_txt <- function(k) { x <- pk[pk$Pick == k, ]; if (nrow(x) == 0) NA_character_ else sprintf("%s picks %.1f%% vs %.1f%% expected (%d games)", k, 100 * x$a, 100 * x$e, x$n) }
+
+  # Past seasons: finals, and how far off the running number was at this same point of the season
+  fin <- long %>% group_by(season) %>% summarise(final = first(final), .groups = "drop")
+  off <- long %>% group_by(season) %>% summarise(off = cum[max(1, round(first(n) * done))] - first(final), .groups = "drop")
+
+  # Final league skins % if the rest of the season runs at rate q (all games not yet played)
+  final_at <- function(q) (A + q * (N_TOT - n)) / N_TOT
+  sc <- tibble(label = c("Vegas-implied rate", "Last 4 seasons' average", "57%", "55%", "62%"),
+               q = c(expd, mean(fin$final), 0.57, 0.55, 0.62)) %>% arrange(desc(q))
+  sc$final <- final_at(sc$q)
+
+  lp_p(sprintf("<b>So far:</b> %.1f%% of games earned a skin (%d of %d, %.1f%% of the season). The pre-game Vegas moneylines (no-vig consensus) implied %.1f%% for the same games, so the league is running <b>%+.1f points (about %+.0f skins)</b> above the market.",
+               100 * act, round(A), n, 100 * done, 100 * expd, 100 * (act - expd), A - E))
+  lp_p(sprintf("%s; %s.", pick_txt("W"), pick_txt("L")))
+  raw_html("<div class=\"sk-tablewrap\"><table class=\"sk-table\" data-quarto-disable-processing=\"true\"><thead><tr><th>Rest of season at</th><th>Skins %</th><th>Final league skins %</th></tr></thead><tbody>",
+           paste(sprintf("<tr><td>%s</td><td>%.1f%%</td><td>%.1f%%</td></tr>", sc$label, 100 * sc$q, 100 * sc$final), collapse = ""),
+           "</tbody></table></div>")
+  lp_p(sprintf("<b>History:</b> the league finished at %s (%s). At this same point of those seasons the running number was %.1f to %+.1f points from its final, but this season is %+.1f above the market, more than any of them.",
+               paste(sprintf("%.1f%%", 100 * range(fin$final)), collapse = " to "), paste(fin$season, collapse = ", "),
+               100 * min(off$off), 100 * max(off$off), 100 * (act - expd)))
+
+  # Chart: running league skins % by week of the season, and how far past seasons' running number was from their final
+  hw <- long %>% group_by(season, wk) %>% summarise(v = last(cum), final = first(final), .groups = "drop")
+  cw <- cur %>% mutate(wk = as.integer(Date - SEASON_START) %/% 7 + 1L) %>% arrange(Date) %>%
+    mutate(a = cumsum(Actual_Skins) / row_number(), e = cumsum(Expected_Skins) / row_number()) %>%
+    group_by(wk) %>% summarise(a = last(a), e = last(e), .groups = "drop")
+  lo_json <- jsonlite::toJSON(list(
+    hist = unname(lapply(split(hw, hw$season), function(d) list(s = d$season[1], wk = d$wk, v = round(100 * d$v, 2), off = round(100 * (d$v - d$final), 2)))),
+    start = format(SEASON_START), cur = list(wk = cw$wk, a = round(100 * cw$a, 2), e = round(100 * cw$e, 2))), auto_unbox = TRUE, na = "null")
+  raw_html(
+    "<div id=\"sk-lo\"><div class=\"sk-cttl\">League skins % so far, by week of the season</div>",
+    "<div class=\"sk-cleg\" id=\"sk-lo-leg\"></div><div class=\"sk-plot\" id=\"sk-lo-a\"><div class=\"sk-empty\">Charts need JavaScript.</div></div>",
+    "<div class=\"sk-cttl\" style=\"margin-top:12px\">Past seasons: running number minus final (points)</div>",
+    "<div class=\"sk-plot\" id=\"sk-lo-b\"></div></div>",
+    "<script type=\"application/json\" id=\"sk-lo-data\">", lo_json, "</script>")
+  lp_p("Moneylines are the market's pre-game view; games still in progress are left out. Early in a season the running number swings a lot (a few points in the first few weeks), so read the table as a range, not a forecast.")
+}
+```
+
+```{r league-outlook-close, echo=FALSE, results='asis'}
+raw_html("</div></details>")
+```
+
 ```{r nba-standings, echo=FALSE, results='asis'}
 # NBA standings (not skins): every team's record, with a final-record projection from any source (or the average of them all).
 # Seeds, ranks and the sortable table are computed in the browser from the embedded JSON.
@@ -2012,92 +2109,6 @@ raw_html(
   "</div></details>",
   "<script type=\"application/json\" id=\"sk-bpi-data\">", bpi_json, "</script>"
 )
-```
-
-```{r league-outlook-open, echo=FALSE, results='asis'}
-raw_html("<details class=\"sk-fold\"><summary>League skins % outlook<small>where the league total should finish</small></summary><div class=\"sk-inner\">")
-```
-
-```{r league-outlook, echo=FALSE, results='asis', fig.width=7, fig.height=4.2, dpi=150, warning=FALSE, message=FALSE}
-# Where will the league-wide skins % finish? Compares this season's running number with (a) what the pre-game Vegas
-# moneylines implied for the same games and (b) how the running number drifted to the final in 2022-23 .. 2025-26.
-# Per-game moneyline odds live in the Daily Matchups repo (Expected_Skins = no-vig implied win probability of the skins side).
-lp_p <- function(txt) cat(sprintf("<p style='font-size:13px; margin-top:4px; margin-bottom:6px;'>%s</p>\n", txt))
-MATCHUPS_RAW <- "https://raw.githubusercontent.com/ejperez2/Daily-Skins-Matchups/main/skins_history/"
-lp <- tryCatch({
-  # Past seasons: every game for each drafted team, scored for that team's pick
-  g <- read.csv("archive/history/games_2022-26.csv", stringsAsFactors = FALSE)
-  r <- read.csv("archive/history/rosters_and_finals_2022-26.csv", stringsAsFactors = FALSE)
-  long <- bind_rows(
-    data.frame(season = g$season, date = as.Date(g$date_et), team = g$home, win = g$home_win, stringsAsFactors = FALSE),
-    data.frame(season = g$season, date = as.Date(g$date_et), team = g$away, win = 1 - g$home_win, stringsAsFactors = FALSE)) %>%
-    inner_join(r %>% select(season, team = team_bbr, pick), by = c("season", "team")) %>%
-    mutate(skin = if_else(pick == "W", win, 1 - win)) %>%
-    arrange(season, date) %>%
-    group_by(season) %>%
-    mutate(i = row_number(), cum = cumsum(skin) / i, wk = as.integer(date - min(date)) %/% 7 + 1L, n = n(), final = last(cum)) %>%
-    ungroup()
-
-  # This season: one CSV per day from Daily Matchups (a day without games has no file)
-  days <- seq(SEASON_START, today, by = "day")
-  cur <- bind_rows(lapply(days, function(d) tryCatch({
-    x <- read.csv(paste0(MATCHUPS_RAW, format(d), ".csv"), stringsAsFactors = FALSE)
-    x$Date <- as.Date(x$Date); x[, c("Date", "Pick", "Expected_Skins", "Actual_Skins")]
-  }, error = function(e) NULL, warning = function(w) NULL)))
-  cur <- cur %>% filter(!is.na(Actual_Skins), !is.na(Expected_Skins)) %>% arrange(Date)
-  if (nrow(cur) < 30) NULL else list(long = long, cur = cur)
-}, error = function(e) { message("League outlook skipped: ", conditionMessage(e)); NULL })
-
-if (is.null(lp)) {
-  lp_p("Not available yet (needs the per-game moneyline history from Daily Matchups).")
-} else {
-  long <- lp$long; cur <- lp$cur
-  N_TOT <- 82 * length(PLAYERS) * TEAMS_PER_PLAYER
-  n <- nrow(cur); A <- sum(cur$Actual_Skins); E <- sum(cur$Expected_Skins)
-  act <- A / n; expd <- E / n; done <- n / N_TOT
-  pk <- cur %>% group_by(Pick) %>% summarise(n = n(), a = mean(Actual_Skins), e = mean(Expected_Skins), .groups = "drop")
-  pick_txt <- function(k) { x <- pk[pk$Pick == k, ]; if (nrow(x) == 0) NA_character_ else sprintf("%s picks %.1f%% vs %.1f%% expected (%d games)", k, 100 * x$a, 100 * x$e, x$n) }
-
-  # Past seasons: finals, and how far off the running number was at this same point of the season
-  fin <- long %>% group_by(season) %>% summarise(final = first(final), .groups = "drop")
-  off <- long %>% group_by(season) %>% summarise(off = cum[max(1, round(first(n) * done))] - first(final), .groups = "drop")
-
-  # Final league skins % if the rest of the season runs at rate q (all games not yet played)
-  final_at <- function(q) (A + q * (N_TOT - n)) / N_TOT
-  sc <- tibble(label = c("Vegas-implied rate", "Last 4 seasons' average", "57%", "55%", "62%"),
-               q = c(expd, mean(fin$final), 0.57, 0.55, 0.62)) %>% arrange(desc(q))
-  sc$final <- final_at(sc$q)
-
-  lp_p(sprintf("<b>So far:</b> %.1f%% of games earned a skin (%d of %d, %.1f%% of the season). The pre-game Vegas moneylines (no-vig consensus) implied %.1f%% for the same games, so the league is running <b>%+.1f points (about %+.0f skins)</b> above the market.",
-               100 * act, round(A), n, 100 * done, 100 * expd, 100 * (act - expd), A - E))
-  lp_p(sprintf("%s; %s.", pick_txt("W"), pick_txt("L")))
-  raw_html("<div class=\"sk-tablewrap\"><table class=\"sk-table\" data-quarto-disable-processing=\"true\"><thead><tr><th>Rest of season at</th><th>Skins %</th><th>Final league skins %</th></tr></thead><tbody>",
-           paste(sprintf("<tr><td>%s</td><td>%.1f%%</td><td>%.1f%%</td></tr>", sc$label, 100 * sc$q, 100 * sc$final), collapse = ""),
-           "</tbody></table></div>")
-  lp_p(sprintf("<b>History:</b> the league finished at %s (%s). At this same point of those seasons the running number was %.1f to %+.1f points from its final, but this season is %+.1f above the market, more than any of them.",
-               paste(sprintf("%.1f%%", 100 * range(fin$final)), collapse = " to "), paste(fin$season, collapse = ", "),
-               100 * min(off$off), 100 * max(off$off), 100 * (act - expd)))
-
-  # Chart: running league skins % by week of the season, and how far past seasons' running number was from their final
-  hw <- long %>% group_by(season, wk) %>% summarise(v = last(cum), final = first(final), .groups = "drop")
-  cw <- cur %>% mutate(wk = as.integer(Date - SEASON_START) %/% 7 + 1L) %>% arrange(Date) %>%
-    mutate(a = cumsum(Actual_Skins) / row_number(), e = cumsum(Expected_Skins) / row_number()) %>%
-    group_by(wk) %>% summarise(a = last(a), e = last(e), .groups = "drop")
-  lo_json <- jsonlite::toJSON(list(
-    hist = unname(lapply(split(hw, hw$season), function(d) list(s = d$season[1], wk = d$wk, v = round(100 * d$v, 2), off = round(100 * (d$v - d$final), 2)))),
-    start = format(SEASON_START), cur = list(wk = cw$wk, a = round(100 * cw$a, 2), e = round(100 * cw$e, 2))), auto_unbox = TRUE, na = "null")
-  raw_html(
-    "<div id=\"sk-lo\"><div class=\"sk-cttl\">League skins % so far, by week of the season</div>",
-    "<div class=\"sk-cleg\" id=\"sk-lo-leg\"></div><div class=\"sk-plot\" id=\"sk-lo-a\"><div class=\"sk-empty\">Charts need JavaScript.</div></div>",
-    "<div class=\"sk-cttl\" style=\"margin-top:12px\">Past seasons: running number minus final (points)</div>",
-    "<div class=\"sk-plot\" id=\"sk-lo-b\"></div></div>",
-    "<script type=\"application/json\" id=\"sk-lo-data\">", lo_json, "</script>")
-  lp_p("Moneylines are the market's pre-game view; games still in progress are left out. Early in a season the running number swings a lot (a few points in the first few weeks), so read the table as a range, not a forecast.")
-}
-```
-
-```{r league-outlook-close, echo=FALSE, results='asis'}
-raw_html("</div></details>")
 ```
 
 ```{=html}
@@ -2324,12 +2335,12 @@ raw_html("</div></details>")
   var CH = {
     proj: { ttl: "Projected final skins",
       opts: [["wa", "Weighted avg"], ["v", "Vegas"], ["tr", "TR"], ["es", "ESPN"], ["cb", "CBS"], ["br", "BB-Ref"], ["op", "Opta"], ["dk", "DARKO"], ["dt", "D&amp;T"], ["cr", "Crafted"], ["avg", "Source avg"], ["mx", "Max"], ["pace", "Skins % projection"]],
-      dsc: function (o) { return o === "wa" ? "Weighted average with the 4-in-5 likely range (dashed). Pick yourself above to see just your range." : o === "pace" ? "Each team's skins % × 82, added up." : "Projected final skins from this source."; },
+      dsc: function (o) { return o === "wa" ? (state.ci ? "Weighted average with the 4-in-5 likely range (dashed). Pick yourself above to see just your range." : "Weighted average of the sources.") : o === "pace" ? "Each team's skins % × 82, added up." : "Projected final skins from this source."; },
       get: function (r, o) { return o === "pace" && !(r.pace > 0) ? null : r[o]; }, band: function (o) { return o === "wa"; },
       // Most sources share one tight axis so they compare at a glance; a few get their own: BB-Ref (low, starts at 410),
       // Weighted avg (room for its likely range), Max and Skins % projection (start at 410). up/down: grow if data leaves the range
       domFn: function (o) {
-        if (o === "wa") return { d: [410, 610], s: 50 };
+        if (o === "wa") return state.ci ? { d: [410, 610], s: 50 } : { d: [450, 570], s: 30, up: true, down: true };
         if (o === "br") return { d: [410, 530], s: 30, up: true };
         if (o === "mx") return { d: [410, 590], s: 30, up: true };
         if (o === "pace") return { d: [410, 590], s: 30 };
@@ -2349,7 +2360,7 @@ raw_html("</div></details>")
       get: function (r) { return r.win; }, dom: [0, 1], ticks: [0, .25, .5, .75, 1],
       fmt: function (v) { return Math.round(100 * v) + "%"; } }
   };
-  var state = { c: "proj", o: { proj: "wa", race: "gap" } };
+  var state = { c: "proj", ci: false, o: { proj: "wa", race: "gap" } };   // likely range off until toggled
   var tabs = document.getElementById("sk-ctabs"), sel = document.getElementById("sk-copt"), plot = document.getElementById("sk-plot");
 
   function niceTicks(a, b) {
@@ -2368,6 +2379,9 @@ raw_html("</div></details>")
       sel.innerHTML = c.opts.map(function (x) { return '<option value="' + x[0] + '"' + (x[0] === o ? " selected" : "") + ">" + x[1] + "</option>"; }).join("");
       sel.hidden = false;
     } else sel.hidden = true;
+    var hasBand = !!(c.band && c.band(o)), ciTog = document.getElementById("sk-citog");
+    ciTog.hidden = !hasBand;
+    ciTog.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", (b.getAttribute("data-ci") === "1") === state.ci); });
     document.getElementById("sk-cttl").textContent = c.ttl;
     document.getElementById("sk-cdsc").textContent = c.dsc(o);
     document.getElementById("sk-cleg").innerHTML = PLAYERS.map(function (p) { return "<span>" + dot(p) + esc(p) + "</span>"; }).join("");
@@ -2381,8 +2395,8 @@ raw_html("</div></details>")
     var series = PLAYERS.map(function (p) {
       return { p: p,
         v: pts.map(function (h) { var r = h.r[p]; return r ? c.get(r, o, h.r) : null; }),
-        lo: pts.map(function (h) { var r = h.r[p]; return r && c.band && c.band(o) ? r.lo : null; }),
-        hi: pts.map(function (h) { var r = h.r[p]; return r && c.band && c.band(o) ? r.hi : null; }) };
+        lo: pts.map(function (h) { var r = h.r[p]; return r && hasBand && state.ci ? r.lo : null; }),
+        hi: pts.map(function (h) { var r = h.r[p]; return r && hasBand && state.ci ? r.hi : null; }) };
     });
     var vals = [];
     series.forEach(function (s) { s.v.concat(s.lo, s.hi).forEach(function (v) { if (v != null) vals.push(v); }); });
@@ -2481,6 +2495,7 @@ raw_html("</div></details>")
   if (tabs) {
     tabs.addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) { state.c = b.getAttribute("data-c"); drawChart(); } });
     sel.addEventListener("change", function () { state.o[state.c] = sel.value; drawChart(); });
+    document.getElementById("sk-ci").addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) { state.ci = b.getAttribute("data-ci") === "1"; drawChart(); } });
     var rz; window.addEventListener("resize", function () { clearTimeout(rz); rz = setTimeout(drawChart, 120); });
     drawChart();
   }
