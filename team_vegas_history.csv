@@ -130,7 +130,7 @@
 "Chicago Bulls",24.0833333333333,2026-11-10,TRUE
 "Chicago Bulls",25,2026-11-11,TRUE
 "Chicago Bulls",24.5,2026-11-12,TRUE
-"Chicago Bulls",24.1666666666667,2026-11-13,TRUE
+"Chicago Bulls",24,2026-11-13,TRUE
 "Cleveland Cavaliers",46.999999,2026-10-19,TRUE
 "Cleveland Cavaliers",48,2026-10-20,TRUE
 "Cleveland Cavaliers",48.125,2026-10-21,TRUE
@@ -312,7 +312,7 @@
 "Indiana Pacers",39.1666666666667,2026-11-10,TRUE
 "Indiana Pacers",38,2026-11-11,TRUE
 "Indiana Pacers",39.375,2026-11-12,TRUE
-"Indiana Pacers",39.4166666666667,2026-11-13,TRUE
+"Indiana Pacers",39,2026-11-13,TRUE
 "Los Angeles Clippers",30.5,2026-10-19,TRUE
 "Los Angeles Clippers",28,2026-10-20,TRUE
 "Los Angeles Clippers",28,2026-10-21,TRUE
@@ -338,7 +338,7 @@
 "Los Angeles Clippers",26.9166666666667,2026-11-10,TRUE
 "Los Angeles Clippers",26.6666666666667,2026-11-11,TRUE
 "Los Angeles Clippers",26.6666666666667,2026-11-12,TRUE
-"Los Angeles Clippers",26.6666666666667,2026-11-13,TRUE
+"Los Angeles Clippers",26.4166666666667,2026-11-13,TRUE
 "Los Angeles Lakers",45.499999,2026-10-19,TRUE
 "Los Angeles Lakers",45.8333333333333,2026-10-20,TRUE
 "Los Angeles Lakers",45.875,2026-10-21,TRUE
@@ -442,7 +442,7 @@
 "Milwaukee Bucks",22,2026-11-10,TRUE
 "Milwaukee Bucks",22,2026-11-11,TRUE
 "Milwaukee Bucks",22,2026-11-12,TRUE
-"Milwaukee Bucks",21.8333333333333,2026-11-13,TRUE
+"Milwaukee Bucks",22,2026-11-13,TRUE
 "Minnesota Timberwolves",48.000001,2026-10-19,TRUE
 "Minnesota Timberwolves",48.3333333333333,2026-10-20,TRUE
 "Minnesota Timberwolves",48.3333333333333,2026-10-21,TRUE
@@ -520,7 +520,7 @@
 "New York Knicks",51.1666666666667,2026-11-10,TRUE
 "New York Knicks",52,2026-11-11,TRUE
 "New York Knicks",52,2026-11-12,TRUE
-"New York Knicks",51.8333333333333,2026-11-13,TRUE
+"New York Knicks",52,2026-11-13,TRUE
 "Oklahoma City Thunder",61.5,2026-10-18,TRUE
 "Oklahoma City Thunder",61.5,2026-10-19,TRUE
 "Oklahoma City Thunder",62,2026-10-20,TRUE
@@ -573,7 +573,7 @@
 "Orlando Magic",39.0833333333333,2026-11-10,TRUE
 "Orlando Magic",39.4166666666667,2026-11-11,TRUE
 "Orlando Magic",39.875,2026-11-12,TRUE
-"Orlando Magic",39.8333333333333,2026-11-13,TRUE
+"Orlando Magic",40,2026-11-13,TRUE
 "Philadelphia 76ers",50.500002,2026-10-19,TRUE
 "Philadelphia 76ers",50.1666666666667,2026-10-20,TRUE
 "Philadelphia 76ers",51.125,2026-10-21,TRUE
