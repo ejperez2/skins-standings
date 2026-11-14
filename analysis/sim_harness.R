@@ -11,6 +11,7 @@ fetch_block <- grab("HOME_EDGE <- 0.22", "nba_schedule <- tryCatch(")
 eval(parse(text = fetch_block))
 t0 <- Sys.time(); nba_schedule <- fetch_nba_schedule(); cat("schedule:", nrow(nba_schedule), "games, fetched in", round(as.numeric(Sys.time() - t0, units = "secs"), 1), "s\n")
 ph <- read.csv("team_projection_history.csv") %>% mutate(date = as.Date(date))
+proj_history <- ph   # the page's name for it (used by the preseason-pace run)
 today <- if (is.na(day)) max(ph$date) else as.Date(day)
 remaining_games <- nba_schedule %>% filter(date_et >= today)
 cur <- ph %>% filter(date == today)
@@ -24,6 +25,7 @@ eval(parse(text = grab("uncertainty <- NULL", "# --- Step 6")))
 cat(as.character(today), "| method:", sim_method, "|", sched_note, "| rho_eff", rho_eff, "strength rho", round(rho_strength, 3),
     "| sim time", round(as.numeric(Sys.time() - t0, units = "secs"), 1), "s\n")
 print(uncertainty %>% mutate(across(where(is.numeric), ~ round(.x, 3))) %>% as.data.frame())
+if (!is.null(uncertainty_pre)) { cat("preseason pace:\n"); print(uncertainty_pre %>% mutate(across(where(is.numeric), ~ round(.x, 3))) %>% as.data.frame()) }
 sp <- sim_player[PLAYERS, ]
 cat("means", round(rowMeans(sp), 1), "| corr Adam-Eristeo", round(cor(sp["Adam", ], sp["Eristeo", ]), 2), "Brian-Eristeo", round(cor(sp["Brian", ], sp["Eristeo", ]), 2),
     "| league wins mean", round(mean(colSums(final_w)), 1), "sd", round(sd(colSums(final_w)), 1), "\n")

@@ -1140,132 +1140,165 @@ rho_strength <- NA_real_
 sim_method <- "league total"
 sched_note <- "schedule not available"
 if (draft_complete) {
-  unc_teams <- df_final_projections %>%
-    inner_join(draft_data %>% select(team, player), by = "team") %>%
-    mutate(left = pmax(82 - (actual_wins + actual_losses), 0),
-           proj_w = coalesce(if_else(skins_pick == "W", weighted_average, 82 - weighted_average),
-                             vegas_proj_wins, actual_wins + 0.5 * left),
-           proj_w = pmin(pmax(proj_w, actual_wins), actual_wins + left),
-           rate = if_else(left > 0, pmin(pmax((proj_w - actual_wins) / left, 0.01), 0.99), 0.5),
-           sd = sqrt(left * rate * (1 - rate) + (talent_sd_now * (left / 82)^1.5)^2))
+  # The simulation is a function so the page can run it twice: on today's projections, and on the
+  # "preseason pace" projections behind the Chance to Win toggle (proj_alt: projected final wins, named by team).
+  run_title_sim <- function(proj_alt = NULL) {
+    rho_strength <- NA_real_
+    sim_method <- "league total"
+    sched_note <- "schedule not available"
+    unc_teams <- df_final_projections %>%
+      inner_join(draft_data %>% select(team, player), by = "team") %>%
+      mutate(left = pmax(82 - (actual_wins + actual_losses), 0),
+             proj_w = coalesce(if_else(skins_pick == "W", weighted_average, 82 - weighted_average),
+                               vegas_proj_wins, actual_wins + 0.5 * left),
+             proj_w = if (is.null(proj_alt)) proj_w else unname(proj_alt[team]),
+             proj_w = pmin(pmax(proj_w, actual_wins), actual_wins + left),
+             rate = if_else(left > 0, pmin(pmax((proj_w - actual_wins) / left, 0.01), 0.99), 0.5),
+             sd = sqrt(left * rate * (1 - rate) + (talent_sd_now * (left / 82)^1.5)^2))
 
-  g_now <- mean(unc_teams$actual_wins + unc_teams$actual_losses)
-  rho_eff <- rho_now   # in full from opening night (no phase-in)
-  side <- if_else(unc_teams$skins_pick == "W", 1, -1)
-  nt <- nrow(unc_teams)
-  pidx <- match(unc_teams$player, PLAYERS)
+    g_now <- mean(unc_teams$actual_wins + unc_teams$actual_losses)
+    rho_eff <- rho_now   # in full from opening night (no phase-in)
+    side <- if_else(unc_teams$skins_pick == "W", 1, -1)
+    nt <- nrow(unc_teams)
+    pidx <- match(unc_teams$player, PLAYERS)
 
-  # Can the remaining schedule be used? Every team's listed games must fit in its games left; the gap (normally
-  # the two NBA Cup games set in December) is played against a league-average opponent.
-  sched_ok <- FALSE
-  if (!is.null(remaining_games) && nt == 30) {
-    hi <- match(remaining_games$home, unc_teams$team); ai <- match(remaining_games$away, unc_teams$team)
-    ok_g <- !is.na(hi) & !is.na(ai); hi <- hi[ok_g]; ai <- ai[ok_g]
-    phantom <- unc_teams$left - (tabulate(hi, nt) + tabulate(ai, nt))
-    sched_ok <- length(hi) > 0 && all(phantom >= 0) && all(phantom <= 6)
-    sched_note <- if (sched_ok) sprintf("%d games left on the schedule (%d team-games not yet scheduled, played vs a league-average side)",
-                                        length(hi), sum(phantom))
-                  else sprintf("schedule didn't match the standings (gap %d to %d games per team)", min(phantom), max(phantom))
-  }
+    # Can the remaining schedule be used? Every team's listed games must fit in its games left; the gap (normally
+    # the two NBA Cup games set in December) is played against a league-average opponent.
+    sched_ok <- FALSE
+    if (!is.null(remaining_games) && nt == 30) {
+      hi <- match(remaining_games$home, unc_teams$team); ai <- match(remaining_games$away, unc_teams$team)
+      ok_g <- !is.na(hi) & !is.na(ai); hi <- hi[ok_g]; ai <- ai[ok_g]
+      phantom <- unc_teams$left - (tabulate(hi, nt) + tabulate(ai, nt))
+      sched_ok <- length(hi) > 0 && all(phantom >= 0) && all(phantom <= 6)
+      sched_note <- if (sched_ok) sprintf("%d games left on the schedule (%d team-games not yet scheduled, played vs a league-average side)",
+                                          length(hi), sum(phantom))
+                    else sprintf("schedule didn't match the standings (gap %d to %d games per team)", min(phantom), max(phantom))
+    }
 
-  if (sched_ok) {
-    # Schedule method (Nov 2026): each remaining game is won by home or away, so every simulated season is coherent
-    # game by game and teams on different rosters affect each other only through games they actually play.
-    # Team strengths (logit scale, plus HOME_EDGE) are fit so each team's expected final wins equal its projection.
-    # Each simulated season shifts each team's strength by a talent miss with the same spread as before
-    # (TALENT_SD * (left / 82)^1.5, roster-correlated, scaled so team-level spread matches the old method), and the
-    # strength-scale roster correlation is calibrated so teams on one roster finish as correlated as rho_eff.
-    # Backtest 2022-26 (analysis/backtest_schedule.py): winner log loss 1.357 -> 1.349, late-season 80% ranges held
-    # 77% -> 79% vs the league-total method at the same correlation.
-    tsd <- talent_sd_now * (unc_teams$left / 82)^1.5
-    H <- matrix(0, nt, length(hi)); H[cbind(hi, seq_along(hi))] <- 1
-    A <- matrix(0, nt, length(ai)); A[cbind(ai, seq_along(ai))] <- 1
-    target <- unc_teams$proj_w - unc_teams$actual_wins
-    G_left <- length(hi) + sum(phantom) / 2
-    s <- rep(0, nt)
-    for (it in 1:200) {   # base strengths: expected remaining wins = projected remaining wins
-      p <- plogis(s[hi] - s[ai] + HOME_EDGE); pp <- plogis(s)
-      E <- as.vector(H %*% p + A %*% (1 - p)) + phantom * pp
-      V <- as.vector(H %*% (p * (1 - p)) + A %*% (p * (1 - p))) + phantom * pp * (1 - pp)
-      tgt <- target + (G_left - sum(target)) * V / sum(V)   # targets must add up to the games left
-      s <- s + pmax(pmin((tgt - E) / pmax(V, 1e-6), 1), -1); s <- s - mean(s)
-      if (max(abs(tgt - E)) < 1e-4) break
-    }
-    sched_sim <- function(s, k, rho_s, n, seed) {
-      set.seed(seed)
-      zz <- matrix(rnorm(nt * n), nt); uu <- matrix(rnorm(length(PLAYERS) * n), length(PLAYERS))
-      zz <- sqrt(1 - rho_s) * zz + sqrt(rho_s) * side * uu[pidx, , drop = FALSE]
-      sh <- s + k * tsd / pmax(V, 1e-6) * zz                       # teams x seasons
-      p <- plogis(sh[hi, , drop = FALSE] - sh[ai, , drop = FALSE] + HOME_EDGE)
-      hw <- (matrix(runif(length(p)), nrow(p)) < p) * 1             # 1 = home team won
-      wins <- H %*% hw + A %*% (1 - hw)
-      if (any(phantom > 0)) wins <- wins + matrix(rbinom(nt * n, rep(phantom, n), plogis(sh)), nt)
-      unc_teams$actual_wins + wins
-    }
-    roster_corr <- function(fw) {
-      cm <- suppressWarnings(cor(t(side * fw))); same <- outer(pidx, pidx, "==") & !diag(nt)
-      mean(cm[same], na.rm = TRUE)
-    }
-    sched_fit <- function(rho_s) {
-      # talent scale: summed team variance matches the old method's sd (luck + talent)
-      v0 <- sum(apply(sched_sim(s, 0, rho_s, 3000, 12345), 1, var))
-      v1 <- sum(apply(sched_sim(s, 1, rho_s, 3000, 12345), 1, var))
-      k <- sqrt(max(sum(unc_teams$sd^2) - v0, 0) / max(v1 - v0, 1e-9))
-      # random strength shifts pull expected records toward .500; re-centre so mean wins match projections
-      s2 <- s
-      for (it in 1:6) {
-        gap <- tgt - (rowMeans(sched_sim(s2, k, rho_s, 5000, 4321)) - unc_teams$actual_wins)
-        if (max(abs(gap)) < 0.03) break
-        s2 <- s2 + gap / pmax(V, 1e-6)
+    if (sched_ok) {
+      # Schedule method (Nov 2026): each remaining game is won by home or away, so every simulated season is coherent
+      # game by game and teams on different rosters affect each other only through games they actually play.
+      # Team strengths (logit scale, plus HOME_EDGE) are fit so each team's expected final wins equal its projection.
+      # Each simulated season shifts each team's strength by a talent miss with the same spread as before
+      # (TALENT_SD * (left / 82)^1.5, roster-correlated, scaled so team-level spread matches the old method), and the
+      # strength-scale roster correlation is calibrated so teams on one roster finish as correlated as rho_eff.
+      # Backtest 2022-26 (analysis/backtest_schedule.py): winner log loss 1.357 -> 1.349, late-season 80% ranges held
+      # 77% -> 79% vs the league-total method at the same correlation.
+      tsd <- talent_sd_now * (unc_teams$left / 82)^1.5
+      H <- matrix(0, nt, length(hi)); H[cbind(hi, seq_along(hi))] <- 1
+      A <- matrix(0, nt, length(ai)); A[cbind(ai, seq_along(ai))] <- 1
+      target <- unc_teams$proj_w - unc_teams$actual_wins
+      G_left <- length(hi) + sum(phantom) / 2
+      s <- rep(0, nt)
+      for (it in 1:200) {   # base strengths: expected remaining wins = projected remaining wins
+        p <- plogis(s[hi] - s[ai] + HOME_EDGE); pp <- plogis(s)
+        E <- as.vector(H %*% p + A %*% (1 - p)) + phantom * pp
+        V <- as.vector(H %*% (p * (1 - p)) + A %*% (p * (1 - p))) + phantom * pp * (1 - pp)
+        tgt <- target + (G_left - sum(target)) * V / sum(V)   # targets must add up to the games left
+        s <- s + pmax(pmin((tgt - E) / pmax(V, 1e-6), 1), -1); s <- s - mean(s)
+        if (max(abs(tgt - E)) < 1e-4) break
       }
-      list(s = s2, k = k)
-    }
-    rho_strength <- if (rho_eff > 0) min(0.95, rho_eff * 1.6) else 0
-    if (rho_eff > 0) for (it in 1:3) {
+      sched_sim <- function(s, k, rho_s, n, seed) {
+        set.seed(seed)
+        zz <- matrix(rnorm(nt * n), nt); uu <- matrix(rnorm(length(PLAYERS) * n), length(PLAYERS))
+        zz <- sqrt(1 - rho_s) * zz + sqrt(rho_s) * side * uu[pidx, , drop = FALSE]
+        sh <- s + k * tsd / pmax(V, 1e-6) * zz                       # teams x seasons
+        p <- plogis(sh[hi, , drop = FALSE] - sh[ai, , drop = FALSE] + HOME_EDGE)
+        hw <- (matrix(runif(length(p)), nrow(p)) < p) * 1             # 1 = home team won
+        wins <- H %*% hw + A %*% (1 - hw)
+        if (any(phantom > 0)) wins <- wins + matrix(rbinom(nt * n, rep(phantom, n), plogis(sh)), nt)
+        unc_teams$actual_wins + wins
+      }
+      roster_corr <- function(fw) {
+        cm <- suppressWarnings(cor(t(side * fw))); same <- outer(pidx, pidx, "==") & !diag(nt)
+        mean(cm[same], na.rm = TRUE)
+      }
+      sched_fit <- function(rho_s) {
+        # talent scale: summed team variance matches the old method's sd (luck + talent)
+        v0 <- sum(apply(sched_sim(s, 0, rho_s, 3000, 12345), 1, var))
+        v1 <- sum(apply(sched_sim(s, 1, rho_s, 3000, 12345), 1, var))
+        k <- sqrt(max(sum(unc_teams$sd^2) - v0, 0) / max(v1 - v0, 1e-9))
+        # random strength shifts pull expected records toward .500; re-centre so mean wins match projections
+        s2 <- s
+        for (it in 1:6) {
+          gap <- tgt - (rowMeans(sched_sim(s2, k, rho_s, 5000, 4321)) - unc_teams$actual_wins)
+          if (max(abs(gap)) < 0.03) break
+          s2 <- s2 + gap / pmax(V, 1e-6)
+        }
+        list(s = s2, k = k)
+      }
+      rho_strength <- if (rho_eff > 0) min(0.95, rho_eff * 1.6) else 0
+      if (rho_eff > 0) for (it in 1:3) {
+        f <- sched_fit(rho_strength)
+        eff <- roster_corr(sched_sim(f$s, f$k, rho_strength, 3000, 777))
+        if (!is.finite(eff) || eff <= 0) break
+        rho_strength <- min(max(rho_strength * rho_eff / eff, 0), 0.95)
+      }
       f <- sched_fit(rho_strength)
-      eff <- roster_corr(sched_sim(f$s, f$k, rho_strength, 3000, 777))
-      if (!is.finite(eff) || eff <= 0) break
-      rho_strength <- min(max(rho_strength * rho_eff / eff, 0), 0.95)
+      final_w <- sched_sim(f$s, f$k, rho_strength, N_SIMS, as.integer(today))   # same numbers for every run on a given day
+      sim_method <- "schedule"
+    } else {
+    set.seed(as.integer(today))  # same numbers for every run on a given day
+    z <- matrix(rnorm(nrow(unc_teams) * N_SIMS), nrow = nrow(unc_teams))
+    # Shared roster draw: each player's teams lean the same way in skins (W picks up = L picks down in wins)
+    u <- matrix(rnorm(length(PLAYERS) * N_SIMS), nrow = length(PLAYERS))
+    z <- sqrt(1 - rho_eff) * z + sqrt(rho_eff) * side * u[match(unc_teams$player, PLAYERS), , drop = FALSE]
+    miss <- unc_teams$sd * z   # each team's miss in wins, teams x simulated seasons
+    # Every game is one win and one loss, so the league always finishes with 41 wins per team (1,230). Drawn
+    # independently, a simulated season's total wandered by ~45 wins. Condition each season on the true total:
+    # the joint-normal update moves each team by its share of the covariance with the league total
+    # (its own variance plus its roster-mates' shared part), then the usual clip to wins still possible.
+    if (nrow(unc_teams) == 30) {
+      same_roster <- outer(unc_teams$player, unc_teams$player, "==")
+      diag(same_roster) <- FALSE
+      cov_w <- diag(unc_teams$sd^2) + rho_eff * outer(side * unc_teams$sd, side * unc_teams$sd) * same_roster
+      excess <- colSums(unc_teams$proj_w + miss) - LEAGUE_WINS
+      miss <- miss - outer(rowSums(cov_w) / sum(cov_w), excess)
     }
-    f <- sched_fit(rho_strength)
-    final_w <- sched_sim(f$s, f$k, rho_strength, N_SIMS, as.integer(today))   # same numbers for every run on a given day
-    sim_method <- "schedule"
-  } else {
-  set.seed(as.integer(today))  # same numbers for every run on a given day
-  z <- matrix(rnorm(nrow(unc_teams) * N_SIMS), nrow = nrow(unc_teams))
-  # Shared roster draw: each player's teams lean the same way in skins (W picks up = L picks down in wins)
-  u <- matrix(rnorm(length(PLAYERS) * N_SIMS), nrow = length(PLAYERS))
-  z <- sqrt(1 - rho_eff) * z + sqrt(rho_eff) * side * u[match(unc_teams$player, PLAYERS), , drop = FALSE]
-  miss <- unc_teams$sd * z   # each team's miss in wins, teams x simulated seasons
-  # Every game is one win and one loss, so the league always finishes with 41 wins per team (1,230). Drawn
-  # independently, a simulated season's total wandered by ~45 wins. Condition each season on the true total:
-  # the joint-normal update moves each team by its share of the covariance with the league total
-  # (its own variance plus its roster-mates' shared part), then the usual clip to wins still possible.
-  if (nrow(unc_teams) == 30) {
-    same_roster <- outer(unc_teams$player, unc_teams$player, "==")
-    diag(same_roster) <- FALSE
-    cov_w <- diag(unc_teams$sd^2) + rho_eff * outer(side * unc_teams$sd, side * unc_teams$sd) * same_roster
-    excess <- colSums(unc_teams$proj_w + miss) - LEAGUE_WINS
-    miss <- miss - outer(rowSums(cov_w) / sum(cov_w), excess)
-  }
-  final_w <- pmin(pmax(unc_teams$proj_w + miss, unc_teams$actual_wins), unc_teams$actual_wins + unc_teams$left)
-  }
-  final_skins <- final_w
-  l_rows <- unc_teams$skins_pick == "L"
-  final_skins[l_rows, ] <- 82 - final_w[l_rows, ]   # L picks earn skins on losses
-  sim_player <- rowsum(final_skins, unc_teams$player)   # players x simulated seasons
-  # Ties for first (whole-number skins make them possible, ~1% of seasons) are split evenly between the tied players
-  is_top <- sim_player == matrix(apply(sim_player, 2, max), nrow(sim_player), ncol(sim_player), byrow = TRUE)
-  win_share <- rowSums(sweep(is_top, 2, colSums(is_top), "/"))
+    final_w <- pmin(pmax(unc_teams$proj_w + miss, unc_teams$actual_wins), unc_teams$actual_wins + unc_teams$left)
+    }
+    final_skins <- final_w
+    l_rows <- unc_teams$skins_pick == "L"
+    final_skins[l_rows, ] <- 82 - final_w[l_rows, ]   # L picks earn skins on losses
+    sim_player <- rowsum(final_skins, unc_teams$player)   # players x simulated seasons
+    # Ties for first (whole-number skins make them possible, ~1% of seasons) are split evenly between the tied players
+    is_top <- sim_player == matrix(apply(sim_player, 2, max), nrow(sim_player), ncol(sim_player), byrow = TRUE)
+    win_share <- rowSums(sweep(is_top, 2, colSums(is_top), "/"))
 
-  uncertainty <- tibble(
-    player = rownames(sim_player),
-    win_prob = as.numeric(win_share) / N_SIMS,
-    lo80 = apply(sim_player, 1, quantile, 0.10),
-    lo50 = apply(sim_player, 1, quantile, 0.25),
-    hi50 = apply(sim_player, 1, quantile, 0.75),
-    hi80 = apply(sim_player, 1, quantile, 0.90)
-  )
+    uncertainty <- tibble(
+      player = rownames(sim_player),
+      win_prob = as.numeric(win_share) / N_SIMS,
+      lo80 = apply(sim_player, 1, quantile, 0.10),
+      lo50 = apply(sim_player, 1, quantile, 0.25),
+      hi50 = apply(sim_player, 1, quantile, 0.75),
+      hi80 = apply(sim_player, 1, quantile, 0.90)
+    )
+    list(unc_teams = unc_teams, final_w = final_w, sim_player = sim_player, uncertainty = uncertainty, rho_eff = rho_eff,
+         rho_strength = rho_strength, sim_method = sim_method, sched_note = sched_note)
+  }
+  sim_main <- run_title_sim()
+  unc_teams <- sim_main$unc_teams; final_w <- sim_main$final_w; sim_player <- sim_main$sim_player; uncertainty <- sim_main$uncertainty
+  rho_eff <- sim_main$rho_eff; rho_strength <- sim_main$rho_strength; sim_method <- sim_main$sim_method; sched_note <- sim_main$sched_note
+
+  # "Preseason pace" (Chance to Win toggle, off by default): skins already won are kept, and every team plays its
+  # remaining games at the rate its opening-night projection implied, as if results so far say nothing about the rest.
+  # On 2026-11-12 this moved the leader from 71% to 57% (the sources had put ~26% weight on 11 games of results).
+  uncertainty_pre <- NULL
+  if (!is.null(proj_history) && any(proj_history$date <= SEASON_START)) {
+    open_snap <- proj_history %>% filter(date == max(date[date <= SEASON_START])) %>%
+      transmute(team, rate0 = (weighted - wins) / (82 - wins - losses))
+    pre <- unc_teams %>% select(team, player, skins_pick, actual_wins, left) %>% left_join(open_snap, by = "team") %>%
+      mutate(proj_pre = pmin(pmax(actual_wins + left * rate0, actual_wins), actual_wins + left))
+    if (nrow(pre) == 30 && all(is.finite(pre$proj_pre)) && sum(pre$left) < 30 * 82) {
+      sim_pre <- tryCatch(run_title_sim(setNames(pre$proj_pre, pre$team)),
+                          error = function(e) { message("Preseason-pace simulation failed: ", conditionMessage(e)); NULL })
+      if (!is.null(sim_pre)) {
+        uncertainty_pre <- sim_pre$uncertainty %>%
+          left_join(pre %>% group_by(player) %>%
+                      summarise(proj = sum(if_else(skins_pick == "W", proj_pre, 82 - proj_pre)), .groups = "drop"), by = "player")
+      }
+    }
+  }
   player_scores <- player_scores %>%
     left_join(uncertainty %>% select(player, `Chance to Win` = win_prob, range_lo = lo80, range_hi = hi80,
                                      range_lo50 = lo50, range_hi50 = hi50), by = "player")
@@ -1574,45 +1607,58 @@ raw_html(
 ```{r chance-to-win, echo=FALSE, results='asis'}
 # Chance to win: title odds bar, then one card per player with the likely range on a shared scale
 if (!is.null(uncertainty)) {
-  cw <- uncertainty %>%
-    left_join(player_scores %>% select(player, proj = `Weighted Average`), by = "player") %>%
-    arrange(desc(win_prob), desc(proj))
-  span <- max(cw$hi80) - min(cw$lo80)
+  # One view = odds bar + player cards + axis. Built for today's projections and, when available, for "preseason pace"
+  # (uncertainty_pre); the toggle below swaps them. Both views share one axis so the bars are comparable.
+  views <- list(now = uncertainty %>% left_join(player_scores %>% select(player, proj = `Weighted Average`), by = "player"))
+  if (!is.null(uncertainty_pre)) views$pre <- uncertainty_pre
+  all_v <- bind_rows(views)
+  span <- max(all_v$hi80) - min(all_v$lo80)
   step <- c(5, 10, 20, 50, 100)[which(span / c(5, 10, 20, 50, 100) <= 6)[1]]
-  ax_lo <- floor((min(cw$lo80) - step / 4) / step) * step
-  ax_hi <- ceiling((max(cw$hi80) + step / 4) / step) * step
+  ax_lo <- floor((min(all_v$lo80) - step / 4) / step) * step
+  ax_hi <- ceiling((max(all_v$hi80) + step / 4) / step) * step
   xp <- function(v) sprintf("%.2f%%", 100 * (v - ax_lo) / (ax_hi - ax_lo))
   ticks <- seq(ax_lo, ax_hi, by = step)
   grid <- paste(sprintf("<i class=\"sk-grid\" style=\"left:%s\"></i>", xp(ticks)), collapse = "")
 
-  odds <- paste0(
-    "<div class=\"sk-odds\"><div class=\"sk-k\">Chance to win the league</div>",
-    sprintf("<div class=\"sk-bar\" role=\"img\" aria-label=\"%s\">", paste(sprintf("%s %.0f%%", cw$player, 100 * cw$win_prob), collapse = ", ")),
-    paste(sprintf("<span style=\"--c:%s;flex:%.4f\"></span>", colorblind_colors[cw$player], cw$win_prob), collapse = ""),
-    "</div><div class=\"sk-leg\">",
-    paste(sprintf("<span>%s%s <b>%.0f%%</b></span>", vapply(cw$player, sk_dot, ""), cw$player, 100 * cw$win_prob), collapse = ""),
-    "</div></div>")
-  cards <- paste(sprintf(paste0(
-    "<article class=\"sk-pc\" data-player=\"%s\" style=\"--c:%s\">",
-    "<div class=\"sk-pc-top\"><span class=\"sk-rank\">%d</span><i class=\"sk-dot\"></i><span class=\"sk-nm\">%s</span>",
-    "<span class=\"sk-win\"><b>%.0f%%</b><small>to win</small></span></div>",
-    "<div class=\"sk-pc-sub\">Projected <b>%.0f</b> &middot; likely %.0f&ndash;%.0f</div>",
-    "<div class=\"sk-range\" role=\"img\" aria-label=\"%s: projected %.0f, likely range %.0f to %.0f\">%s",
-    "<i class=\"sk-r80\" style=\"left:%s;width:calc(%s - %s)\"></i>",
-    "<i class=\"sk-r50\" style=\"left:%s;width:calc(%s - %s)\"></i>",
-    "<i class=\"sk-pt\" style=\"left:%s\"></i></div></article>"),
-    cw$player, colorblind_colors[cw$player], seq_len(nrow(cw)), cw$player, 100 * cw$win_prob,
-    cw$proj, cw$lo80, cw$hi80, cw$player, cw$proj, cw$lo80, cw$hi80, grid,
-    xp(cw$lo80), xp(cw$hi80), xp(cw$lo80), xp(cw$lo50), xp(cw$hi50), xp(cw$lo50), xp(cw$proj)), collapse = "")
+  cw_view <- function(cw) {
+    cw <- cw %>% arrange(desc(win_prob), desc(proj))
+    odds <- paste0(
+      "<div class=\"sk-odds\"><div class=\"sk-k\">Chance to win the league</div>",
+      sprintf("<div class=\"sk-bar\" role=\"img\" aria-label=\"%s\">", paste(sprintf("%s %.0f%%", cw$player, 100 * cw$win_prob), collapse = ", ")),
+      paste(sprintf("<span style=\"--c:%s;flex:%.4f\"></span>", colorblind_colors[cw$player], cw$win_prob), collapse = ""),
+      "</div><div class=\"sk-leg\">",
+      paste(sprintf("<span>%s%s <b>%.0f%%</b></span>", vapply(cw$player, sk_dot, ""), cw$player, 100 * cw$win_prob), collapse = ""),
+      "</div></div>")
+    cards <- paste(sprintf(paste0(
+      "<article class=\"sk-pc\" data-player=\"%s\" style=\"--c:%s\">",
+      "<div class=\"sk-pc-top\"><span class=\"sk-rank\">%d</span><i class=\"sk-dot\"></i><span class=\"sk-nm\">%s</span>",
+      "<span class=\"sk-win\"><b>%.0f%%</b><small>to win</small></span></div>",
+      "<div class=\"sk-pc-sub\">Projected <b>%.0f</b> &middot; likely %.0f&ndash;%.0f</div>",
+      "<div class=\"sk-range\" role=\"img\" aria-label=\"%s: projected %.0f, likely range %.0f to %.0f\">%s",
+      "<i class=\"sk-r80\" style=\"left:%s;width:calc(%s - %s)\"></i>",
+      "<i class=\"sk-r50\" style=\"left:%s;width:calc(%s - %s)\"></i>",
+      "<i class=\"sk-pt\" style=\"left:%s\"></i></div></article>"),
+      cw$player, colorblind_colors[cw$player], seq_len(nrow(cw)), cw$player, 100 * cw$win_prob,
+      cw$proj, cw$lo80, cw$hi80, cw$player, cw$proj, cw$lo80, cw$hi80, grid,
+      xp(cw$lo80), xp(cw$hi80), xp(cw$lo80), xp(cw$lo50), xp(cw$hi50), xp(cw$lo50), xp(cw$proj)), collapse = "")
+    paste0(odds, "<div class=\"sk-cards\">", cards, "</div>",
+           "<div class=\"sk-axis\">", paste(sprintf("<span style=\"left:%s\">%d</span>", xp(ticks), as.integer(ticks)), collapse = ""), "</div>")
+  }
 
   raw_html(
     "<h2 class=\"sk-h\">Chance to win</h2>",
     "<div class=\"sk-caveat\" role=\"note\">The model behind these probabilities is built on just one season of data (2025-26). ",
     "Expect it to be inaccurate, especially early in the season.</div>",
-    odds,
-    "<div class=\"sk-cards\">", cards, "</div>",
-    "<div class=\"sk-axis\">", paste(sprintf("<span style=\"left:%s\">%d</span>", xp(ticks), as.integer(ticks)), collapse = ""), "</div>",
-    sprintf("<p class=\"sk-note\">Projected final skins: dot = weighted average, thick bar = 1-in-2 range, thin bar = 4-in-5 range, from %s simulated seasons.</p>",
+    if (!is.null(views$pre)) paste0(
+      "<div class=\"sk-tog\"><span>Projections</span><span class=\"sk-seg\" id=\"sk-hot\">",
+      "<button type=\"button\" data-v=\"now\" aria-pressed=\"true\">Today</button>",
+      "<button type=\"button\" data-v=\"pre\" aria-pressed=\"false\">Preseason pace</button></span></div>") else "",
+    "<div data-cwv=\"now\">", cw_view(views$now), "</div>",
+    if (!is.null(views$pre)) paste0(
+      "<div data-cwv=\"pre\" hidden>", cw_view(views$pre),
+      "<p class=\"sk-note\">Preseason pace: skins already won are kept, and every team plays its remaining games at the rate ",
+      "its opening-night projection implied, as if results so far say nothing about the rest of the season.</p></div>") else "",
+    sprintf("<p class=\"sk-note\">Projected final skins: dot = projection, thick bar = 1-in-2 range, thin bar = 4-in-5 range, from %s simulated seasons.</p>",
             format(N_SIMS, big.mark = ","))
   )
 }
@@ -2232,6 +2278,15 @@ raw_html("</div></details>")
     me = b.getAttribute("data-me");
     try { me ? localStorage.setItem(KEY, me) : localStorage.removeItem(KEY); } catch (err) {}
     renderPicker(); applyMe(); if (me) showRoster(me); if (tabs) drawChart();
+  });
+
+  // --- Chance to Win: today's projections (default) or preseason pace; not remembered between visits ---
+  var hot = document.getElementById("sk-hot");
+  if (hot) hot.addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    var v = b.getAttribute("data-v");
+    hot.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-pressed", x === b); });
+    document.querySelectorAll("[data-cwv]").forEach(function (el) { el.hidden = el.getAttribute("data-cwv") !== v; });
   });
 
   // --- roster tabs ---
