@@ -1312,10 +1312,13 @@ if (draft_complete) {
   }
   player_scores <- player_scores %>%
     left_join(uncertainty %>% select(player, `Chance to Win` = win_prob, range_lo = lo80, range_hi = hi80,
-                                     range_lo50 = lo50, range_hi50 = hi50), by = "player")
+                                     range_lo50 = lo50, range_hi50 = hi50), by = "player") %>%
+    left_join(if (is.null(uncertainty_pre)) tibble(player = character(), win_prob_ignore_hot = numeric())
+              else uncertainty_pre %>% select(player, win_prob_ignore_hot = win_prob), by = "player")
 } else {
   player_scores <- player_scores %>% mutate(`Chance to Win` = NA_real_, range_lo = NA_real_, range_hi = NA_real_,
-                                            range_lo50 = NA_real_, range_hi50 = NA_real_)
+                                            range_lo50 = NA_real_, range_hi50 = NA_real_,
+                                            win_prob_ignore_hot = NA_real_)
 }
 
 # --- Step 6: Prepare Standings Table Data ---
@@ -1351,7 +1354,8 @@ current_standings <- player_scores %>%
     range_lo,
     range_hi,
     range_lo50,
-    range_hi50
+    range_hi50,
+    win_prob_ignore_hot
   ) %>%
   # Which model made today's forecast (settings change during the season), for scoring it at season end
   mutate(date = today, model_version = if (sim_method == "schedule") MODEL_VERSION else paste(MODEL_VERSION, "[league-total fallback]"),
@@ -1534,14 +1538,14 @@ knitr::opts_chunk$set(eval = draft_complete)
 
 ```{r season-charts, echo=FALSE, results='asis'}
 # Interactive charts (drawn in the browser from standings_history.csv, embedded below as JSON)
-for (col in c("win_prob", "range_lo", "range_hi", "max_projection", "opta", "darko", "dnt", "crafted")) if (!col %in% names(history)) history[[col]] <- NA_real_
+for (col in c("win_prob", "win_prob_ignore_hot", "range_lo", "range_hi", "max_projection", "opta", "darko", "dnt", "crafted")) if (!col %in% names(history)) history[[col]] <- NA_real_
 chart_hist <- history %>%
   filter(player %in% PLAYERS) %>%
   arrange(date, player) %>%
   transmute(d = format(date, "%Y-%m-%d"), p = player, sk = actual_skins, pct = skins_pct, pace = pct_projected,
             wa = weighted_average, v = vegas_consensus, tr = team_rankings, es = espn_bpi, cb = cbs_sports,
             br = basketball_reference, op = opta, dk = darko, dt = dnt, cr = crafted, avg = projection_average, mx = max_projection,
-            win = win_prob, lo = range_lo, hi = range_hi)
+            win = win_prob, winh = win_prob_ignore_hot, lo = range_lo, hi = range_hi)
 chart_json <- jsonlite::toJSON(list(players = PLAYERS, colors = as.list(colorblind_colors), sims = N_SIMS, hist = chart_hist),
                                dataframe = "rows", na = "null", digits = 4, auto_unbox = TRUE)
 
@@ -1556,6 +1560,7 @@ raw_html(
   "<div class=\"sk-crow\"><div><div class=\"sk-cttl\" id=\"sk-cttl\"></div><p class=\"sk-cdsc\" id=\"sk-cdsc\"></p></div>",
   "<select id=\"sk-copt\" aria-label=\"Chart series\" hidden></select></div>",
   "<div class=\"sk-tog sk-citog\" id=\"sk-citog\" hidden><span>Likely range</span><span class=\"sk-seg\" id=\"sk-ci\"><button type=\"button\" data-ci=\"0\" aria-pressed=\"true\">Off</button><button type=\"button\" data-ci=\"1\" aria-pressed=\"false\">On</button></span></div>",
+  "<div class=\"sk-tog sk-citog\" id=\"sk-hotc-wrap\" hidden><span>Ignore hot start</span><span class=\"sk-seg\" id=\"sk-hotc\"><button type=\"button\" data-v=\"now\" aria-pressed=\"true\">Off</button><button type=\"button\" data-v=\"pre\" aria-pressed=\"false\">On</button></span></div>",
   "<div class=\"sk-cleg\" id=\"sk-cleg\"></div>",
   "<div class=\"sk-plot\" id=\"sk-plot\"><div class=\"sk-empty\">Charts need JavaScript.</div></div>",
   "</div>",
@@ -1661,14 +1666,14 @@ if (!is.null(uncertainty)) {
     "<h2 class=\"sk-h\">Chance to win</h2>",
     "<div class=\"sk-caveat\" role=\"note\">Built on one season of data (2025-26); expect it to be off, especially early in the season.</div>",
     if (!is.null(views$pre)) paste0(
-      "<div class=\"sk-tog\"><span>Projections</span><span class=\"sk-seg\" id=\"sk-hot\">",
-      "<button type=\"button\" data-v=\"now\" aria-pressed=\"true\">Today</button>",
-      "<button type=\"button\" data-v=\"pre\" aria-pressed=\"false\">Preseason pace</button></span></div>") else "",
+      "<div class=\"sk-tog\"><span>Ignore hot start</span><span class=\"sk-seg\" id=\"sk-hot\">",
+      "<button type=\"button\" data-v=\"now\" aria-pressed=\"true\">Off</button>",
+      "<button type=\"button\" data-v=\"pre\" aria-pressed=\"false\">On</button></span></div>") else "",
     "<div data-cwv=\"now\">", cw_view(views$now), "</div>",
     if (!is.null(views$pre)) paste0(
       "<div data-cwv=\"pre\" hidden>", cw_view(views$pre),
-      "<p class=\"sk-note\">Preseason pace: skins already won are kept, and every team plays its remaining games at the rate ",
-      "its opening-night projection implied, as if results so far say nothing about the rest of the season.</p></div>") else "",
+      "<p class=\"sk-note\">Ignoring the hot start: skins already won still count, but the start is treated as a fluke. ",
+      "Every team plays its remaining games at the rate its opening-night projection implied, instead of the updated projections.</p></div>") else "",
     sprintf("<p class=\"sk-note\">Projected final skins: dot = projection, thick bar = 1-in-2 range, thin bar = 4-in-5 range, from %s simulated seasons.</p>",
             format(N_SIMS, big.mark = ","))
   )
@@ -2291,13 +2296,19 @@ raw_html(
     renderPicker(); applyMe(); if (me) showRoster(me); if (tabs) drawChart();
   });
 
-  // --- Chance to Win: today's projections (default) or preseason pace; not remembered between visits ---
-  var hot = document.getElementById("sk-hot");
-  if (hot) hot.addEventListener("click", function (e) {
-    var b = e.target.closest("button"); if (!b) return;
-    var v = b.getAttribute("data-v");
-    hot.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-pressed", x === b); });
-    document.querySelectorAll("[data-cwv]").forEach(function (el) { el.hidden = el.getAttribute("data-cwv") !== v; });
+  // --- Ignore hot start: one switch for the Chance to Win cards and the "To win" chart; off on every visit ---
+  var ignoreHot = false;
+  function setHot(on) {
+    ignoreHot = on;
+    document.querySelectorAll("#sk-hot, #sk-hotc").forEach(function (g) {
+      g.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", (b.getAttribute("data-v") === "pre") === on); });
+    });
+    document.querySelectorAll("[data-cwv]").forEach(function (el) { el.hidden = el.getAttribute("data-cwv") !== (on ? "pre" : "now"); });
+    if (typeof tabs !== "undefined" && tabs) drawChart();
+  }
+  ["sk-hot", "sk-hotc"].forEach(function (id) {
+    var g = document.getElementById(id);
+    if (g) g.addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) setHot(b.getAttribute("data-v") === "pre"); });
   });
 
   // --- roster tabs ---
@@ -2356,8 +2367,8 @@ raw_html(
       dom: [0.5, 0.8], ticks: [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8],
       get: function (r) { return r.pct > 0 ? r.pct : null; }, games: function () { return true; },
       fmt: function (v) { return (100 * v).toFixed(1) + "%"; } },
-    win: { ttl: "Chance to win", dsc: function () { return "From " + D.sims.toLocaleString() + " simulated seasons each day. Built on one season of data, so treat it as rough."; },
-      get: function (r) { return r.win; }, dom: [0, 1], ticks: [0, .25, .5, .75, 1],
+    win: { ttl: "Chance to win", dsc: function () { return "From " + D.sims.toLocaleString() + " simulated seasons each day. Built on one season of data, so treat it as rough." + (ignoreHot ? " Hot start ignored: skins won still count, the rest of the season runs at preseason pace." : ""); },
+      get: function (r) { return ignoreHot && r.winh != null ? r.winh : r.win; }, dom: [0, 1], ticks: [0, .25, .5, .75, 1],
       fmt: function (v) { return Math.round(100 * v) + "%"; } }
   };
   var state = { c: "proj", ci: false, o: { proj: "wa", race: "gap" } };   // likely range off until toggled
@@ -2381,6 +2392,7 @@ raw_html(
     } else sel.hidden = true;
     var hasBand = !!(c.band && c.band(o)), ciTog = document.getElementById("sk-citog");
     ciTog.hidden = !hasBand;
+    document.getElementById("sk-hotc-wrap").hidden = state.c !== "win";
     ciTog.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", (b.getAttribute("data-ci") === "1") === state.ci); });
     document.getElementById("sk-cttl").textContent = c.ttl;
     document.getElementById("sk-cdsc").textContent = c.dsc(o);
