@@ -82,3 +82,7 @@ Saved each day in `standings_history.csv`: `win_prob`, `range_lo/hi` (80%), `ran
 - Evidence comes from 4 seasons of 5-6 player leagues. Synthetic leagues (`analysis/synthetic_leagues.py`) multiply
   roster combinations but share the same team outcomes, and re-drafted rosters lack real drafters' clustering
   (realised roster correlation about 0.06 vs about 0.15 for real rosters). They test team-level changes, not ρ.
+- 24-season check (`analysis/scrutiny_2026-11-15.md`, Nov 2026): the sources weight early results as history says
+  they should; `TALENT_SD` 8.6 is high (24-season value 7.2); the (left/82)^1.5 fade is about 20% too wide at 13 games
+  and too narrow from about 35; ρ = 0.25 is at the top of the real-roster interval (0.08-0.18). Net effect in leagues
+  shaped like this one: under-confident at every stage. Proposed changes are listed there; none made yet.
