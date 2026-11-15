@@ -97,13 +97,14 @@ browser under `skinsStandingsToken` (`?admin=reset` removes it). To finish the s
 Each team's final wins are simulated (10,000 seasons) around its weighted-average projection with a miss
 made of two parts, fit on 2025-26 team projections vs final records:
 - luck in the games left: `left * p * (1 - p)`
-- the projection misjudging the team: `TALENT_SD * (left / 82)^1.5` (8.6 wins preseason in 2025-26)
+- the projection misjudging the team: `TALENT_SD * talent_fade(left)` (8.6 wins preseason in 2025-26; until
+  2026-11-15 the fade was `(left / 82)^1.5`, see "24-season check" below)
 
 Together they reproduce last season's typical miss at every stage (9.7 wins preseason, 6.2 with ~57 games
 left, 3.1 with ~27 left). Player totals are summed from their teams in each simulated season. The Chance to
 Win cards show each player's odds with the 50% and 80% likely ranges on a shared scale. Once teams
 average 12+ games since opening night, `TALENT_SD` is re-estimated from this season's own misses
-(`team_projection_history.csv`) and blended in, reaching 100% this season's data by midseason.
+(`team_projection_history.csv`) and blended in, up to 25% weight (`REFIT_MAX_WEIGHT`; it used to reach 100% by midseason).
 
 Teams on the same roster can miss together. Checked against 2025-26 final records, team-level ranges were
 well calibrated all season, but player-level 80% ranges held only ~50-60% of outcomes from ~20 games on:
@@ -150,6 +151,24 @@ winner log loss slightly in 3 of 4 seasons and at every stage (0-10, 10-20, 20-4
 beyond 2.5 SD), and widening the early spread helped only in the two seasons with a longshot winner
 (2022-23, 2023-24) and hurt in the other two, too few seasons to justify a new `TALENT_SD`.
 See `analysis/win_prob_backtest_2026-11-07.md`.
+
+**24-season check and the Odds view toggle (2026-11-15).** `analysis/scrutiny_2026-11-15.md` tested the model on
+715 preseason win totals and every game of 2000-2026 (`archive/history/preseason_win_totals_2000-26.csv`,
+`games_2000-26.csv`). Findings: the sources weight early results as history says they should (27% on 13 games);
+`TALENT_SD` 8.6 is a high-year value (24-season 7.2); real rosters' teams miss together about 0.08-0.18, so 0.25 is the
+cautious end; and in past seasons replayed with a league shaped like this one, the default's 61% favourite after 13
+games won 78% of the time. Changes made:
+- **Fade curve** (`talent_fade`): projection error now falls in proportion to games left (times 0.92 after 10 games and
+  0.80 after 40), as in 24 seasons of data, instead of `(left / 82)^1.5`. Nearly identical through ~25 games, wider
+  late (with 22 games left: 0.21 of `TALENT_SD` instead of 0.14).
+- **Refit cap**: this season's own misses get at most 25% weight in `TALENT_SD`. Across 24 seasons their size had
+  correlation 0.3 with later misses at 13-30 games and none at 41, so full weight by midseason mostly added noise.
+- **Odds view toggle** on the Chance to Win cards and the "To win" chart: **Cautious** (default: 8.6 and 0.25, leans
+  toward the players behind), **Best guess** (7.2 and 0.15, the values history supports; saved as `win_prob_best`,
+  backfilled for the season with `analysis/backfill_best.R`), and **Ignore hot start** (unchanged; a pessimistic bound
+  for the leader). On 2026-11-15: 70 / 78 / 57% for Eristeo.
+`MODEL_VERSION` "2026-11-15 schedule sim + history fade + refit cap 25% + roster-corr 0.25 + split ties". Earlier
+saved days keep their old default odds (re-running them with the new settings moves them by about a point or less).
 
 **Full specification:** `analysis/MODEL_SPEC.md` (model type, every step and setting, assumptions, limitations).
 
