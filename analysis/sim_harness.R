@@ -5,8 +5,9 @@ args <- commandArgs(TRUE); qmd <- args[1]; day <- if (length(args) > 1) args[2] 
 L <- readLines(qmd)
 grab <- function(from, to) { a <- grep(from, L, fixed = TRUE)[1]; b <- grep(to, L, fixed = TRUE); b <- b[b > a][1]; L[a:(b - 1)] }
 eval(parse(text = grab("draft_data <- tribble(", "draft_complete <-")))
-eval(parse(text = L[grep("^(PLAYERS|TEAMS_PER_PLAYER|SEASON_START|TALENT_SD_2526|ROSTER_RHO_2526|ROSTER_RHO_FLOOR|MODEL_VERSION|LEAGUE_WINS|N_SIMS) <-", L)]))
+eval(parse(text = L[grep("^(PLAYERS|TEAMS_PER_PLAYER|SEASON_START|TALENT_SD_2526|ROSTER_RHO_2526|ROSTER_RHO_FLOOR|TALENT_SD_HIST|ROSTER_RHO_BEST|REFIT_MAX_WEIGHT|MODEL_VERSION|LEAGUE_WINS|N_SIMS) <-", L)]))
 draft_complete <- TRUE
+eval(parse(text = grab("talent_fade <- function(left) {", "MODEL_VERSION <-")))
 fetch_block <- grab("HOME_EDGE <- 0.22", "nba_schedule <- tryCatch(")
 eval(parse(text = fetch_block))
 t0 <- Sys.time(); nba_schedule <- fetch_nba_schedule(); cat("schedule:", nrow(nba_schedule), "games, fetched in", round(as.numeric(Sys.time() - t0, units = "secs"), 1), "s\n")
@@ -19,12 +20,14 @@ df_final_projections <- cur %>% inner_join(draft_data %>% select(team, skins_pic
   transmute(team, skins_pick, actual_wins = wins, actual_losses = losses,
             weighted_average = if_else(skins_pick == "W", weighted, 82 - weighted), vegas_proj_wins = vegas)
 talent_sd_now <- TALENT_SD_2526; rho_now <- ROSTER_RHO_FLOOR
+talent_sd_best <- TALENT_SD_HIST; rho_best <- ROSTER_RHO_BEST   # no in-season refit in this harness
 player_scores <- tibble(player = PLAYERS)
 t0 <- Sys.time()
 eval(parse(text = grab("uncertainty <- NULL", "# --- Step 6")))
 cat(as.character(today), "| method:", sim_method, "|", sched_note, "| rho_eff", rho_eff, "strength rho", round(rho_strength, 3),
     "| sim time", round(as.numeric(Sys.time() - t0, units = "secs"), 1), "s\n")
 print(uncertainty %>% mutate(across(where(is.numeric), ~ round(.x, 3))) %>% as.data.frame())
+if (!is.null(uncertainty_best)) { cat("best guess:\n"); print(uncertainty_best %>% mutate(across(where(is.numeric), ~ round(.x, 3))) %>% as.data.frame()) }
 if (!is.null(uncertainty_pre)) { cat("preseason pace:\n"); print(uncertainty_pre %>% mutate(across(where(is.numeric), ~ round(.x, 3))) %>% as.data.frame()) }
 sp <- sim_player[PLAYERS, ]
 cat("means", round(rowMeans(sp), 1), "| corr Adam-Eristeo", round(cor(sp["Adam", ], sp["Eristeo", ]), 2), "Brian-Eristeo", round(cor(sp["Brian", ], sp["Eristeo", ]), 2),

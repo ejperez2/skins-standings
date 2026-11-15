@@ -1,5 +1,5 @@
 # Three ways to simulate the rest of a season, sharing one team-level spread (the live model's):
-#   sd_i^2 = left_i * p_i * (1 - p_i) + (TALENT_SD * (left_i / 82)^1.5)^2, roster correlation RHO (signed by pick)
+#   sd_i^2 = left_i * p_i * (1 - p_i) + (TALENT_SD * talent_fade(left_i))^2, roster correlation RHO (signed by pick)
 # M0 "independent": each team's final wins drawn on its own (pre-Nov 2026 model)
 # M1 "league total": M0 conditioned so every simulated season has 1,230 wins (live since 2026-11-08)
 # M2 "schedule": every remaining game simulated between its two teams. Team strengths (logit scale, plus a home
@@ -8,11 +8,16 @@
 #     team-level spread matches M0's. Wins and losses are coherent game by game.
 import numpy as np
 TALENT_SD, EXP = 8.6, 1.5
+FADE = 'history'   # 'history' = live since 2026-11-15 (index.qmd talent_fade); 'power' = the old (left/82)^EXP
+def talent_fade(left):
+    left = np.clip(left, 0, 82)
+    if FADE == 'power': return (left / 82) ** EXP
+    return (left / 82) * np.interp(82 - left, [0, 10, 30, 40, 82], [1, .92, .92, .80, .80])
 def team_inputs(W, L, proj):
     left = np.maximum(82 - (W + L), 0).astype(float)
     proj = np.clip(proj, W, W + left)
     rate = np.where(left > 0, np.clip((proj - W) / np.maximum(left, 1e-9), .01, .99), .5)
-    tsd = TALENT_SD * (left / 82) ** EXP
+    tsd = TALENT_SD * talent_fade(left)
     sd = np.sqrt(left * rate * (1 - rate) + tsd ** 2)
     return left, proj, rate, tsd, sd
 def roster_z(pid, side, rho, n, rng):

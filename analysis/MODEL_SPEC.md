@@ -1,8 +1,8 @@
 # Chance to Win: model specification
 
-Current as of `MODEL_VERSION` "2026-11-08 schedule sim + roster-corr 0.25 from day 1 + split ties".
-Code: Step 5.5 of `index.qmd`. Evidence for every choice: `analysis/win_prob_backtest_2026-11-07.md` and the
-README section "Chance to Win and Likely Range".
+Current as of `MODEL_VERSION` "2026-11-15 schedule sim + history fade + refit cap 25% + roster-corr 0.25 + split ties".
+Code: Step 5.5 of `index.qmd`. Evidence for every choice: `analysis/win_prob_backtest_2026-11-07.md`,
+`analysis/scrutiny_2026-11-15.md` (24 seasons) and the README section "Chance to Win and Likely Range".
 
 ## What kind of model
 
@@ -30,9 +30,12 @@ around the weighted-average projection and turns it into skins outcomes for this
    Targets are adjusted, in proportion to each team's game variance, so they add up to the games left.
 3. **Target uncertainty per team.** Var(final winsᵢ) = *nᵢ rᵢ(1 − rᵢ)* + *τᵢ²*:
    - The first term is game luck, with *rᵢ* = (*Pᵢ* − *Wᵢ*)/*nᵢ*.
-   - *τᵢ* = *T*·(*nᵢ*/82)^1.5 is projection error.
+   - *τᵢ* = *T*·fade(*nᵢ*) is projection error. fade(*n*) = (*n*/82)·*c*(games played), with *c* = 1 at 0 games, 0.92 at
+     10-30 games, 0.80 from 40 games, linear in between (`talent_fade`). Until 2026-11-15 it was (*n*/82)^1.5, which
+     matched history early but was too narrow late (0.14 vs 0.21 of *T* with 22 games left).
    - *T* = 8.6 (fit on 2025-26). Once teams have played 12+ games since opening night, *T* blends toward a method-of-moments
-     estimate from this season's misses (opening snapshot vs today, clamped 4-14), with weight min(1, games played / 41).
+     estimate from this season's misses (opening snapshot vs today, clamped 4-14), with weight
+     min(0.25, games played / 41) (`REFIT_MAX_WEIGHT`; it used to reach 1 at 41 games).
 4. **Random effects (one draw per team per simulated season).** *zᵢ* = √(1 − ρₛ)·εᵢ + √ρₛ·sideᵢ·*v*_owner(*i*), with
    ε and *v* iid N(0, 1). Strength shift δᵢ = *k*·*τᵢ*·*zᵢ* / *Vᵢ*, where *Vᵢ* = Σ p(1 − p) over team *i*'s remaining
    games, so the shift is about *τᵢ zᵢ* wins.
@@ -47,6 +50,9 @@ around the weighted-average projection and turns it into skins outcomes for this
    - Final skins: wins for W picks, 82 − wins for L picks, summed over each player's 10 teams.
    - **Chance to Win** = share of seasons a player finishes first, with ties split evenly.
    - **Likely ranges** = 10th–90th and 25th–75th percentiles of simulated totals.
+6b. **Best guess view** (toggle, not the default; saved as `win_prob_best`). The same simulation with *T* = 7.2
+   (`TALENT_SD_HIST`, the 24-season value, same capped refit) and ρ = 0.15 (`ROSTER_RHO_BEST`, same floor rule). The default
+   keeps 8.6 and 0.25, which lean toward the players behind by choice.
 7. **Fallback** (schedule unreadable, or listed games don't fit the standings: any team with more listed than left, or
    more than 6 unscheduled).
    - Final wins ~ N(*Pᵢ*, *nᵢ rᵢ(1 − rᵢ)* + *τᵢ²*) with the same roster factor.
@@ -66,7 +72,7 @@ Saved each day in `standings_history.csv`: `win_prob`, `range_lo/hi` (80%), `ran
 | 3 | Games independent given strengths (no rest, travel or back-to-back effects) | Not tested |
 | 4 | One home edge for every team, all season | Estimated from 2022-26 overall |
 | 5 | Errors normal on the strength scale | Tested: 90 preseason team misses, excess kurtosis −0.55, none beyond 2.5 SD |
-| 6 | Projection error shrinks as (games left / 82)^1.5 | Fit on 2025-26; 4-season re-fit no better out of sample |
+| 6 | Projection error fades in proportion to games left, with a small early drop and a midseason drop | Fit on 24 seasons (record-only formula, held out by season); the midseason drop uses half the edge the real sources showed over that formula in 2022-26 |
 | 7 | Same base uncertainty *T* for every team | Not tested (archive has one source per team, so source disagreement can't be used) |
 | 8 | One shared factor per roster, equal for every pair of its teams, ρ = 0.25 | Level backtested on real leagues. Real rosters' realised correlation was 0.00 / 0.33 / 0.12 / 0.13 (2022-26, from ~20 games), so 0.25 leans toward underdogs; kept by choice |
 | 9 | Players affect each other only through games their teams play | Schedule model beat the league-total shortcut on real leagues |
@@ -82,3 +88,8 @@ Saved each day in `standings_history.csv`: `win_prob`, `range_lo/hi` (80%), `ran
 - Evidence comes from 4 seasons of 5-6 player leagues. Synthetic leagues (`analysis/synthetic_leagues.py`) multiply
   roster combinations but share the same team outcomes, and re-drafted rosters lack real drafters' clustering
   (realised roster correlation about 0.06 vs about 0.15 for real rosters). They test team-level changes, not ρ.
+- 24-season check (`analysis/scrutiny_2026-11-15.md`, Nov 2026): the sources weight early results as history says
+  they should; `TALENT_SD` 8.6 is high (24-season value 7.2); the (left/82)^1.5 fade is about 20% too wide at 13 games
+  and too narrow from about 35; ρ = 0.25 is at the top of the real-roster interval (0.08-0.18). Net effect in leagues
+  shaped like this one: under-confident at every stage. Made 2026-11-15: the fade curve and the 25% refit cap (default
+  view), and the Best guess view (7.2, 0.15). The default's 8.6 and 0.25 were kept.
