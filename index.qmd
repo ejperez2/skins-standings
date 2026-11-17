@@ -1991,11 +1991,12 @@ if (is.null(h) || nrow(h) == 0) {
       lbl <- gsub("&", "&amp;", ACC_SOURCES[cand], fixed = TRUE)
       fmt_w <- function(w) paste(sprintf("%s %.0f%%", lbl[w > 0], 100 * w[w > 0]), collapse = ", ")
       acc_p(sprintf(paste0("<b>Suggested weights</b> (best fit across all %d sources, graded since %s, about %.0f games per team): %s &mdash; ",
-                           "miss %.2f vs %.2f with current weights (%s) and %.2f averaging all %d equally. ",
+                           "miss %.2f vs %.2f for the Weighted Average (current weights: %s) and %.2f averaging all %d equally. ",
+                           "These cover only the games since %s, when every source had a projection, so they run lower than the since-opening column above. ",
                            "With 30 teams and this few games the best mix is mostly luck, so gaps this small are not a reason to change the weights yet."),
                     length(cand), format(min(all_cov), "%b %d"), mean(d$played),
-                    fmt_w(best_w), min(grid_miss), miss_for(cur_w), fmt_w(cur_w),
-                    miss_for(rep(1 / length(cand), length(cand))), length(cand)), 13)
+                    fmt_w(best_w), min(grid_miss), mean(abs(d$won - (d$weighted - d$wins) * scale_g)), fmt_w(cur_w),
+                    miss_for(rep(1 / length(cand), length(cand))), length(cand), format(min(all_cov), "%b %d")), 13)
     }
 
     # Trend: rolling 30-day miss for each source, as of each snapshot date
