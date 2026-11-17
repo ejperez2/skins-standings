@@ -1,11 +1,11 @@
-"date","team","playoff","playin","seed","draft","first"
-"2026-11-12","Chicago Bulls",0.04,0.4,13.7,7.621,8.3
-"2026-11-12","Dallas Mavericks",31.14,89.8,8.9,10.422,5.4
-"2026-11-13","Chicago Bulls",0.04,0.6,13.6,7.603,8.4
-"2026-11-13","Dallas Mavericks",18.94,83.3,9.4,9.361,6.3
-"2026-11-14","Chicago Bulls",0.07,1.1,13.2,7.527,8.8
-"2026-11-14","Dallas Mavericks",20.12,81.4,9.4,9.508,6.3
-"2026-11-15","Chicago Bulls",0.19,2.8,12.7,7.467,9.1
-"2026-11-15","Dallas Mavericks",9.1,60.5,10,8.571,7.4
-"2026-11-16","Chicago Bulls",0.15,3,12.5,7.475,9.1
-"2026-11-16","Dallas Mavericks",10.69,62.9,10,8.677,7.3
+"date","team","playoff","playin","seed","draft","first","ball2","ball3","bottom3"
+"2026-11-12","Chicago Bulls",0.04,0.4,13.7,7.621,8.3,NA,NA,NA
+"2026-11-12","Dallas Mavericks",31.14,89.8,8.9,10.422,5.4,NA,NA,NA
+"2026-11-13","Chicago Bulls",0.04,0.6,13.6,7.603,8.4,NA,NA,NA
+"2026-11-13","Dallas Mavericks",18.94,83.3,9.4,9.361,6.3,NA,NA,NA
+"2026-11-14","Chicago Bulls",0.07,1.1,13.2,7.527,8.8,NA,NA,NA
+"2026-11-14","Dallas Mavericks",20.12,81.4,9.4,9.508,6.3,NA,NA,NA
+"2026-11-15","Chicago Bulls",0.19,2.8,12.7,7.467,9.1,NA,NA,NA
+"2026-11-15","Dallas Mavericks",9.1,60.5,10,8.571,7.4,NA,NA,NA
+"2026-11-16","Chicago Bulls",0.15,3,12.5,7.475,9.1,29.6,68.7,12.2
+"2026-11-16","Dallas Mavericks",10.69,62.9,10,8.677,7.3,51.7,41.2,0
