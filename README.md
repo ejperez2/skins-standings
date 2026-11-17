@@ -80,9 +80,12 @@ each team's record, to `team_projection_history.csv`. The Projection Accuracy se
 on games played *after* a saved projection: expected wins since then = (projected wins - wins at the time) /
 games left x games played since, compared with actual wins since. It shows the average miss (wins per team)
 since opening night and over the last 30 days, a .500 baseline, the TR/ESPN/CBS weights (5% steps) that would
-have missed least, and a rolling 30-day trend chart. A window is graded once teams average 12+ games in it
-(about mid-November). Weights live in `WEIGHTS` near the top of `index.qmd`. Opta, DARKO and Dunks & Threes (added Oct 21, 2026,
-after opening night) are graded "since opening" from their first saved snapshot and marked with `*`.
+have missed least, and a rolling 30-day trend chart. A window is graded once teams average 5+ games in it
+(`MIN_GAMES` in `index.qmd`). A **Tier** column says whether a source's gap to the best source is bigger than luck:
+the 30 teams are resampled 2,000 times (fixed seed) and a source is Tier 2 only if it trails the best in at least
+95% of resamples, otherwise Tier 1; both sources are compared over the same games, and a dash means fewer than 25
+teams in common (`TIER_MIN_TEAMS`). Weights live in `WEIGHTS` near the top of `index.qmd`. Opta, DARKO and Dunks & Threes (added Oct 21, 2026,
+after opening night) are graded "since opening" from their first saved snapshot that covers 25+ teams and marked with `*`.
 Crafted NBA (added Oct 27, 2026) has its preseason run (Oct 20) backfilled into the opening-night snapshot, so it
 is graded from opening night like the core sources.
 

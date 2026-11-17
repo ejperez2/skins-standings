@@ -1835,6 +1835,14 @@ score_window <- function(from_date, to_date) {
     summarise(miss = mean(miss), teams = n(), .groups = "drop") %>%
     mutate(games = mean(d$played))
 }
+# Per-team miss for one source over the games since from_date (feeds the tiers)
+team_miss <- function(src, from_date) {
+  d <- window_detail(from_date, latest)
+  if (!src %in% names(d)) return(NULL)
+  d <- d[!is.na(d[[src]]), ]
+  setNames(abs(d$won - (d[[src]] - d$wins) / (82 - d$g0) * d$played), d$team)
+}
+TIER_MIN_TEAMS <- 25   # teams a source must cover (on the start date) to be graded late and tiered
 pick_start <- function(on_or_before) {
   d <- h$date[h$date <= on_or_before]
   if (length(d) == 0) NA else max(d)
@@ -1854,10 +1862,12 @@ if (is.null(h) || nrow(h) == 0) {
   games_txt <- sapply(scores, function(x) if (is.null(x)) "0" else sprintf("%.0f", x$games[1]))
 
   # Sources added after opening night (Opta, DARKO, Dunks & Threes in 2026-27) are graded "since opening" from their first saved projection
+  # that covers nearly every team (a source that starts with a few teams would otherwise be graded on a tiny, different sample)
   late_start <- list()
   for (k in setdiff(names(ACC_SOURCES), "baseline")) {
     if (!k %in% names(h) || any(!is.na(h[[k]][h$date == opening]))) next
-    dates_k <- h$date[!is.na(h[[k]])]
+    covered <- ave(as.numeric(!is.na(h[[k]])), h$date, FUN = sum)   # teams with a projection on each date
+    dates_k <- h$date[covered >= TIER_MIN_TEAMS]
     if (length(dates_k) == 0 || min(dates_k) >= latest) next
     x <- score_window(min(dates_k), latest)
     x <- x[x$source == k, ]
@@ -1883,6 +1893,33 @@ if (is.null(h) || nrow(h) == 0) {
       filter(!(is.na(opening) & is.na(last30))) %>%
       arrange(coalesce(last30, opening))
 
+    # Tiers: is a source's gap to the best source bigger than luck? Resample the teams 2,000 times; a source drops to
+    # Tier 2 only if it is behind the best in at least 95% of resamples. Compared over the same games for both sources.
+    tier_key <- if (enough[["last30"]]) "last30" else "opening"
+    tier_of <- setNames(rep(NA_integer_, nrow(acc)), acc$key)
+    vals <- setNames(acc[[tier_key]], acc$key)
+    vals <- vals[names(vals) != "baseline" & !is.na(vals)]
+    if (length(vals) >= 2) {
+      best_k <- names(which.min(vals))
+      set.seed(2026)   # fixed seed: the tiers must not flicker between refreshes
+      for (k in names(vals)) {
+        if (k == best_k) { tier_of[k] <- 1L; next }
+        start_of <- function(x) if (tier_key == "opening" && x %in% names(late_start)) late_start[[x]]$date else windows[[tier_key]]
+        from_k <- max(start_of(k), start_of(best_k))   # same games for both: from the later of their two start dates
+        both <- ave(as.numeric(!is.na(h[[k]]) & !is.na(h[[best_k]])), h$date, FUN = sum)   # a snapshot where both have projections
+        ok_dates <- h$date[both >= TIER_MIN_TEAMS & h$date >= from_k]
+        if (length(ok_dates) == 0) next
+        from_k <- min(ok_dates)
+        mk <- team_miss(k, from_k); mb <- team_miss(best_k, from_k)
+        common <- intersect(names(mk), names(mb))
+        if (length(common) < TIER_MIN_TEAMS) next
+        gap <- mk[common] - mb[common]
+        boot <- replicate(2000, mean(sample(gap, replace = TRUE)))
+        tier_of[k] <- if (unname(quantile(boot, 0.05)) > 0) 2L else 1L
+      }
+    }
+    acc$tier <- unname(tier_of[acc$key])
+
     # Bold the best source (baseline excluded) in each column
     fmt_col <- function(x, keys) {
       real <- !(keys %in% c("baseline"))
@@ -1893,12 +1930,15 @@ if (is.null(h) || nrow(h) == 0) {
       transmute(Source = if_else(key %in% names(late_start), paste0(Source, "*"), Source),
                 opening = fmt_col(opening, key),
                 last30 = fmt_col(last30, key),
-                weight)
+                weight,
+                tier = case_when(is.na(tier) ~ "&ndash;",
+                                 tier == 1L ~ "Tier 1",
+                                 TRUE ~ "<span style='color:var(--sk-muted)'>Tier 2</span>"))
 
     raw_html("<div class=\"sk-tablewrap\"><table class=\"sk-table\" data-quarto-disable-processing=\"true\"><thead><tr>",
-             "<th>Source</th><th>Since opening</th><th>Last 30 days</th><th>Weight</th></tr></thead><tbody>",
-             paste(sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
-                           acc_display$Source, acc_display$opening, acc_display$last30, acc_display$weight), collapse = ""),
+             "<th>Source</th><th>Since opening</th><th>Last 30 days</th><th>Weight</th><th>Tier</th></tr></thead><tbody>",
+             paste(sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
+                           acc_display$Source, acc_display$opening, acc_display$last30, acc_display$weight, acc_display$tier), collapse = ""),
              "</tbody></table></div>")
     raw_html("<details class=\"sk-more\"><summary>About these numbers</summary>")
     acc_p(sprintf(paste0("Average miss in wins per team, grading only games played <i>after</i> each projection was saved ",
@@ -1912,6 +1952,10 @@ if (is.null(h) || nrow(h) == 0) {
                  "per team, in wins, so 1.50 means the source was off by about one and a half wins per team over that stretch. ",
                  "Only games played after the projection was saved count, so no source gets credit for results it already knew. ",
                  "The .500 baseline simply assumes every team wins half its remaining games; a source has to beat it to be adding anything."), 13)
+    acc_p(paste0("<b>Tiers:</b> with only 30 teams and a few weeks of games, small gaps are luck. <b>Tier 1</b> sources cannot be told apart ",
+                 "from the best one (the bold number); <b>Tier 2</b> sources are behind the best by more than luck explains. ",
+                 "Tiers use the ", if (tier_key == "last30") "last 30 days" else "since-opening", " column. ",
+                 "A dash means too few teams to judge. Most sources land in Tier 1 early; the split sharpens as games pile up."), 13)
     if (max(sapply(scores, function(x) if (is.null(x)) 0 else x$games[1])) < 20)
       acc_p("Early-season sample: with only about 10 games per team, gaps of a few hundredths between sources are mostly noise. Read it as a rough first look; it firms up as games pile up.", 13)
     if (length(late_start) > 0)
