@@ -2177,13 +2177,16 @@ raw_html(
 ```
 
 ```{r bpi-trends, echo=FALSE, results='asis', warning=FALSE, message=FALSE}
-# Chicago Bulls and Dallas Mavericks: ESPN BPI playoff %, play-in %, projected seed, projected draft slot and 1st-pick %,
-# saved once a day (the latest run of each Chicago date wins) so the trend can be charted. ESPN keeps no history,
-# so the chart starts with the first saved day.
+# Chicago Bulls and Dallas Mavericks, saved once a day (the latest run of each Chicago date wins) so the trend can be charted.
+# ESPN BPI: playoff %, play-in %, projected seed, projected draft slot, 1st-pick %.
+# Basketball-Reference's projected draft page: chance of two lottery balls, three lottery balls and a bottom-3 record.
+# Neither site keeps history, so each measure's chart starts with its first saved day (ball2/ball3/bottom3: 2026-11-17 on).
 BPI_TEAMS <- c("Chicago Bulls", "Dallas Mavericks")
+BPI_BR_ABBR <- c("Chicago Bulls" = "CHI", "Dallas Mavericks" = "DAL")   # Basketball-Reference uses team abbreviations here
+url_br_draft <- "https://www.basketball-reference.com/friv/proj_draft.html"
 bpi_file <- "bpi_history.csv"
-bpi_cols <- c("playoff", "playin", "seed", "draft", "first")
-bpi_today <- tryCatch({
+bpi_cols <- c("playoff", "playin", "seed", "draft", "first", "ball2", "ball3", "bottom3")
+espn_today <- tryCatch({
   # Primary: ESPN's JSON feed (same numbers as the projections page; the page itself is often a bot check from GitHub's runners)
   out <- tryCatch({
     j <- fromJSON(content(GET(url_espn_api, user_agent("Mozilla/5.0"), timeout(30)), as = "text", encoding = "UTF-8"), simplifyVector = FALSE)
@@ -2206,24 +2209,47 @@ bpi_today <- tryCatch({
       filter(team %in% BPI_TEAMS)
   }
   if (nrow(out) != length(BPI_TEAMS) || any(is.na(out$playoff))) stop("incomplete BPI data")
-  out %>% mutate(date = as.character(today), .before = 1)
+  out
 }, error = function(e) { message("ESPN BPI trends skipped: ", conditionMessage(e)); NULL })
 
+# Basketball-Reference: first table of the page. Columns by position (the header spans two rows):
+# 2 = team abbreviation, 8 = chance of 2 lottery balls, 9 = 3 balls, 10 = bottom-3 record. A blank cell means 0%.
+br_draft_today <- tryCatch({
+  x <- read_html(url_br_draft) %>% html_table() %>% .[[1]]
+  if (ncol(x) < 10) stop("unexpected table shape")
+  x <- x[x[[2]] %in% BPI_BR_ABBR, ]
+  num <- function(v) { v <- suppressWarnings(as.numeric(v)); v[is.na(v)] <- 0; v }
+  out <- tibble(team = names(BPI_BR_ABBR)[match(x[[2]], BPI_BR_ABBR)], ball2 = num(x[[8]]), ball3 = num(x[[9]]), bottom3 = num(x[[10]]))
+  if (nrow(out) != length(BPI_TEAMS) || any(is.na(suppressWarnings(as.numeric(x[[3]]))))) stop("incomplete draft table")
+  out
+}, error = function(e) { message("Basketball-Reference draft odds skipped: ", conditionMessage(e)); NULL })
+
 bpi_hist <- if (file.exists(bpi_file)) read.csv(bpi_file, stringsAsFactors = FALSE) else
-  data.frame(date = character(), team = character(), playoff = numeric(), playin = numeric(), seed = numeric(), draft = numeric(), first = numeric())
-if (!is.null(bpi_today)) {
+  data.frame(date = character(), team = character())
+for (cn in bpi_cols) if (!cn %in% names(bpi_hist)) bpi_hist[[cn]] <- NA_real_   # older history files lack the newer measures
+bpi_today <- bind_rows(espn_today, br_draft_today)
+if (!is.null(bpi_today) && nrow(bpi_today) > 0) {
+  # One row per team: take each source's numbers, and keep anything already saved today for a source that failed this run
+  bpi_today <- bpi_today %>% group_by(team) %>%
+    summarise(across(everything(), ~ if (all(is.na(.x))) NA_real_ else .x[!is.na(.x)][1]), .groups = "drop")
+  for (cn in bpi_cols) if (!cn %in% names(bpi_today)) bpi_today[[cn]] <- NA_real_
+  prev <- bpi_hist %>% filter(date == as.character(today))
+  for (cn in bpi_cols) bpi_today[[cn]] <- coalesce(bpi_today[[cn]], prev[[cn]][match(bpi_today$team, prev$team)])
+  bpi_today <- bpi_today %>% mutate(date = as.character(today), .before = 1) %>% select(date, team, all_of(bpi_cols))
   bpi_hist <- bind_rows(bpi_hist %>% filter(!(date == as.character(today) & team %in% bpi_today$team)), bpi_today) %>% arrange(date, team)
   write.csv(bpi_hist, bpi_file, row.names = FALSE)
 }
 bpi_json <- jsonlite::toJSON(list(teams = BPI_TEAMS, rows = bpi_hist), dataframe = "rows", na = "null", auto_unbox = TRUE, digits = 4)
 raw_html(
-  "<details class=\"sk-fold\"><summary>Bulls &amp; Mavs: ESPN BPI trends<small>playoff, play-in, seed and draft odds over time</small></summary><div class=\"sk-inner\">",
+  "<details class=\"sk-fold\"><summary>Bulls &amp; Mavs: playoff and draft odds<small>playoff, play-in, seed and lottery odds over time</small></summary><div class=\"sk-inner\">",
   "<div class=\"sk-crow\"><div><div class=\"sk-cttl\" id=\"sk-bpi-ttl\"></div><p class=\"sk-cdsc\" id=\"sk-bpi-dsc\"></p></div>",
-  "<select id=\"sk-bpi-sel\" aria-label=\"BPI measure\"></select></div>",
+  "<select id=\"sk-bpi-sel\" aria-label=\"Odds measure\"></select></div>",
   "<div class=\"sk-cleg\" id=\"sk-bpi-leg\"></div>",
   "<div class=\"sk-plot\" id=\"sk-bpi-plot\"><div class=\"sk-empty\">Charts need JavaScript.</div></div>",
-  sprintf("<details class=\"sk-more\"><summary>About these numbers</summary><p class=\"sk-note\">From ESPN's BPI projections (<a href=\"%s\">espn.com/nba/bpi</a>), saved once a day.</p></details>",
-          url_espn),
+  sprintf(paste0("<details class=\"sk-more\"><summary>About these numbers</summary><p class=\"sk-note\">Playoff %%, play-in %%, seed, draft slot and 1st-pick %% are from ESPN's BPI projections (<a href=\"%s\">espn.com/nba/bpi</a>). ",
+                 "The lottery-ball and bottom-3 odds are from Basketball-Reference's <a href=\"%s\">projected draft order</a> (10,000 simulations of the rest of the season). ",
+                 "Both are saved once a day and neither site keeps history, so each chart starts the day it was first saved.</p></details>"),
+          url_espn, url_br_draft),
   "</div></details>",
   "<script type=\"application/json\" id=\"sk-bpi-data\">", bpi_json, "</script>"
 )
@@ -2335,26 +2361,30 @@ raw_html(
     });
   })();
 
-  // --- Bulls & Mavs ESPN BPI trends: pick a measure, both teams over time ---
+  // --- Bulls & Mavs odds trends (ESPN BPI + Basketball-Reference): pick a measure, both teams over time ---
   var bd = document.getElementById("sk-bpi-data");
   if (bd) (function () {
     var D = JSON.parse(bd.textContent), rows = A(D.rows), COLS = ["#E26A54", "#4C9BE8"];
     var P = function (v) { return v.toFixed(1) + "%"; }, N1 = function (v) { return v.toFixed(1); };
     var M = {
-      playoff: { l: "Playoff %", d: "Chance to make the playoffs, including through the play-in.", f: P, pct: true },
-      playin: { l: "Play-in %", d: "Chance to finish in the play-in range (seeds 7-10).", f: P, pct: true },
+      first: { l: "1st pick %", d: "Chance of winning the top pick in the lottery. Source: ESPN BPI.", f: P, pct: true },
+      ball2: { l: "2 lottery balls %", d: "Chance of ending with two lottery balls: the No. 9 and 10 play-in seeds, or a non-play-in team with one of the three worst records. Source: Basketball-Reference.", f: P, pct: true },
+      ball3: { l: "3 lottery balls %", d: "Chance of ending with three lottery balls: a non-play-in team that does not have one of the three worst records. Source: Basketball-Reference.", f: P, pct: true },
+      bottom3: { l: "Bottom 3 %", d: "Chance of finishing with one of the three worst records, which means picking no lower than 12th. Source: Basketball-Reference.", f: P, pct: true },
+      playoff: { l: "Playoff %", d: "Chance to make the playoffs, including through the play-in. Source: ESPN BPI.", f: P, pct: true },
+      playin: { l: "Play-in %", d: "Chance to finish in the play-in range (seeds 7-10). Source: ESPN BPI.", f: P, pct: true },
       seed: { l: "Projected seed", d: "Average conference seed across ESPN's simulations. Seed 1 is at the top.", f: N1, rev: true },
-      draft: { l: "Projected draft slot", d: "Average draft position across ESPN's simulations. Pick 1 is at the top.", f: N1, rev: true },
-      first: { l: "1st pick %", d: "Chance of winning the top pick in the lottery.", f: P, pct: true }
+      draft: { l: "Projected draft slot", d: "Average draft position across ESPN's simulations. Pick 1 is at the top.", f: N1, rev: true }
     };
     var sel = document.getElementById("sk-bpi-sel"), ttl = document.getElementById("sk-bpi-ttl"), dsc = document.getElementById("sk-bpi-dsc");
-    var plot = document.getElementById("sk-bpi-plot"), leg = document.getElementById("sk-bpi-leg"), key = "playoff";
+    var plot = document.getElementById("sk-bpi-plot"), leg = document.getElementById("sk-bpi-leg"), key = "first";
     sel.innerHTML = Object.keys(M).map(function (k) { return '<option value="' + k + '">' + M[k].l + "</option>"; }).join("");
+    sel.value = key;   // 1st pick % is the default view
     leg.innerHTML = D.teams.map(function (t, i) { return '<span><i class="sk-dot" style="--c:' + COLS[i] + '"></i>' + t + "</span>"; }).join("");
     var fold = plot.closest("details");
     function draw() {
       if (fold && !fold.open) return;
-      var m = M[key], days = rows.map(function (r) { return dayN(r.date); });
+      var m = M[key], days = rows.filter(function (r) { return r[key] != null; }).map(function (r) { return dayN(r.date); });
       ttl.textContent = m.l; dsc.textContent = m.d;
       var ser = D.teams.map(function (t, i) {
         return { n: t, c: COLS[i], w: 2.4, dots: true, pts: rows.filter(function (r) { return r.team === t && r[key] != null; }).map(function (r) { return [dayN(r.date), r[key]]; }) };

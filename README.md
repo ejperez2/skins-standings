@@ -89,6 +89,15 @@ after opening night) are graded "since opening" from their first saved snapshot 
 Crafted NBA (added Oct 27, 2026) has its preseason run (Oct 20) backfilled into the opening-night snapshot, so it
 is graded from opening night like the core sources.
 
+### Bulls & Mavs odds trends
+A chart of the Bulls' and Mavericks' odds over time, saved once a day to `bpi_history.csv` (the latest run of each Central
+date wins). ESPN BPI supplies playoff %, play-in %, projected seed, projected draft slot and 1st-pick %. Basketball-Reference's
+[projected draft order](https://www.basketball-reference.com/friv/proj_draft.html) (first table, read by column position)
+supplies the chance of two lottery balls, three lottery balls and a bottom-3 record (`ball2`, `ball3`, `bottom3`; a blank cell
+means 0%). If one source fails on a run, the other's numbers are still saved and anything already saved for that day is kept.
+Neither site keeps history, so each measure's chart starts the day it was first saved (the Basketball-Reference measures start
+2026-11-17). The dropdown opens on 1st pick %.
+
 ### Refresh Now Button
 Always visible in the nav. It POSTs to the Cloudflare Worker `skins-refresh.ejperez2.workers.dev/?repo=skins-standings`
 (the same one Daily Matchups uses; the Worker holds the GitHub token and runs `publish.yml`). While the Worker
