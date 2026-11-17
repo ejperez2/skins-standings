@@ -1879,6 +1879,21 @@ if (is.null(h) || nrow(h) == 0) {
                  "Every source&rsquo;s projected wins are saved daily and each is graded: the average miss between a team&rsquo;s actual wins ",
                  "and the wins its projection implied for those games."))
   } else {
+    # Same-footing column: every source graded over the same games, from the first snapshot on which all of them
+    # have a projection for (nearly) the whole league. Opening/last-30 mix start dates; this one does not.
+    common_cand <- setdiff(names(ACC_SOURCES), c("weighted", "baseline"))
+    common_cand <- common_cand[common_cand %in% names(h)]
+    common_cand <- common_cand[sapply(common_cand, function(k) sum(!is.na(h[[k]][h$date == latest])) >= TIER_MIN_TEAMS)]
+    common_start <- as.Date(NA)
+    if (length(common_cand) >= 2) {
+      cover <- sapply(common_cand, function(k) ave(as.numeric(!is.na(h[[k]])), h$date, FUN = sum))   # teams covered, by snapshot row
+      common_dates <- h$date[rowSums(cover >= TIER_MIN_TEAMS) == length(common_cand) & h$date >= opening]
+      if (length(common_dates) > 0) common_start <- min(common_dates)
+    }
+    common_x <- if (!is.na(common_start) && common_start < latest) score_window(common_start, latest) else NULL
+    common_ok <- !is.null(common_x) && common_x$games[1] >= MIN_GAMES
+    common_col <- if (common_ok) setNames(common_x$miss[match(names(ACC_SOURCES), common_x$source)], names(ACC_SOURCES))
+                  else setNames(rep(NA_real_, length(ACC_SOURCES)), names(ACC_SOURCES))
     col_for <- function(key) {
       x <- scores[[key]]
       if (!enough[[key]]) return(setNames(rep(NA_real_, length(ACC_SOURCES)), names(ACC_SOURCES)))
@@ -1887,10 +1902,10 @@ if (is.null(h) || nrow(h) == 0) {
       out
     }
     acc <- tibble(key = names(ACC_SOURCES), Source = unname(ACC_SOURCES),
-                  opening = col_for("opening"), last30 = col_for("last30"),
+                  opening = col_for("opening"), common = unname(common_col), last30 = col_for("last30"),
                   weight = case_when(key %in% names(WEIGHTS) ~ sprintf("%.0f%%", 100 * WEIGHTS[key]),
                                      TRUE ~ "&ndash;")) %>%
-      filter(!(is.na(opening) & is.na(last30))) %>%
+      filter(!(is.na(opening) & is.na(last30) & is.na(common))) %>%
       arrange(coalesce(last30, opening))
 
     # Tiers: is a source's gap to the best source bigger than luck? Resample the teams 2,000 times; a source drops to
@@ -1929,6 +1944,7 @@ if (is.null(h) || nrow(h) == 0) {
     acc_display <- acc %>%
       transmute(Source = if_else(key %in% names(late_start), paste0(Source, "*"), Source),
                 opening = fmt_col(opening, key),
+                common = fmt_col(common, key),
                 last30 = fmt_col(last30, key),
                 weight,
                 tier = case_when(is.na(tier) ~ "&ndash;",
@@ -1936,9 +1952,10 @@ if (is.null(h) || nrow(h) == 0) {
                                  TRUE ~ "<span style='color:var(--sk-muted)'>Tier 2</span>"))
 
     raw_html("<div class=\"sk-tablewrap\"><table class=\"sk-table\" data-quarto-disable-processing=\"true\"><thead><tr>",
-             "<th>Source</th><th>Since opening</th><th>Last 30 days</th><th>Weight</th><th>Tier</th></tr></thead><tbody>",
-             paste(sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
-                           acc_display$Source, acc_display$opening, acc_display$last30, acc_display$weight, acc_display$tier), collapse = ""),
+             "<th>Source</th><th>Since opening</th><th>", if (common_ok) paste("Since", format(common_start, "%b %d")) else "Since all tracked",
+             "</th><th>Last 30 days</th><th>Weight</th><th>Tier</th></tr></thead><tbody>",
+             paste(sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
+                           acc_display$Source, acc_display$opening, acc_display$common, acc_display$last30, acc_display$weight, acc_display$tier), collapse = ""),
              "</tbody></table></div>")
     raw_html("<details class=\"sk-more\"><summary>About these numbers</summary>")
     acc_p(sprintf(paste0("Average miss in wins per team, grading only games played <i>after</i> each projection was saved ",
@@ -1952,6 +1969,10 @@ if (is.null(h) || nrow(h) == 0) {
                  "per team, in wins, so 1.50 means the source was off by about one and a half wins per team over that stretch. ",
                  "Only games played after the projection was saved count, so no source gets credit for results it already knew. ",
                  "The .500 baseline simply assumes every team wins half its remaining games; a source has to beat it to be adding anything."), 13)
+    if (common_ok)
+      acc_p(sprintf(paste0("<b>Since %s</b> grades every source over the same games, starting the first day all of them had a projection for the whole league. ",
+                           "That is the fairest side-by-side: the since-opening column gives the sources added later (*) fewer, easier games."),
+                    format(common_start, "%b %d")), 13)
     acc_p(paste0("<b>Tiers:</b> with only 30 teams and a few weeks of games, small gaps are luck. <b>Tier 1</b> sources cannot be told apart ",
                  "from the best one (the bold number); <b>Tier 2</b> sources are behind the best by more than luck explains. ",
                  "Tiers use the ", if (tier_key == "last30") "last 30 days" else "since-opening", " column. ",
@@ -1968,12 +1989,9 @@ if (is.null(h) || nrow(h) == 0) {
     # Suggested weights: best mix (10% steps) of EVERY source with a full-league projection, scored from the first snapshot
     # on which all of them have one. Exhaustive: 43,758 mixes for 9 sources, all scored at once.
     key_w <- if (enough[["last30"]]) "last30" else "opening"
-    cand <- setdiff(names(ACC_SOURCES), c("weighted", "baseline"))
-    cand <- cand[cand %in% names(h)]
-    cand <- cand[sapply(cand, function(k) sum(!is.na(h[[k]][h$date == latest])) >= TIER_MIN_TEAMS)]
+    cand <- common_cand
     if (length(cand) >= 2) {
-      cover <- sapply(cand, function(k) ave(as.numeric(!is.na(h[[k]])), h$date, FUN = sum))   # teams covered, by snapshot row
-      all_cov <- h$date[rowSums(cover >= TIER_MIN_TEAMS) == length(cand) & h$date >= windows[[key_w]]]
+      all_cov <- if (length(common_cand) >= 2 && exists("common_dates")) common_dates[common_dates >= windows[[key_w]]] else as.Date(character())
       d <- if (length(all_cov) > 0 && min(all_cov) < latest) window_detail(min(all_cov), latest) else NULL
       if (!is.null(d)) d <- d %>% filter(if_all(all_of(cand), ~ !is.na(.x)))
     } else d <- NULL
