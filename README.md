@@ -79,8 +79,8 @@ Once a day (first run at/after 5 AM Central) the page saves every source's proje
 each team's record, to `team_projection_history.csv`. The Projection Accuracy section grades each source only
 on games played *after* a saved projection: expected wins since then = (projected wins - wins at the time) /
 games left x games played since, compared with actual wins since. It shows the average miss (wins per team)
-since opening night and over the last 30 days, a .500 baseline, the TR/ESPN/CBS weights (5% steps) that would
-have missed least, and a rolling 30-day trend chart. A window is graded once teams average 5+ games in it
+since opening night and over the last 30 days, a .500 baseline, the mix of all sources with a full-league projection (10% steps, exhaustive, graded from the first day
+they all have one) that would have missed least, next to the current weights and an equal-weight average, and a rolling 30-day trend chart. A window is graded once teams average 5+ games in it
 (`MIN_GAMES` in `index.qmd`). A **Tier** column says whether a source's gap to the best source is bigger than luck:
 the 30 teams are resampled 2,000 times (fixed seed) and a source is Tier 2 only if it trails the best in at least
 95% of resamples, otherwise Tier 1; both sources are compared over the same games, and a dash means fewer than 25

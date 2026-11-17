@@ -1965,28 +1965,37 @@ if (is.null(h) || nrow(h) == 0) {
                    "). Opta, DARKO, Dunks &amp; Threes and Crafted NBA are tracked for accuracy only and are not in the weighted average."), 13)
     raw_html("</details>")
 
-    # Suggested weights: TR/ESPN/CBS mix (5% steps) with the smallest miss over the most recent graded window
+    # Suggested weights: best mix (10% steps) of EVERY source with a full-league projection, scored from the first snapshot
+    # on which all of them have one. Exhaustive: 43,758 mixes for 9 sources, all scored at once.
     key_w <- if (enough[["last30"]]) "last30" else "opening"
-    d <- window_detail(windows[[key_w]], latest)
-    avail <- names(WEIGHTS)[sapply(names(WEIGHTS), function(k) k %in% names(d) && any(!is.na(d[[k]])))]
-    d <- d %>% filter(if_all(all_of(avail), ~ !is.na(.x)))
-    if (length(avail) >= 2 && nrow(d) >= 20) {
-      grid <- expand.grid(rep(list(seq(0, 1, by = 0.05)), length(avail)))
-      names(grid) <- avail
-      grid <- grid[abs(rowSums(grid) - 1) < 1e-9, , drop = FALSE]
-      P <- as.matrix(d[, avail])
-      miss_for <- function(w) {
-        proj <- as.vector(P %*% w)
-        mean(abs(d$won - (proj - d$wins) / (82 - d$g0) * d$played))
-      }
-      grid_miss <- apply(grid, 1, function(w) miss_for(as.numeric(w)))
-      best_w <- unlist(grid[which.min(grid_miss), , drop = FALSE])
-      cur_w <- WEIGHTS[avail] / sum(WEIGHTS[avail])
-      lbl <- c(vegas = "Vegas", tr = "TR", espn = "ESPN", cbs = "CBS")
-      fmt_w <- function(w) paste(sprintf("%s %.0f%%", lbl[names(w)], 100 * w), collapse = ", ")
-      acc_p(sprintf("<b>Suggested weights</b> (best fit over the %s): %s &mdash; miss %.2f vs %.2f with current weights (%s).",
-                    if (key_w == "last30") "last 30 days" else "season so far",
-                    fmt_w(best_w), min(grid_miss), miss_for(as.numeric(cur_w)), fmt_w(cur_w)), 13)
+    cand <- setdiff(names(ACC_SOURCES), c("weighted", "baseline"))
+    cand <- cand[cand %in% names(h)]
+    cand <- cand[sapply(cand, function(k) sum(!is.na(h[[k]][h$date == latest])) >= TIER_MIN_TEAMS)]
+    if (length(cand) >= 2) {
+      cover <- sapply(cand, function(k) ave(as.numeric(!is.na(h[[k]])), h$date, FUN = sum))   # teams covered, by snapshot row
+      all_cov <- h$date[rowSums(cover >= TIER_MIN_TEAMS) == length(cand) & h$date >= windows[[key_w]]]
+      d <- if (length(all_cov) > 0 && min(all_cov) < latest) window_detail(min(all_cov), latest) else NULL
+      if (!is.null(d)) d <- d %>% filter(if_all(all_of(cand), ~ !is.na(.x)))
+    } else d <- NULL
+    if (!is.null(d) && nrow(d) >= 20) {
+      comps <- function(n, k) if (k == 1) matrix(n, 1, 1) else do.call(rbind, lapply(0:n, function(i) cbind(i, comps(n - i, k - 1))))
+      grid <- comps(10, length(cand)) / 10
+      colnames(grid) <- cand
+      P <- as.matrix(d[, cand])
+      scale_g <- d$played / (82 - d$g0)
+      grid_miss <- colMeans(abs(d$won - (P %*% t(grid) - d$wins) * scale_g))
+      miss_for <- function(w) mean(abs(d$won - (as.vector(P %*% w) - d$wins) * scale_g))
+      best_w <- grid[which.min(grid_miss), ]
+      cur_w <- setNames(rep(0, length(cand)), cand)
+      cur_w[intersect(names(WEIGHTS), cand)] <- WEIGHTS[intersect(names(WEIGHTS), cand)] / sum(WEIGHTS[intersect(names(WEIGHTS), cand)])
+      lbl <- gsub("&", "&amp;", ACC_SOURCES[cand], fixed = TRUE)
+      fmt_w <- function(w) paste(sprintf("%s %.0f%%", lbl[w > 0], 100 * w[w > 0]), collapse = ", ")
+      acc_p(sprintf(paste0("<b>Suggested weights</b> (best fit across all %d sources, graded since %s, about %.0f games per team): %s &mdash; ",
+                           "miss %.2f vs %.2f with current weights (%s) and %.2f averaging all %d equally. ",
+                           "With 30 teams and this few games the best mix is mostly luck, so gaps this small are not a reason to change the weights yet."),
+                    length(cand), format(min(all_cov), "%b %d"), mean(d$played),
+                    fmt_w(best_w), min(grid_miss), miss_for(cur_w), fmt_w(cur_w),
+                    miss_for(rep(1 / length(cand), length(cand))), length(cand)), 13)
     }
 
     # Trend: rolling 30-day miss for each source, as of each snapshot date
