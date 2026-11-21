@@ -1,21 +1,29 @@
 athlete_id,name,dob,draft,experience
 1966,LeBron James,30/12/1984,"2003: Rd 1, Pk 1 (CLE)",24th Season
 2326307,Seth Curry,23/8/1990,,13th Season
+2451037,Daniel Theis,4/4/1992,,7th Season
 2488653,Mason Plumlee,5/3/1990,"2013: Rd 1, Pk 22 (BKN)",13th Season
 2489663,Kelly Olynyk,19/4/1991,"2013: Rd 1, Pk 13 (DAL)",13th Season
 2490149,CJ McCollum,19/9/1991,"2013: Rd 1, Pk 10 (POR)",14th Season
 2528210,Tim Hardaway Jr.,16/3/1992,"2013: Rd 1, Pk 24 (NY)",14th Season
 2528426,Jordan Clarkson,7/6/1992,"2014: Rd 2, Pk 46 (WSH)",13th Season
 2528588,Doug McDermott,3/1/1992,"2014: Rd 1, Pk 11 (DEN)",12th Season
+2528693,Torrey Craig,19/12/1990,,7th Season
 2530530,T.J. McConnell,25/3/1992,,12th Season
 2531367,Dwight Powell,20/7/1991,"2014: Rd 2, Pk 45 (CHA)",13th Season
+2566769,Malcolm Brogdon,11/12/1992,"2016: Rd 2, Pk 36 (MIL)",9th Season
 2578185,Dorian Finney-Smith,4/5/1993,,11th Season
 2578239,Pat Connaughton,6/1/1993,"2015: Rd 2, Pk 41 (BKN)",12th Season
 2580365,Larry Nance Jr.,1/1/1993,"2015: Rd 1, Pk 27 (LAL)",12th Season
+2580782,Spencer Dinwiddie,6/4/1993,"2014: Rd 2, Pk 38 (DET)",11th Season
 2581018,Kentavious Caldwell-Pope,18/2/1993,"2013: Rd 1, Pk 8 (DET)",14th Season
 2581184,Anthony Gill,17/10/1992,,7th Season
+2581190,Josh Richardson,15/9/1993,"2015: Rd 2, Pk 40 (MIA)",9th Season
 2583632,Royce O'Neale,5/6/1993,,10th Season
+2583639,Elfrid Payton,22/2/1994,"2014: Rd 1, Pk 10 (PHI)",10th Season
+2595209,Damion Lee,21/10/1992,,7th Season
 2595516,Norman Powell,25/5/1993,"2015: Rd 2, Pk 46 (MIL)",12th Season
+2596107,Alex Len,16/6/1993,"2013: Rd 1, Pk 5 (PHX)",12th Season
 2596112,Javonte Green,23/7/1993,,8th Season
 2779,Chris Paul,6/5/1985,"2005: Rd 1, Pk 4 (NO)",20th Season
 2960236,Maxi Kleber,29/1/1992,,8th Season
@@ -30,6 +38,7 @@ athlete_id,name,dob,draft,experience
 2991230,Fred VanVleet,25/2/1994,,11th Season
 2991235,Steven Adams,20/7/1993,"2013: Rd 1, Pk 12 (OKC)",14th Season
 2991350,Alex Caruso,28/2/1994,,10th Season
+2993370,Richaun Holmes,15/10/1993,"2015: Rd 2, Pk 37 (PHI)",9th Season
 2993874,Kyle Anderson,20/9/1993,"2014: Rd 1, Pk 30 (SA)",13th Season
 2995706,Mario Hezonja,25/2/1995,"2015: Rd 1, Pk 5 (ORL)",6th Season
 2999547,Gary Harris,14/9/1994,"2014: Rd 1, Pk 19 (CHI)",12th Season
@@ -38,7 +47,9 @@ athlete_id,name,dob,draft,experience
 3032977,Giannis Antetokounmpo,6/12/1994,"2013: Rd 1, Pk 15 (MIL)",14th Season
 3032978,Dario Saric,8/4/1994,"2014: Rd 1, Pk 12 (ORL)",9th Season
 3032979,Dennis Schroder,15/9/1993,"2013: Rd 1, Pk 17 (ATL)",14th Season
+3033,P.J. Tucker,5/5/1985,"2006: Rd 2, Pk 35 (TOR)",13th Season
 3037789,Bogdan Bogdanovic,18/8/1992,"2014: Rd 1, Pk 27 (PHX)",10th Season
+3058254,Christian Wood,27/9/1995,,8th Season
 3059310,Monte Morris,27/6/1995,"2017: Rd 2, Pk 51 (DEN)",8th Season
 3059318,Joel Embiid,16/3/1994,"2014: Rd 1, Pk 3 (PHI)",11th Season
 3059319,Andrew Wiggins,23/2/1995,"2014: Rd 1, Pk 1 (CLE)",13th Season
@@ -47,15 +58,18 @@ athlete_id,name,dob,draft,experience
 3064230,Cameron Payne,8/8/1994,"2015: Rd 1, Pk 14 (OKC)",10th Season
 3064290,Aaron Gordon,16/9/1995,"2014: Rd 1, Pk 4 (ORL)",13th Season
 3064440,Zach LaVine,10/3/1995,"2014: Rd 1, Pk 13 (MIN)",13th Season
+3064447,Delon Wright,26/4/1992,"2015: Rd 1, Pk 20 (TOR)",10th Season
 3064482,Bobby Portis,10/2/1995,"2015: Rd 1, Pk 22 (CHI)",12th Season
 3064514,Julius Randle,29/11/1994,"2014: Rd 1, Pk 7 (LAL)",13th Season
 3064560,Luke Kornet,15/7/1995,,10th Season
 3074213,Omer Yurtseven,19/6/1998,,3rd Season
 3074752,Terry Rozier,17/3/1994,"2015: Rd 1, Pk 16 (BOS)",10th Season
 3078576,Derrick White,2/7/1994,"2017: Rd 1, Pk 29 (SA)",10th Season
+3102528,Dante Exum,13/7/1995,"2014: Rd 1, Pk 5 (UTAH)",9th Season
 3102529,Clint Capela,18/5/1994,"2014: Rd 1, Pk 25 (HOU)",13th Season
 3102530,Jusuf Nurkic,23/8/1994,"2014: Rd 1, Pk 16 (CHI)",13th Season
 3102531,Kristaps Porzingis,2/8/1995,"2015: Rd 1, Pk 4 (NY)",12th Season
+3102532,Vasilije Micic,13/1/1994,"2014: Rd 2, Pk 52 (PHI)",1st Season
 3102533,Thanasis Antetokounmpo,18/7/1992,"2014: Rd 2, Pk 51 (NY)",6th Season
 3112335,Nikola Jokic,19/2/1995,"2014: Rd 2, Pk 41 (DEN)",12th Season
 3133602,Svi Mykhailiuk,10/6/1997,"2018: Rd 2, Pk 47 (LAL)",9th Season
@@ -70,6 +84,7 @@ athlete_id,name,dob,draft,experience
 3134932,John Konchar,22/3/1996,,8th Season
 3135045,Grayson Allen,8/10/1995,"2018: Rd 1, Pk 21 (UTAH)",9th Season
 3135046,Tyus Jones,10/5/1996,"2015: Rd 1, Pk 24 (CLE)",12th Season
+3135048,Jahlil Okafor,15/12/1995,"2015: Rd 1, Pk 3 (PHI)",6th Season
 3136193,Devin Booker,30/10/1996,"2015: Rd 1, Pk 13 (PHX)",12th Season
 3136195,Karl-Anthony Towns,15/11/1995,"2015: Rd 1, Pk 1 (MIN)",12th Season
 3136196,Trey Lyles,5/11/1995,"2015: Rd 1, Pk 12 (UTAH)",11th Season
@@ -100,11 +115,15 @@ athlete_id,name,dob,draft,experience
 3899664,Simone Fontecchio,9/12/1995,,5th Season
 3904625,Tacko Fall,10/12/1995,,4th Season
 3906665,Brandon Clarke,19/9/1996,"2019: Rd 1, Pk 21 (OKC)",6th Season
+3907387,Ben Simmons,20/7/1996,"2016: Rd 1, Pk 1 (PHI)",10th Season
 3907497,Dejounte Murray,19/9/1996,"2016: Rd 1, Pk 29 (SA)",10th Season
 3907498,Matisse Thybulle,4/3/1997,"2019: Rd 1, Pk 20 (BOS)",8th Season
+3907822,Malik Beasley,26/11/1996,"2016: Rd 1, Pk 19 (DEN)",8th Season
 3907823,Terance Mann,18/10/1996,"2019: Rd 2, Pk 48 (LAC)",8th Season
+3908336,Matt Ryan,17/4/1997,,4th Season
 3908809,Donovan Mitchell,7/9/1996,"2017: Rd 1, Pk 13 (DEN)",10th Season
 3908845,John Collins,23/9/1997,"2017: Rd 1, Pk 19 (ATL)",10th Season
+3911893,Jack McVeigh,27/6/1996,,Rookie
 3912848,Dean Wade,20/11/1996,,8th Season
 3913174,Luke Kennard,24/6/1996,"2017: Rd 1, Pk 12 (DET)",10th Season
 3913176,Brandon Ingram,2/9/1997,"2016: Rd 1, Pk 2 (LAL)",11th Season
@@ -112,8 +131,11 @@ athlete_id,name,dob,draft,experience
 3913220,DaQuan Jeffries,30/8/1997,,6th Season
 3914044,Landry Shamet,13/3/1997,"2018: Rd 1, Pk 26 (PHI)",9th Season
 3914285,Drew Eubanks,1/2/1997,,9th Season
+3915195,Shake Milton,26/9/1996,"2018: Rd 2, Pk 54 (DAL)",6th Season
 3917376,Jaylen Brown,24/10/1996,"2016: Rd 1, Pk 3 (BOS)",11th Season
+3919454,Terence Davis,16/5/1997,,5th Season
 3922230,Aaron Holiday,30/9/1996,"2018: Rd 1, Pk 23 (IND)",8th Season
+3923250,PJ Dozier,25/10/1996,,6th Season
 3934620,Trevon Scott,25/11/1996,,1st Season
 3934672,Jalen Brunson,31/8/1996,"2018: Rd 2, Pk 33 (DAL)",9th Season
 3934673,Donte DiVincenzo,31/1/1997,"2018: Rd 1, Pk 17 (MIL)",9th Season
@@ -124,11 +146,14 @@ athlete_id,name,dob,draft,experience
 3936299,Jamal Murray,23/2/1997,"2016: Rd 1, Pk 7 (DEN)",10th Season
 3945274,Luka Doncic,28/2/1999,"2018: Rd 1, Pk 3 (ATL)",9th Season
 3948153,Chris Boucher,11/1/1993,,8th Season
+3950760,Kylor Kelley,26/8/1997,,1st Season
 3975,Stephen Curry,14/3/1988,"2009: Rd 1, Pk 7 (GS)",18th Season
 3978,DeMar DeRozan,7/8/1989,"2009: Rd 1, Pk 9 (TOR)",18th Season
 3986,Taj Gibson,24/6/1985,"2009: Rd 1, Pk 26 (CHI)",17th Season
 3992,James Harden,26/8/1989,"2009: Rd 1, Pk 3 (OKC)",18th Season
 3995,Jrue Holiday,12/6/1990,"2009: Rd 1, Pk 17 (PHI)",18th Season
+3999,James Johnson,20/2/1987,"2009: Rd 1, Pk 16 (CHI)",17th Season
+4004,Patty Mills,11/8/1988,"2009: Rd 2, Pk 55 (POR)",15th Season
 4017837,Ivica Zubac,18/3/1997,"2016: Rd 2, Pk 32 (LAL)",11th Season
 4017844,Guerschon Yabusele,17/12/1995,"2016: Rd 1, Pk 16 (BOS)",4th Season
 4023,Garrett Temple,8/5/1986,,16th Season
@@ -137,6 +162,7 @@ athlete_id,name,dob,draft,experience
 4065663,Josh Okogie,1/9/1998,"2018: Rd 1, Pk 20 (MIN)",9th Season
 4065670,Bruce Brown,15/8/1996,"2018: Rd 2, Pk 42 (DET)",9th Season
 4065673,Tony Bradley,8/1/1998,"2017: Rd 1, Pk 28 (LAL)",9th Season
+4065697,Dennis Smith Jr.,25/11/1997,"2017: Rd 1, Pk 9 (DAL)",7th Season
 4065731,Jay Huff,25/8/1997,,6th Season
 4065732,De'Andre Hunter,2/12/1997,"2019: Rd 1, Pk 4 (LAL)",8th Season
 4065733,Ty Jerome,8/7/1997,"2019: Rd 1, Pk 24 (PHI)",8th Season
@@ -145,6 +171,7 @@ athlete_id,name,dob,draft,experience
 4065813,Alpha Diallo,29/6/1997,,Rookie
 4066211,Robert Williams III,17/10/1997,"2018: Rd 1, Pk 27 (BOS)",9th Season
 4066218,Grant Williams,30/11/1998,"2019: Rd 1, Pk 22 (BOS)",8th Season
+4066240,Braxton Key,14/2/1997,,4th Season
 4066259,De'Aaron Fox,20/12/1997,"2017: Rd 1, Pk 5 (SAC)",10th Season
 4066261,Bam Adebayo,18/7/1997,"2017: Rd 1, Pk 14 (MIA)",10th Season
 4066262,Malik Monk,4/2/1998,"2017: Rd 1, Pk 11 (CHA)",10th Season
@@ -158,49 +185,65 @@ athlete_id,name,dob,draft,experience
 4066383,Miles Bridges,21/3/1998,"2018: Rd 1, Pk 12 (LAC)",8th Season
 4066387,Amir Coffey,17/6/1997,,7th Season
 4066399,Micah Potter,6/4/1998,,6th Season
+4066405,Lamar Stevens,9/7/1997,,4th Season
+4066410,Eugene Omoruyi,14/2/1997,,3rd Season
 4066421,Lonzo Ball,27/10/1997,"2017: Rd 1, Pk 2 (LAL)",8th Season
 4066436,De'Anthony Melton,28/5/1998,"2018: Rd 2, Pk 46 (HOU)",9th Season
 4066457,Austin Reaves,29/5/1998,,6th Season
 4066636,Markelle Fultz,29/5/1998,"2017: Rd 1, Pk 1 (PHI)",7th Season
 4066648,Rui Hachimura,8/2/1998,"2019: Rd 1, Pk 9 (WSH)",8th Season
 4066650,Zach Collins,19/11/1997,"2017: Rd 1, Pk 10 (SAC)",10th Season
+4066668,Malachi Flynn,9/5/1998,"2020: Rd 1, Pk 29 (TOR)",4th Season
+4066731,Jalen McDaniels,31/1/1998,"2019: Rd 2, Pk 52 (CHA)",6th Season
 4066757,Sam Merrill,15/5/1996,"2020: Rd 2, Pk 60 (NO)",7th Season
+4066786,Jeff Dowtin Jr.,10/5/1997,,3rd Season
 4066796,DeJon Jarreau,23/1/1998,,Rookie
+4066808,Taze Moore,29/6/1998,,1st Season
 4066889,Jackson Rowe,4/1/1997,,Rookie
 4066993,Dru Smith,30/12/1997,,5th Season
 4067017,A.J. Lawson,15/7/2000,,4th Season
 4067858,Kevon Harris,24/6/1997,,2nd Season
 4222252,Isaiah Hartenstein,5/5/1998,"2017: Rd 2, Pk 43 (HOU)",9th Season
+4230557,Vlatko Cancar,10/4/1997,"2017: Rd 2, Pk 49 (DEN)",5th Season
 4251,Paul George,2/5/1990,"2010: Rd 1, Pk 10 (IND)",17th Season
 4277811,Collin Sexton,4/1/1999,"2018: Rd 1, Pk 8 (CLE)",9th Season
+4277812,Alex Reese,21/5/1999,,Rookie
 4277813,Herbert Jones,6/10/1998,"2021: Rd 2, Pk 35 (NO)",6th Season
 4277843,Gary Trent Jr.,18/1/1999,"2018: Rd 2, Pk 37 (SAC)",9th Season
 4277847,Wendell Carter Jr.,16/4/1999,"2018: Rd 1, Pk 7 (CHI)",9th Season
 4277848,Marvin Bagley III,14/3/1999,"2018: Rd 1, Pk 2 (SAC)",9th Season
 4277869,Jose Alvarado,12/4/1998,,6th Season
 4277880,Malik Williams,26/8/1998,,2nd Season
+4277890,Lonnie Walker IV,14/12/1998,"2018: Rd 1, Pk 18 (SA)",8th Season
+4277892,Marcus Garrett,9/11/1998,,
 4277905,Trae Young,19/9/1998,"2018: Rd 1, Pk 5 (DAL)",9th Season
 4277919,Mo Bamba,12/5/1998,"2018: Rd 1, Pk 6 (ORL)",9th Season
 4277922,Jericho Sims,20/10/1998,"2021: Rd 2, Pk 58 (NY)",6th Season
 4277951,Luka Garza,27/12/1998,"2021: Rd 2, Pk 52 (DET)",6th Season
+4277952,Bruno Fernando,15/8/1998,"2019: Rd 2, Pk 34 (PHI)",5th Season
 4277956,Jordan Poole,19/6/1999,"2019: Rd 1, Pk 28 (GS)",8th Season
 4277957,Isaiah Livers,28/7/1998,"2021: Rd 2, Pk 42 (DET)",4th Season
 4277961,Jaren Jackson Jr.,15/9/1999,"2018: Rd 1, Pk 4 (MEM)",9th Season
 4277964,Xavier Tillman,12/1/1999,"2020: Rd 2, Pk 35 (SAC)",6th Season
+4278031,Oshae Brissett,20/6/1998,,5th Season
 4278039,Nickeil Alexander-Walker,2/9/1998,"2019: Rd 1, Pk 17 (BKN)",8th Season
 4278046,Olivier Sarr,20/2/1999,,4th Season
 4278049,Daniel Gafford,1/10/1998,"2019: Rd 2, Pk 38 (CHI)",8th Season
+4278052,Chuma Okeke,18/8/1998,"2019: Rd 1, Pk 16 (ORL)",4th Season
 4278053,Davion Mitchell,5/9/1998,"2021: Rd 1, Pk 9 (SAC)",6th Season
 4278067,Nic Claxton,17/4/1999,"2019: Rd 2, Pk 31 (BKN)",8th Season
 4278073,Shai Gilgeous-Alexander,12/7/1998,"2018: Rd 1, Pk 11 (CHA)",9th Season
+4278075,Kevin Knox II,11/8/1999,"2018: Rd 1, Pk 9 (NY)",8th Season
 4278076,Nick Richards,29/11/1997,"2020: Rd 2, Pk 42 (NO)",7th Season
 4278077,Jarred Vanderbilt,3/4/1999,"2018: Rd 2, Pk 41 (ORL)",9th Season
 4278078,P.J. Washington,23/8/1998,"2019: Rd 1, Pk 12 (CHA)",8th Season
 4278104,Michael Porter Jr.,29/6/1998,"2018: Rd 1, Pk 14 (DEN)",8th Season
+4278111,Justin Minaya,26/3/1999,,3rd Season
 4278129,Deandre Ayton,23/7/1998,"2018: Rd 1, Pk 1 (PHX)",9th Season
 4278355,Obi Toppin,4/3/1998,"2020: Rd 1, Pk 8 (NY)",7th Season
 4278402,Jordan Goodwin,23/10/1998,,6th Season
 4278516,Ethan Thompson,4/5/1999,,1st Season
+4278541,Jaylen Nowell,9/7/1999,"2019: Rd 2, Pk 43 (MIN)",
 4278562,Paul Reed,14/6/1999,"2020: Rd 2, Pk 58 (PHI)",7th Season
 4278572,Jamal Cain,20/3/1999,,5th Season
 4278580,Sandro Mamukelashvili,23/5/1999,"2021: Rd 2, Pk 54 (IND)",6th Season
@@ -210,6 +253,7 @@ athlete_id,name,dob,draft,experience
 4279147,Lucas Williamson,28/1/1999,,Rookie
 4279318,Daeqwon Plowden,29/8/1998,,3rd Season
 4279532,Stanley Umude,12/4/1999,,3rd Season
+4279815,Terry Taylor,23/9/1999,,
 4279888,Ja Morant,10/8/1999,"2019: Rd 1, Pk 2 (MEM)",8th Season
 4280151,Corey Kispert,3/3/1999,"2021: Rd 1, Pk 15 (WSH)",6th Season
 4280245,Jamaree Bouyea,27/6/1999,,5th Season
@@ -221,21 +265,26 @@ athlete_id,name,dob,draft,experience
 4395623,Trey Jemison III,29/11/1999,,3rd Season
 4395625,RJ Barrett,14/6/2000,"2019: Rd 1, Pk 3 (NY)",8th Season
 4395626,Tre Jones,8/1/2000,"2020: Rd 2, Pk 41 (SA)",7th Season
+4395627,Cam Reddish,1/9/1999,"2019: Rd 1, Pk 10 (ATL)",5th Season
 4395628,Zion Williamson,6/7/2000,"2019: Rd 1, Pk 1 (NO)",7th Season
 4395630,Devin Vassell,23/8/2000,"2020: Rd 1, Pk 11 (SA)",7th Season
 4395650,Leaky Black,14/6/1999,,3rd Season
 4395651,Coby White,16/2/2000,"2019: Rd 1, Pk 7 (CHI)",8th Season
 4395676,Buddy Boeheim,11/11/1999,,2nd Season
+4395695,Jared Butler,25/8/2000,"2021: Rd 2, Pk 40 (NO)",4th Season
 4395702,Isaiah Joe,2/7/1999,"2020: Rd 2, Pk 49 (PHI)",7th Season
+4395704,Mason Jones,21/7/1998,,3rd Season
 4395712,Andrew Nembhard,16/1/2000,"2022: Rd 2, Pk 31 (IND)",5th Season
 4395723,Keldon Johnson,11/10/1999,"2019: Rd 1, Pk 29 (SA)",8th Season
 4395724,Immanuel Quickley,17/6/1999,"2020: Rd 1, Pk 25 (OKC)",7th Season
 4395725,Tyler Herro,20/1/2000,"2019: Rd 1, Pk 13 (MIA)",8th Season
+4396679,Erik Stevenson,28/4/1999,,
 4396818,Jordan Miller,23/1/2000,"2023: Rd 2, Pk 48 (LAC)",4th Season
 4396907,Darius Garland,26/1/2000,"2019: Rd 1, Pk 5 (CLE)",8th Season
 4396909,Aaron Nesmith,16/10/1999,"2020: Rd 1, Pk 14 (BOS)",7th Season
 4396963,Blake Hinson,26/12/1999,,2nd Season
 4396971,Naz Reid,26/8/1999,,8th Season
+4396991,Talen Horton-Tucker,25/11/2000,"2019: Rd 2, Pk 46 (ORL)",5th Season
 4396993,Tyrese Haliburton,29/2/2000,"2020: Rd 1, Pk 12 (SAC)",7th Season
 4397002,Ayo Dosunmu,17/1/2000,"2021: Rd 2, Pk 38 (CHI)",6th Season
 4397014,Quentin Grimes,8/5/2000,"2021: Rd 1, Pk 25 (LAC)",6th Season
@@ -244,7 +293,13 @@ athlete_id,name,dob,draft,experience
 4397040,Brandon Williams,22/11/1999,,5th Season
 4397071,Mac McClung,6/1/1999,,4th Season
 4397077,Jaxson Hayes,23/5/2000,"2019: Rd 1, Pk 8 (ATL)",8th Season
+4397102,Bol Bol,16/11/1999,"2019: Rd 2, Pk 44 (MIA)",5th Season
+4397104,Miles Norris,15/4/2000,,1st Season
+4397107,David Duke Jr.,13/10/1999,,4th Season
 4397114,Cormac Ryan,26/10/1998,,2nd Season
+4397119,Jared Rhoden,27/8/1999,,3rd Season
+4397126,Moses Brown,13/10/1999,,6th Season
+4397134,Cole Swider,8/5/1999,,4th Season
 4397136,Saddiq Bey,9/4/1999,"2020: Rd 1, Pk 19 (BKN)",6th Season
 4397140,Kevin Porter Jr.,4/5/2000,"2019: Rd 1, Pk 30 (MIL)",7th Season
 4397179,Tyrese Martin,7/3/1999,"2022: Rd 2, Pk 51 (GS)",3rd Season
@@ -254,21 +309,27 @@ athlete_id,name,dob,draft,experience
 4397227,Vince Williams Jr.,30/8/2000,"2022: Rd 2, Pk 47 (MEM)",3rd Season
 4397233,Pete Nance,19/2/2000,,4th Season
 4397251,Ron Harper Jr.,12/4/2000,,5th Season
+4397347,Liam Robbins,12/7/1999,,Rookie
 4397424,Neemias Queta,13/7/1999,"2021: Rd 2, Pk 39 (SAC)",6th Season
 4397449,Elijah Harkless,3/2/2000,,3rd Season
 4397450,Darius Brown II,28/7/1999,,Rookie
 4397475,AJ Green,27/9/1999,,5th Season
+4397570,Jaylen Sims,11/12/1998,,3rd Season
 4397654,Adam Flagler,1/12/1999,,3rd Season
 4397688,Trey Murphy III,18/6/2000,"2021: Rd 1, Pk 17 (MEM)",6th Season
 4397689,Drew Peterson,9/11/1999,,2nd Season
+4397693,Kessler Edwards,9/8/2000,"2021: Rd 2, Pk 44 (BKN)",4th Season
 4397784,Malachi Smith,6/12/1999,,2nd Season
 4397821,Nate Williams,12/2/1999,,4th Season
 4397882,Tolu Smith,26/7/2000,,3rd Season
 4397885,Dalano Banton,7/11/1999,"2021: Rd 2, Pk 46 (TOR)",5th Season
 4397886,Charles Bassey,28/10/2000,"2021: Rd 2, Pk 53 (PHI)",6th Season
+4397916,Jason Preston,10/8/1999,"2021: Rd 2, Pk 33 (ORL)",4th Season
+4397999,Cameron Parker,16/12/1998,,Rookie
 4398207,Jalen Slawson,22/10/1999,"2023: Rd 2, Pk 54 (SAC)",3rd Season
 4398356,Gabe McGlothan,3/3/1999,,Rookie
 4398390,Jalen Pickett,22/10/1999,"2023: Rd 2, Pk 32 (IND)",4th Season
+4409222,Trevelin Queen,25/2/1997,,3rd Season
 4411057,Kevin McCullar Jr.,15/3/2001,"2024: Rd 2, Pk 56 (PHX)",2nd Season
 4431671,Jaden McDaniels,29/9/2000,"2020: Rd 1, Pk 28 (LAL)",7th Season
 4431675,Trendon Watford,9/11/2000,,6th Season
@@ -277,41 +338,55 @@ athlete_id,name,dob,draft,experience
 4431680,Onyeka Okongwu,11/12/2000,"2020: Rd 1, Pk 6 (ATL)",7th Season
 4431684,Trayce Jackson-Davis,22/2/2000,"2023: Rd 2, Pk 57 (WSH)",4th Season
 4431687,Patrick Williams,26/8/2001,"2020: Rd 1, Pk 4 (CHI)",7th Season
+4431689,Keion Brooks Jr.,7/8/2000,,Rookie
 4431690,Zeke Nnaji,9/1/2001,"2020: Rd 1, Pk 22 (DEN)",7th Season
 4431695,Drew Timme,9/9/2000,,2nd Season
+4431699,Kai Jones,19/1/2001,"2021: Rd 1, Pk 19 (NY)",3rd Season
+4431705,Anton Watson,6/10/2000,"2024: Rd 2, Pk 54 (BOS)",2nd Season
 4431714,Jalen Wilson,4/11/2000,"2023: Rd 2, Pk 51 (BKN)",4th Season
+4431720,Lester Quinones,16/11/2000,,3rd Season
+4431727,Isaiah Wong,28/1/2001,"2023: Rd 2, Pk 55 (IND)",
 4431734,Tristan Enaruna,26/6/2001,,2nd Season
 4431736,Toumani Camara,8/5/2000,"2023: Rd 2, Pk 52 (PHX)",4th Season
 4431752,Kobe Brown,1/1/2000,"2023: Rd 1, Pk 30 (LAC)",4th Season
+4431766,Damion Baugh,3/8/2000,,1st Season
 4431767,Christian Braun,17/4/2001,"2022: Rd 1, Pk 21 (DEN)",5th Season
 4431772,Myron Gardner,21/5/2001,,2nd Season
 4431778,Christian Koloko,20/6/2000,"2022: Rd 2, Pk 33 (TOR)",4th Season
 4431785,Scotty Pippen Jr.,10/11/2000,,5th Season
 4431786,Keshad Johnson,23/6/2001,,3rd Season
+4431816,Jesse Edwards,18/3/2000,,
 4431823,Miles McBride,8/9/2000,"2021: Rd 2, Pk 36 (OKC)",6th Season
+4431828,KJ Martin,6/1/2001,"2020: Rd 2, Pk 52 (SAC)",5th Season
 4431893,Jamison Battle,10/5/2001,,3rd Season
 4431914,Tyler Burton,11/2/2000,,Rookie
 4431941,RayJ Dennis,30/3/2001,,3rd Season
 4432068,Josh Oduro,14/10/2000,,1st Season
+4432070,Quincy Olivari,27/5/2001,,Rookie
 4432107,Marcus Sasser,21/9/2000,"2023: Rd 1, Pk 25 (MEM)",4th Season
 4432117,Isaiah Stevens,1/11/2000,,3rd Season
 4432158,Evan Mobley,18/6/2001,"2021: Rd 1, Pk 3 (CLE)",6th Season
+4432162,Brandon Boston Jr.,28/11/2001,"2021: Rd 2, Pk 51 (MEM)",4th Season
 4432164,Jaden Springer,25/9/2002,"2021: Rd 1, Pk 28 (PHI)",4th Season
 4432165,Jalen Suggs,3/6/2001,"2021: Rd 1, Pk 5 (ORL)",6th Season
 4432166,Cade Cunningham,25/9/2001,"2021: Rd 1, Pk 1 (DET)",6th Season
+4432168,Josh Christopher,8/12/2001,,3rd Season
 4432170,Isaiah Jackson,10/1/2002,"2021: Rd 1, Pk 22 (LAL)",6th Season
 4432171,Moses Moody,31/5/2002,"2021: Rd 1, Pk 14 (GS)",6th Season
 4432173,Sharife Cooper,11/6/2001,"2021: Rd 2, Pk 48 (ATL)",2nd Season
 4432174,Cam Thomas,13/10/2001,"2021: Rd 1, Pk 27 (BKN)",4th Season
+4432176,Daishen Nix,13/2/2002,,3rd Season
 4432179,MarJon Beauchamp,12/10/2000,"2022: Rd 1, Pk 24 (MIL)",3rd Season
 4432180,Hunter Dickinson,25/11/2000,,1st Season
 4432181,Julian Strawther,18/4/2002,"2023: Rd 1, Pk 29 (IND)",4th Season
 4432185,Micah Peavy,16/7/2001,"2025: Rd 2, Pk 40 (WSH)",2nd Season
 4432187,Reece Beekman,8/10/2001,,2nd Season
 4432190,Andre Jackson Jr.,13/11/2001,"2023: Rd 2, Pk 36 (ORL)",3rd Season
+4432192,Keon Johnson,10/3/2002,"2021: Rd 1, Pk 21 (NY)",4th Season
 4432194,Day'Ron Sharpe,6/11/2001,"2021: Rd 1, Pk 29 (PHX)",6th Season
 4432241,Jamal Shead,24/7/2002,"2024: Rd 2, Pk 45 (SAC)",3rd Season
 4432247,Jaylen Clark,13/10/2001,"2023: Rd 2, Pk 53 (MIN)",3rd Season
+4432356,Johnny Davis,27/2/2002,"2022: Rd 1, Pk 10 (WSH)",2nd Season
 4432446,Jabari Walker,30/7/2002,"2022: Rd 2, Pk 57 (POR)",5th Season
 4432452,Alex Antetokounmpo,27/8/2001,,Rookie
 4432573,Paolo Banchero,12/11/2002,"2022: Rd 1, Pk 1 (ORL)",5th Season
@@ -326,9 +401,11 @@ athlete_id,name,dob,draft,experience
 4432810,Isaiah Stewart,22/5/2001,"2020: Rd 1, Pk 16 (POR)",7th Season
 4432811,Josh Green,16/11/2000,"2020: Rd 1, Pk 18 (DAL)",7th Season
 4432813,Jeremiah Robinson-Earl,3/11/2000,"2021: Rd 2, Pk 32 (NY)",4th Season
+4432815,Isaiah Mobley,24/9/1999,"2022: Rd 2, Pk 49 (CLE)",1st Season
 4432816,LaMelo Ball,22/8/2001,"2020: Rd 1, Pk 3 (CHA)",7th Season
 4432817,Johnny Juzang,17/3/2001,,3rd Season
 4432819,Tre Mann,3/2/2001,"2021: Rd 1, Pk 18 (OKC)",6th Season
+4432820,D.J. Carton,5/8/2000,,1st Season
 4432821,E.J. Liddell,18/12/2000,"2022: Rd 2, Pk 41 (NO)",3rd Season
 4432822,Isaac Okoro,26/1/2001,"2020: Rd 1, Pk 5 (CLE)",7th Season
 4432823,Jaylin Williams,29/6/2002,"2022: Rd 2, Pk 34 (OKC)",5th Season
@@ -338,6 +415,9 @@ athlete_id,name,dob,draft,experience
 4432872,Emanuel Miller,19/6/2000,,3rd Season
 4432887,Tyson Etienne,17/9/1999,,2nd Season
 4432907,Justin Champagnie,29/6/2001,,6th Season
+4432946,Jalen Bridges,14/5/2001,,2nd Season
+4432957,Yuri Collins,7/3/2001,,2nd Season
+4432971,Alex Ducas,11/12/2000,,Rookie
 4433076,Ben Sheppard,16/7/2001,"2023: Rd 1, Pk 26 (IND)",4th Season
 4433083,Cam Spencer,6/4/2000,"2024: Rd 2, Pk 53 (DET)",3rd Season
 4433133,Jahmir Young,7/10/2000,,2nd Season
@@ -345,6 +425,7 @@ athlete_id,name,dob,draft,experience
 4433136,Walker Kessler,26/7/2001,"2022: Rd 1, Pk 22 (MEM)",5th Season
 4433137,Ziaire Williams,12/9/2001,"2021: Rd 1, Pk 10 (NO)",6th Season
 4433144,Caleb Love,27/9/2001,,2nd Season
+4433147,Marcus Bagley,23/10/2001,,Rookie
 4433149,LJ Cryer,9/10/2001,,2nd Season
 4433159,Dalen Terry,12/7/2002,"2022: Rd 1, Pk 18 (CHI)",5th Season
 4433174,Dylan Cardwell,16/12/2001,,2nd Season
@@ -355,6 +436,7 @@ athlete_id,name,dob,draft,experience
 4433246,Patrick Baldwin Jr.,18/11/2002,"2022: Rd 1, Pk 28 (GS)",3rd Season
 4433247,Jonathan Kuminga,6/10/2002,"2021: Rd 1, Pk 7 (GS)",6th Season
 4433249,Moussa Diabate,21/1/2002,"2022: Rd 2, Pk 43 (LAC)",5th Season
+4433254,Kendall Brown,11/5/2003,"2022: Rd 2, Pk 48 (MIN)",2nd Season
 4433255,Chet Holmgren,1/5/2002,"2022: Rd 1, Pk 2 (OKC)",4th Season
 4433268,Trey Alexander,2/5/2003,,3rd Season
 4433281,Hunter Sallis,26/3/2003,,Rookie
@@ -364,9 +446,11 @@ athlete_id,name,dob,draft,experience
 4433599,Arthur Kaluma,1/3/2002,,2nd Season
 4433607,DaRon Holmes II,15/8/2002,"2024: Rd 1, Pk 22 (PHX)",2nd Season
 4433618,Harrison Ingram,27/11/2002,"2024: Rd 2, Pk 48 (SA)",3rd Season
+4433620,Emoni Bates,28/1/2004,"2023: Rd 2, Pk 49 (CLE)",2nd Season
 4433621,Jalen Duren,18/11/2003,"2022: Rd 1, Pk 13 (CHA)",5th Season
 4433622,Chris Livingston,15/10/2003,"2023: Rd 2, Pk 58 (MIL)",4th Season
 4433623,Caleb Houstan,9/1/2003,"2022: Rd 2, Pk 32 (ORL)",5th Season
+4433626,Jalen Hood-Schifino,19/6/2003,"2023: Rd 1, Pk 17 (LAL)",2nd Season
 4433627,Keyonte George,8/11/2003,"2023: Rd 1, Pk 16 (UTAH)",4th Season
 4433629,Ryan Nembhard,10/3/2003,,2nd Season
 4437244,Jalen Green,9/2/2002,"2021: Rd 1, Pk 2 (HOU)",6th Season
@@ -385,6 +469,7 @@ athlete_id,name,dob,draft,experience
 4592187,Wendell Moore Jr.,18/9/2001,"2022: Rd 1, Pk 26 (DAL)",4th Season
 4592216,Alondes Williams,19/6/1999,,5th Season
 4592401,N'Faly Dante,19/10/2001,,3rd Season
+4592402,Chris Duarte,13/6/1997,"2021: Rd 1, Pk 13 (IND)",3rd Season
 4592427,Spencer Jones,14/6/2001,,3rd Season
 4592435,Branden Carlson,14/6/1999,,3rd Season
 4592461,Jacob Toppin,8/5/2000,,2nd Season
@@ -393,6 +478,7 @@ athlete_id,name,dob,draft,experience
 4592686,Antonio Reeves,20/11/2000,"2024: Rd 2, Pk 47 (ORL)",3rd Season
 4592691,Jake LaRavia,3/11/2001,"2022: Rd 1, Pk 19 (MIN)",5th Season
 4592699,Enrique Freeman,29/7/2000,"2024: Rd 2, Pk 50 (IND)",3rd Season
+4592712,Boo Buie,7/12/1999,,Rookie
 4592714,Pat Spencer,4/7/1996,,4th Season
 4592829,Quenton Jackson,15/9/1998,,5th Season
 4592857,Isaiah Crawford,1/11/2001,,3rd Season
@@ -445,7 +531,9 @@ athlete_id,name,dob,draft,experience
 4684208,Brooks Barnhizer,2/3/2002,"2025: Rd 2, Pk 44 (OKC)",2nd Season
 4684272,Ja'Kobe Walter,4/9/2004,"2024: Rd 1, Pk 19 (TOR)",3rd Season
 4684275,Rob Dillingham,4/1/2005,"2024: Rd 1, Pk 8 (SA)",2nd Season
+4684286,Maxwell Lewis,27/7/2002,"2023: Rd 2, Pk 40 (DEN)",
 4684682,Jonas Aidoo,10/12/2002,,Rookie
+4684737,Jaylen Martin,28/1/2004,,3rd Season
 4684740,Amen Thompson,30/1/2003,"2023: Rd 1, Pk 4 (HOU)",4th Season
 4684742,Ausar Thompson,30/1/2003,"2023: Rd 1, Pk 5 (DET)",4th Season
 4684793,Kyle Filipowski,7/11/2003,"2024: Rd 2, Pk 32 (UTAH)",3rd Season
@@ -463,12 +551,15 @@ athlete_id,name,dob,draft,experience
 4701230,Jalen Johnson,18/12/2001,"2021: Rd 1, Pk 20 (ATL)",6th Season
 4701232,Mark Williams,16/12/2001,"2022: Rd 1, Pk 15 (CHA)",5th Season
 4701233,Craig Porter Jr.,26/2/2000,,4th Season
+4701234,Ricky Council IV,3/8/2001,,1st Season
 4701845,Kadary Richmond,25/8/2001,,2nd Season
 4701992,Max Shulga,25/6/2002,"2025: Rd 2, Pk 57 (ORL)",Rookie
+4702023,Adama Sanogo,12/2/2002,,
 4702099,Zack Austin,11/8/2001,,1st Season
 4702134,Norchad Omier,28/8/2001,,Rookie
 4702159,Dillon Jones,29/10/2001,"2024: Rd 1, Pk 26 (WSH)",3rd Season
 4702177,Keon Ellis,8/1/2000,,5th Season
+4702233,JT Thor,26/8/2002,"2021: Rd 2, Pk 37 (DET)",3rd Season
 4702352,Kobe Sanders,30/5/2002,"2025: Rd 2, Pk 50 (NY)",2nd Season
 4702382,Tristan da Silva,15/5/2001,"2024: Rd 1, Pk 18 (ORL)",3rd Season
 4702384,Nique Clifford,9/2/2002,"2025: Rd 1, Pk 24 (OKC)",2nd Season
@@ -485,6 +576,7 @@ athlete_id,name,dob,draft,experience
 4703530,Mark Sears,19/2/2002,,Rookie
 4703889,Jayson Kent,3/2/2002,,2nd Season
 4706557,Chris Youngblood,9/2/2002,,2nd Season
+4708972,Jazian Gortman,14/4/2003,,2nd Season
 4709131,Sean Pedulla,10/10/2002,,2nd Season
 4709138,Brandin Podziemski,25/2/2003,"2023: Rd 1, Pk 19 (GS)",4th Season
 4711272,Reed Sheppard,24/6/2004,"2024: Rd 1, Pk 3 (HOU)",3rd Season
@@ -517,6 +609,7 @@ athlete_id,name,dob,draft,experience
 4895758,Cody Williams,20/11/2004,"2024: Rd 1, Pk 10 (UTAH)",3rd Season
 4896365,Adama Bal,18/12/2003,,Rookie
 4896372,Walter Clayton Jr.,6/3/2003,"2025: Rd 1, Pk 18 (WSH)",2nd Season
+4896850,Taran Armstrong,15/1/2002,,1st Season
 4897262,Will Richard,24/12/2002,"2025: Rd 2, Pk 56 (MEM)",2nd Season
 4897449,Malevy Leons,23/9/1999,,3rd Season
 4897943,Dalton Knecht,19/4/2001,"2024: Rd 1, Pk 17 (LAL)",3rd Season
@@ -528,6 +621,7 @@ athlete_id,name,dob,draft,experience
 4900671,Ajay Mitchell,25/6/2002,"2024: Rd 2, Pk 38 (NY)",3rd Season
 4903027,Cedric Coward,11/9/2003,"2025: Rd 1, Pk 11 (POR)",2nd Season
 4906923,Bobi Klintman,6/3/2003,"2024: Rd 2, Pk 37 (MIN)",1st Season
+4909710,Phillip Wheeler,23/4/2002,,1st Season
 4914336,Shaedon Sharpe,30/5/2003,"2022: Rd 1, Pk 7 (POR)",5th Season
 4917149,Alex Karaban,11/11/2002,"2026: Rd 1, Pk 29 (CLE)",Rookie
 4997526,Ousmane Dieng,21/5/2003,"2022: Rd 1, Pk 11 (NY)",5th Season
@@ -560,6 +654,7 @@ athlete_id,name,dob,draft,experience
 5099752,Rayan Rupert,31/5/2004,"2023: Rd 2, Pk 43 (POR)",4th Season
 5101761,Mikel Brown Jr.,3/4/2006,"2026: Rd 1, Pk 6 (BKN)",Rookie
 5104155,Bilal Coulibaly,26/7/2004,"2023: Rd 1, Pk 7 (IND)",4th Season
+5104156,Armel Traore,23/1/2003,,Rookie
 5104157,Victor Wembanyama,4/1/2004,"2023: Rd 1, Pk 1 (SA)",4th Season
 5105337,Maliq Brown,15/11/2003,"2026: Rd 2, Pk 44 (SA)",Rookie
 5105550,GG Jackson,17/12/2004,"2023: Rd 2, Pk 45 (MEM)",4th Season
@@ -609,6 +704,7 @@ athlete_id,name,dob,draft,experience
 5149115,Allen Graves,28/7/2006,"2026: Rd 1, Pk 19 (TOR)",Rookie
 5157066,Johnny Furphy,7/12/2004,"2024: Rd 2, Pk 35 (SA)",3rd Season
 5157587,Rocco Zikarsky,11/7/2006,"2025: Rd 2, Pk 45 (CHI)",2nd Season
+5159486,Yongxi Cui,28/5/2003,,Rookie
 5159895,Yuki Kawamura,2/5/2001,,3rd Season
 5159925,Nikola Topic,10/8/2005,"2024: Rd 1, Pk 12 (OKC)",2nd Season
 5160992,Alex Sarr,26/4/2005,"2024: Rd 1, Pk 2 (WSH)",3rd Season
@@ -629,6 +725,7 @@ athlete_id,name,dob,draft,experience
 5211175,Zaccharie Risacher,8/4/2005,"2024: Rd 1, Pk 1 (ATL)",3rd Season
 5211176,Tidjane Salaun,10/8/2005,"2024: Rd 1, Pk 6 (CHA)",3rd Season
 5211983,Pacome Dadiet,27/7/2005,"2024: Rd 1, Pk 25 (NY)",3rd Season
+5211984,Ulrich Chomche,30/12/2005,"2024: Rd 2, Pk 57 (MEM)",1st Season
 5214637,Noah Penda,7/1/2005,"2025: Rd 2, Pk 32 (BOS)",2nd Season
 5214640,Kasparas Jakucionis,29/5/2006,"2025: Rd 1, Pk 20 (MIA)",2nd Season
 5214989,Bogoljub Markovic,12/7/2005,"2025: Rd 2, Pk 47 (MIL)",Rookie
@@ -648,15 +745,21 @@ athlete_id,name,dob,draft,experience
 5281370,Hannes Steinbach,1/5/2006,"2026: Rd 1, Pk 14 (CHA)",Rookie
 5289900,Mohamed Diawara,29/4/2005,"2025: Rd 2, Pk 51 (LAC)",2nd Season
 6427,Bismack Biyombo,28/8/1992,"2011: Rd 1, Pk 7 (SAC)",15th Season
+6429,Alec Burks,20/7/1991,"2011: Rd 1, Pk 12 (UTAH)",13th Season
 6430,Jimmy Butler III,14/9/1989,"2011: Rd 1, Pk 30 (CHI)",16th Season
 6440,Tobias Harris,15/7/1992,"2011: Rd 1, Pk 19 (CHA)",16th Season
 6442,Kyrie Irving,23/3/1992,"2011: Rd 1, Pk 1 (CLE)",15th Season
+6443,Reggie Jackson,16/4/1990,"2011: Rd 1, Pk 24 (OKC)",13th Season
+6446,Cory Joseph,20/8/1991,"2011: Rd 1, Pk 29 (SA)",13th Season
 6450,Kawhi Leonard,29/6/1991,"2011: Rd 1, Pk 15 (IND)",16th Season
+6461,Markieff Morris,2/9/1989,"2011: Rd 1, Pk 13 (PHX)",13th Season
+6474,Tristan Thompson,13/3/1991,"2011: Rd 1, Pk 4 (CLE)",13th Season
 6475,Klay Thompson,8/2/1990,"2011: Rd 1, Pk 11 (GS)",16th Season
 6477,Jonas Valanciunas,6/5/1992,"2011: Rd 1, Pk 5 (TOR)",13th Season
 6478,Nikola Vucevic,24/10/1990,"2011: Rd 1, Pk 16 (PHI)",16th Season
 6578,Harrison Barnes,30/5/1992,"2012: Rd 1, Pk 7 (GS)",15th Season
 6580,Bradley Beal,28/6/1993,"2012: Rd 1, Pk 3 (WSH)",15th Season
+6581,Jae Crowder,6/7/1990,"2012: Rd 2, Pk 34 (CLE)",11th Season
 6583,Anthony Davis,11/3/1993,"2012: Rd 1, Pk 1 (NO)",15th Season
 6585,Andre Drummond,10/8/1993,"2012: Rd 1, Pk 9 (DET)",15th Season
 6589,Draymond Green,4/3/1990,"2012: Rd 2, Pk 35 (GS)",15th Season
