@@ -10,9 +10,11 @@ res3, res4 = [], []
 for season in sorted(int(s) for s in os.listdir(D) if s.isdigit()):
     sd = os.path.join(D, str(season))
     g = pd.read_csv(f'{sd}/games.csv', dtype={'event_id': str}).sort_values(['date', 'event_id'])
-    box = pd.read_csv(f'{sd}/box.csv', dtype={'event_id': str, 'athlete_id': str}).merge(g[['event_id', 'date']], on='event_id')
-    st = pd.read_csv(f'{sd}/stints.csv', dtype={'event_id': str, 'athlete_id': str})
-    fl = pd.read_csv(f'{sd}/flow.csv', dtype={'event_id': str})
+    if os.environ.get('TO_DAY'):   # keep only games within the first TO_DAY days of each season (same point as this season)
+        _d = pd.to_datetime(g.date); g = g[_d <= _d.min() + pd.Timedelta(days=int(os.environ['TO_DAY']))]
+    box = pd.read_csv(f'{sd}/box.csv', dtype={'event_id': str, 'athlete_id': str}).merge(g[['event_id', 'date']], on='event_id'); box = box[box.event_id.isin(g.event_id)]
+    st = pd.read_csv(f'{sd}/stints.csv', dtype={'event_id': str, 'athlete_id': str}); st = st[st.event_id.isin(g.event_id)]
+    fl = pd.read_csv(f'{sd}/flow.csv', dtype={'event_id': str}); fl = fl[fl.event_id.isin(g.event_id)]
     # Standings rank at each game (1 = worst), from records before that date
     rec, rank_at = {}, {}
     for date, x in g.groupby('date'):

@@ -5,8 +5,10 @@ h = pd.read_csv(f'{R}/archive/history/games_2000-26.csv'); h = h[h.season_end < 
 s = pd.read_csv(f'{R}/archive/history/scores_2023-26.csv')[['season_end', 'date', 'home', 'away', 'margin', 'home_win']]
 cur = pd.read_csv(f'{R}/analysis/tanking/data/2027/games.csv') if os.path.exists(f'{R}/analysis/tanking/data/2027/games.csv') else None
 G = pd.concat([h, s])
-if cur is not None:   # ESPN abbreviations -> full names via the 2026 games
-    ab = pd.read_csv(f'{R}/analysis/tanking/data/2026/games.csv') if os.path.exists(f'{R}/analysis/tanking/data/2026/games.csv') else None
+if cur is not None:   # this season, ESPN abbreviations -> full names
+    from development_names import ABBR
+    G = pd.concat([G, pd.DataFrame({'season_end': 2027, 'date': cur.date, 'home': cur.home.map(ABBR), 'away': cur.away.map(ABBR),
+                                    'margin': cur.home_score - cur.away_score, 'home_win': (cur.home_score > cur.away_score).astype(int)})])
 G['date'] = pd.to_datetime(G.date); G = G.sort_values(['date', 'home']).reset_index(drop=True)
 G['elo_h'] = 0.0; G['elo_a'] = 0.0
 # Bobcats/Hornets, Sonics/Thunder, Nets, Pelicans renames: Elo is carried by franchise name as given; first game of a new name starts at 1500
@@ -50,6 +52,18 @@ L['p_fz'] = 1 / (1 + 10 ** (-(L.elo_fz - L.opp_fz + np.where(L.home, HCA, -HCA))
 late = L[(L.left <= 25) & L['rank'].notna()].copy()
 late['p'] = late.p_fz
 late['zone'] = pd.cut(late['rank'], [0, 3, 6, 10, 15, 30], labels=['1-3 worst', '4-6', '7-10', '11-15', '16-30'])
+# ---- Same point of the season: first TO_DAY days, ranks once every team has 5+ games ----
+TD = int(os.environ.get('TO_DAY', 32))
+L['day'] = (L.date - L.groupby('season').date.transform('min')).dt.days
+early = L[(L.day <= TD) & L['rank'].notna()].copy()
+early['zone'] = pd.cut(early['rank'], [0, 3, 6, 10, 20, 30], labels=['1-3 worst', '4-6', '7-10', '11-20', 'best 10'])
+print(f'To date (first {TD} days): win% minus live Elo expectation (pts), by standings rank at game time')
+e = early.groupby(['season', 'zone'], observed=True).apply(lambda z: (z.won - z.p).mean() * 100).unstack()
+print(e.loc[2015:].round(1).to_string())
+print('past-season mean / sd:', e.loc[:2026].mean().round(1).to_dict(), e.loc[:2026].std().round(1).to_dict())
+eh = early[(early['rank'] <= 6) & (early.opp_rank <= 6) & (early.team < early.opp)]
+print('bottom-6 vs bottom-6 to date:', eh.groupby('season').apply(lambda z: f"{len(z)} g, close {(z.margin.abs()<=5).mean()*100:.0f}%, abs {z.margin.abs().mean():.1f}", include_groups=False).loc[2019:].to_dict())
+print()
 print('Idea 2. Last 25 games of each season: win% minus Elo expectation (pts), by standings rank at game time')
 t = late.groupby(['era', 'zone'], observed=True).apply(lambda z: pd.Series({'n': len(z), 'resid': (z.won - z.p).mean() * 100,
                                                                               'se': np.sqrt((z.p * (1 - z.p)).sum()) / len(z) * 100}))
