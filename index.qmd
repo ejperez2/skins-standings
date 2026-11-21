@@ -1697,7 +1697,6 @@ if (!is.null(uncertainty)) {
 
   raw_html(
     "<h2 class=\"sk-h\">Chance to win</h2>",
-    "<div class=\"sk-caveat\" role=\"note\">A forecast, not a promise: even a 75% favourite loses one season in four.</div>",
     if (length(views) > 1) paste0(
       "<div class=\"sk-tog\"><span>View</span><span class=\"sk-seg\" id=\"sk-hot\">",
       "<button type=\"button\" data-v=\"now\" aria-pressed=\"true\">Cautious</button>",
@@ -1836,8 +1835,14 @@ score_window <- function(from_date, to_date) {
     mutate(games = mean(d$played))
 }
 # Per-team miss for one source over the games since from_date (feeds the tiers)
+wd_cache <- new.env()
+window_cache <- function(from_date) {   # window_detail(from_date, latest), computed once per start date
+  key <- as.character(from_date)
+  if (is.null(wd_cache[[key]])) wd_cache[[key]] <- window_detail(from_date, latest)
+  wd_cache[[key]]
+}
 team_miss <- function(src, from_date) {
-  d <- window_detail(from_date, latest)
+  d <- window_cache(from_date)
   if (!src %in% names(d)) return(NULL)
   d <- d[!is.na(d[[src]]), ]
   setNames(abs(d$won - (d[[src]] - d$wins) / (82 - d$g0) * d$played), d$team)
@@ -1908,8 +1913,9 @@ if (is.null(h) || nrow(h) == 0) {
       filter(!(is.na(opening) & is.na(last30) & is.na(common))) %>%
       arrange(coalesce(last30, opening))
 
-    # Tiers: is a source's gap to the best source bigger than luck? Resample the teams 2,000 times; a source drops to
-    # Tier 2 only if it is behind the best in at least 95% of resamples. Compared over the same games for both sources.
+    # Tiers: is a source's gap to the best source bigger than luck? Every daily projection in the window is graded on the
+    # games after it, each team's gap is averaged over those snapshots, then the teams are resampled 2,000 times; a source drops
+    # to Tier 2 only if it is behind the best in at least 95% of resamples. Compared over the same games for both sources.
     tier_key <- if (enough[["last30"]]) "last30" else "opening"
     tier_of <- setNames(rep(NA_integer_, nrow(acc)), acc$key)
     vals <- setNames(acc[[tier_key]], acc$key)
@@ -1924,11 +1930,19 @@ if (is.null(h) || nrow(h) == 0) {
         both <- ave(as.numeric(!is.na(h[[k]]) & !is.na(h[[best_k]])), h$date, FUN = sum)   # a snapshot where both have projections
         ok_dates <- h$date[both >= TIER_MIN_TEAMS & h$date >= from_k]
         if (length(ok_dates) == 0) next
-        from_k <- min(ok_dates)
-        mk <- team_miss(k, from_k); mb <- team_miss(best_k, from_k)
-        common <- intersect(names(mk), names(mb))
-        if (length(common) < TIER_MIN_TEAMS) next
-        gap <- mk[common] - mb[common]
+        # Grade every daily projection in the window, not just the first one: each snapshot's projection vs the games
+        # played after it. The sources' updates differ day to day, so this uses far more of the evidence than one start date.
+        gaps <- lapply(sort(unique(ok_dates)), function(d0) {
+          mk <- team_miss(k, d0); mb <- team_miss(best_k, d0)
+          if (is.null(mk) || is.null(mb) || length(mk) == 0) return(NULL)
+          common <- intersect(names(mk), names(mb))
+          if (length(common) < TIER_MIN_TEAMS || mean(window_cache(d0)$played) < MIN_GAMES) return(NULL)
+          tibble(team = common, gap = mk[common] - mb[common])
+        })
+        gaps <- bind_rows(gaps)
+        if (nrow(gaps) == 0) next
+        gap <- tapply(gaps$gap, gaps$team, mean)   # each team's average gap across the snapshots
+        if (length(gap) < TIER_MIN_TEAMS) next
         boot <- replicate(2000, mean(sample(gap, replace = TRUE)))
         tier_of[k] <- if (unname(quantile(boot, 0.05)) > 0) 2L else 1L
       }
@@ -1974,8 +1988,9 @@ if (is.null(h) || nrow(h) == 0) {
                            "That is the fairest side-by-side: the since-opening column gives the sources added later (*) fewer, easier games."),
                     format(common_start, "%b %d")), 13)
     acc_p(paste0("<b>Tiers:</b> with only 30 teams and a few weeks of games, small gaps are luck. <b>Tier 1</b> sources cannot be told apart ",
-                 "from the best one (the bold number); <b>Tier 2</b> sources are behind the best by more than luck explains. ",
-                 "Tiers use the ", if (tier_key == "last30") "last 30 days" else "since-opening", " column. ",
+                 "from the best one (the bold number); <b>Tier 2</b> sources are behind the best by more than luck explains (behind in 95% of 2,000 reshuffles of the teams). ",
+                 "Tiers rank the ", if (tier_key == "last30") "last 30 days" else "since-opening", " column, but the test grades every daily projection in that stretch ",
+                 "on the games after it, not just the first one, so a source that keeps missing day after day separates sooner. ",
                  "A dash means too few teams to judge. Most sources land in Tier 1 early; the split sharpens as games pile up."), 13)
     if (max(sapply(scores, function(x) if (is.null(x)) 0 else x$games[1])) < 20)
       acc_p("Early-season sample: with only about 10 games per team, gaps of a few hundredths between sources are mostly noise. Read it as a rough first look; it firms up as games pile up.", 13)
@@ -2017,33 +2032,65 @@ if (is.null(h) || nrow(h) == 0) {
                     miss_for(rep(1 / length(cand), length(cand))), length(cand), format(min(all_cov), "%b %d")), 13)
     }
 
-    # Trend: rolling 30-day miss for each source, as of each snapshot date
+    # Trend: each source's 30-day miss as of each snapshot date, drawn as the gap to the Weighted Average on the same games.
+    # Raw misses sit within ~0.2 wins of each other and all drift together with the schedule, so on a raw axis the lines pile up;
+    # the gap removes the shared drift. Before 30 days have passed the window runs from opening night instead.
+    # A source missing from the window's first snapshot (added late, or a feed gap) starts at its next full-league snapshot,
+    # and is compared with the Weighted Average over that same shorter window.
+    cov_dates <- lapply(setNames(nm = setdiff(names(ACC_SOURCES), "baseline")), function(k) {
+      if (!k %in% names(h)) return(as.Date(character()))
+      sort(unique(h$date[ave(as.numeric(!is.na(h[[k]])), h$date, FUN = sum) >= TIER_MIN_TEAMS]))
+    })
     trend <- bind_rows(lapply(sort(unique(h$date)), function(a) {
       d0 <- pick_start(a - 30)
-      if (is.na(d0) || d0 >= a) return(NULL)
-      x <- score_window(d0, a)
-      if (is.null(x) || x$games[1] < MIN_GAMES) return(NULL)
-      x %>% mutate(date = a)
+      if (is.na(d0) || d0 < opening) d0 <- opening
+      starts <- sapply(cov_dates, function(cd) { cd <- cd[cd >= d0]; if (length(cd)) as.numeric(min(cd)) else NA_real_ })
+      starts <- c(starts, baseline = starts[["weighted"]])
+      starts <- starts[!is.na(starts) & starts < as.numeric(a)]
+      bind_rows(lapply(unique(starts), function(st) {
+        x <- score_window(as.Date(st, origin = "1970-01-01"), a)
+        if (is.null(x) || x$games[1] < MIN_GAMES || !"weighted" %in% x$source) return(NULL)
+        x %>% mutate(gap = miss - miss[source == "weighted"]) %>% filter(source %in% names(starts)[starts == st])
+      })) %>% mutate(date = a)
     }))
-    if (nrow(trend) > 1) {
-      trend <- trend %>% mutate(Source = factor(ACC_SOURCES[source], levels = ACC_SOURCES))
+    if (nrow(trend) > 0 && length(unique(trend$date)) > 1) {
+      trend <- trend %>% filter(source != "baseline") %>% mutate(Source = factor(ACC_SOURCES[source], levels = ACC_SOURCES))
+      # Zoom to the pack: a source whose latest gap is more than 0.5 wins is drawn off the top and named in the caption instead
+      last_gap <- trend %>% group_by(source) %>% filter(date == max(date)) %>% ungroup()
+      far <- last_gap %>% filter(gap > 0.5)
+      pack <- trend %>% filter(!source %in% far$source)
+      ylim <- range(c(0, pack$gap)); ylim <- ylim + c(-1, 1) * 0.08 * max(diff(ylim), 0.1)
+      base_gap <- with(score_window(pick_start(latest - 30) %>% { if (is.na(.) || . < opening) opening else . }, latest),
+                       miss[source == "baseline"] - miss[source == "weighted"])
+      off_txt <- c(if (nrow(far) > 0) sprintf("%s %+.2f", ACC_SOURCES[far$source], far$gap),
+                   if (length(base_gap) == 1) sprintf(".500 baseline %+.2f", base_gap))
       print(
-        ggplot(trend, aes(date, miss, color = Source, linetype = source == "baseline")) +
-          geom_line(linewidth = 0.9) +
-          scale_linetype_manual(values = c(`FALSE` = "solid", `TRUE` = "dashed"), guide = "none") +
+        ggplot(trend, aes(date, gap, color = Source)) +
+          geom_hline(yintercept = 0, color = "#EEEEEE", linewidth = 0.5) +
+          geom_line(data = ~ filter(.x, source != "weighted"), linewidth = 0.9) +
+          geom_point(data = ~ filter(.x, source != "weighted", date == max(date)), size = 1.8) +
           scale_color_manual(values = c("TeamRankings" = "#4C9BE8", "ESPN BPI" = "#E26A54", "CBS" = "#22A794",
                                         "Vegas" = "#EE9944", "BB-Ref" = "#CC6FA8", "Opta" = "#B8C94A", "DARKO" = "#9C8AE0",
-                                        "Dunks & Threes" = "#E0B04A", "Crafted NBA" = "#5BC8D6", "Weighted Average" = "#EEEEEE",
-                                        "Baseline: .500 rest of season" = "#888888")) +
-          labs(title = "Rolling 30-day miss by source", subtitle = "Lower is better", x = NULL,
-               y = "Average miss (wins per team)", color = NULL) +
+                                        "Dunks & Threes" = "#E0B04A", "Crafted NBA" = "#5BC8D6"),
+                             breaks = setdiff(levels(pack$Source)[levels(pack$Source) %in% pack$Source], "Weighted Average")) +
+          scale_y_continuous(labels = function(v) sprintf("%+.2f", v)) +
+          coord_cartesian(ylim = ylim) +
+          labs(title = "30-day miss vs the Weighted Average",
+               subtitle = "Below the white line = more accurate than our blend",
+               caption = if (length(off_txt)) paste("Off the chart (latest):", paste(off_txt, collapse = "; ")) else NULL,
+               x = NULL, y = "Miss minus Weighted Average (wins per team)", color = NULL) +
           guides(color = guide_legend(nrow = 3)) +
           theme_minimal(base_size = 12) +
           theme(legend.position = "bottom", plot.title = element_text(face = "bold"),
+                plot.caption = element_text(color = "#aaaaaa", size = 9, hjust = 0),
                 plot.background = element_rect(fill = "#2b2b2b", color = NA),
                 panel.grid.minor = element_blank(), panel.grid.major = element_line(color = "#3a3a3a"),
                 text = element_text(color = "#dddddd"), axis.text = element_text(color = "#aaaaaa"))
       )
+      acc_p(paste0("Each point grades the projections saved 30 days earlier (or on opening night, before 30 days had passed) on the games played since, ",
+                   "against the Weighted Average on the same games (a source added later starts from its first full-league projection). ",
+                   "The lines are drawn relative to the Weighted Average because every source's raw miss rises and falls together with the schedule; ",
+                   "the gap is what separates them."), 13)
     }
   }
 }

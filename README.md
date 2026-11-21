@@ -80,9 +80,9 @@ each team's record, to `team_projection_history.csv`. The Projection Accuracy se
 on games played *after* a saved projection: expected wins since then = (projected wins - wins at the time) /
 games left x games played since, compared with actual wins since. It shows the average miss (wins per team)
 since opening night and over the last 30 days, a .500 baseline, the mix of all sources with a full-league projection (10% steps, exhaustive, graded from the first day
-they all have one) that would have missed least, next to the current weights and an equal-weight average, and a rolling 30-day trend chart. A window is graded once teams average 5+ games in it
+they all have one) that would have missed least, next to the current weights and an equal-weight average, and a trend chart of each source's 30-day miss drawn as the gap to the Weighted Average on the same games (sources more than 0.5 wins behind, and the .500 baseline, are listed in the caption instead of stretching the axis). A window is graded once teams average 5+ games in it
 (`MIN_GAMES` in `index.qmd`). A **Tier** column says whether a source's gap to the best source is bigger than luck:
-the 30 teams are resampled 2,000 times (fixed seed) and a source is Tier 2 only if it trails the best in at least
+every daily projection in the window is graded on the games after it, each team's gap is averaged over those snapshots, then the 30 teams are resampled 2,000 times (fixed seed) and a source is Tier 2 only if it trails the best in at least
 95% of resamples, otherwise Tier 1; both sources are compared over the same games, and a dash means fewer than 25
 teams in common (`TIER_MIN_TEAMS`). Weights live in `WEIGHTS` near the top of `index.qmd`. Opta, DARKO and Dunks & Threes (added Oct 21, 2026,
 after opening night) are graded "since opening" from their first saved snapshot that covers 25+ teams and marked with `*`.
