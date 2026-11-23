@@ -35,7 +35,7 @@
 "Atlanta Hawks",42.375,2026-11-20,TRUE
 "Atlanta Hawks",42.875,2026-11-21,TRUE
 "Atlanta Hawks",43.5,2026-11-22,TRUE
-"Atlanta Hawks",43.25,2026-11-23,TRUE
+"Atlanta Hawks",43.0833333333333,2026-11-23,TRUE
 "Boston Celtics",50.000002,2026-10-19,TRUE
 "Boston Celtics",52,2026-10-20,TRUE
 "Boston Celtics",51.875,2026-10-21,TRUE
@@ -540,7 +540,7 @@
 "Memphis Grizzlies",41.0625,2026-11-20,TRUE
 "Memphis Grizzlies",41.0625,2026-11-21,TRUE
 "Memphis Grizzlies",41.4166666666667,2026-11-22,TRUE
-"Memphis Grizzlies",41.4166666666667,2026-11-23,TRUE
+"Memphis Grizzlies",41.3125,2026-11-23,TRUE
 "Miami Heat",46.000001,2026-10-19,TRUE
 "Miami Heat",46.5,2026-10-20,TRUE
 "Miami Heat",46.5,2026-10-21,TRUE
@@ -576,7 +576,7 @@
 "Miami Heat",44.5625,2026-11-20,TRUE
 "Miami Heat",44.5625,2026-11-21,TRUE
 "Miami Heat",44.6875,2026-11-22,TRUE
-"Miami Heat",44.625,2026-11-23,TRUE
+"Miami Heat",44.75,2026-11-23,TRUE
 "Milwaukee Bucks",25,2026-10-19,TRUE
 "Milwaukee Bucks",25.8333333333333,2026-10-20,TRUE
 "Milwaukee Bucks",25.8333333333333,2026-10-21,TRUE
@@ -793,7 +793,7 @@
 "Orlando Magic",41.3125,2026-11-20,TRUE
 "Orlando Magic",41.3125,2026-11-21,TRUE
 "Orlando Magic",41.3125,2026-11-22,TRUE
-"Orlando Magic",40.75,2026-11-23,TRUE
+"Orlando Magic",40.8333333333333,2026-11-23,TRUE
 "Philadelphia 76ers",50.500002,2026-10-19,TRUE
 "Philadelphia 76ers",50.1666666666667,2026-10-20,TRUE
 "Philadelphia 76ers",51.125,2026-10-21,TRUE
@@ -829,7 +829,7 @@
 "Philadelphia 76ers",53.5,2026-11-20,TRUE
 "Philadelphia 76ers",54,2026-11-21,TRUE
 "Philadelphia 76ers",53.5833333333333,2026-11-22,TRUE
-"Philadelphia 76ers",53.5833333333333,2026-11-23,TRUE
+"Philadelphia 76ers",53.5625,2026-11-23,TRUE
 "Phoenix Suns",38.5,2026-10-19,TRUE
 "Phoenix Suns",39.3333333333333,2026-10-20,TRUE
 "Phoenix Suns",39.25,2026-10-21,TRUE
@@ -901,7 +901,7 @@
 "Portland Trail Blazers",49.5,2026-11-20,TRUE
 "Portland Trail Blazers",49.5,2026-11-21,TRUE
 "Portland Trail Blazers",49.5833333333333,2026-11-22,TRUE
-"Portland Trail Blazers",49.5833333333333,2026-11-23,TRUE
+"Portland Trail Blazers",49.5625,2026-11-23,TRUE
 "Sacramento Kings",21.000001,2026-10-19,TRUE
 "Sacramento Kings",20.8333333333333,2026-10-20,TRUE
 "Sacramento Kings",20.875,2026-10-21,TRUE
@@ -1082,4 +1082,4 @@
 "Washington Wizards",28.75,2026-11-20,TRUE
 "Washington Wizards",29.375,2026-11-21,TRUE
 "Washington Wizards",29.25,2026-11-22,TRUE
-"Washington Wizards",29.375,2026-11-23,TRUE
+"Washington Wizards",29.5,2026-11-23,TRUE
