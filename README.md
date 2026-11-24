@@ -89,6 +89,14 @@ after opening night) are graded "since opening" from their first saved snapshot 
 Crafted NBA (added Oct 27, 2026) has its preseason run (Oct 20) backfilled into the opening-night snapshot, so it
 is graded from opening night like the core sources.
 
+### Bulls & Mavs prediction markets
+A second chart (fold "Bulls & Mavs: prediction markets") plots Polymarket and Kalshi prices, saved to `market_history.csv` on every render (scheduled runs and
+"Refresh now"; the latest run of each Central date wins; a source that fails keeps what it saved earlier that day). Both APIs are free and keyless:
+Polymarket's Gamma API (`/events?tag_id=745`, events matched by title, `liquidityNum` = dollars of liquidity) and Kalshi's public market-data API
+(series `KXNBAPLAYOFF`, `KXNBARECORD` worst, `KXNBASEEDOU` seed #10, `KXNBAWINS` win thresholds; price = bid/ask midpoint, `liq` = open interest in contracts).
+Charts: make playoffs and worst record (both sites, with a source toggle), make play-in and 1st pick (Polymarket), seed #10 or better and win thresholds (Kalshi).
+Kalshi's draft-lottery series had no open 2027 markets on Nov 24, 2026; add them when they appear. Kalshi can return HTTP 429 under load, so requests retry with a pause.
+
 ### Bulls & Mavs odds trends
 A chart of the Bulls' and Mavericks' odds over time, saved once a day to `bpi_history.csv` (the latest run of each Central
 date wins). ESPN BPI supplies playoff %, play-in %, projected seed, projected draft slot and 1st-pick %. Basketball-Reference's

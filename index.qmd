@@ -2290,6 +2290,113 @@ raw_html(
 )
 ```
 
+```{r market-trends, echo=FALSE, results='asis', warning=FALSE, message=FALSE}
+# Prediction-market prices for the Bulls and Mavericks: Polymarket (Gamma API) and Kalshi (public market-data API), both free and keyless.
+# Saved to market_history.csv on every render (scheduled and "Refresh now"; the latest run of each Chicago date wins), one row per
+# source / market / team (/ win threshold). price = % chance; liq = Polymarket liquidity in dollars, Kalshi open interest in contracts.
+# Neither site keeps history for us, so each chart starts the day it was first saved.
+MK_TEAMS <- c("Chicago Bulls" = "CHI", "Dallas Mavericks" = "DAL")
+mk_file <- "market_history.csv"
+mk_cols <- c("date", "source", "market", "team", "line", "price", "liq", "bid", "ask")
+mk_ua <- user_agent("skins-standings-tracker (personal NBA fantasy page)")
+mk_num <- function(x) suppressWarnings(as.numeric(if (is.null(x) || length(x) == 0) NA else x))
+
+# --- Polymarket: active NBA-tag events, matched by title so a new season's slugs/years don't matter ---
+PM_EVENTS <- c(playoff = "Team to Make Playoffs$", playin = "Team to Make Play-In$", first = "Draft Lottery: 1st Pick$", worst = "Worst Regular Season Record$")
+pm_today <- tryCatch({
+  evs <- list()
+  for (off in seq(0, 450, by = 50)) {
+    r <- GET("https://gamma-api.polymarket.com/events", query = list(tag_id = 745, active = "true", closed = "false", limit = 50, offset = off), mk_ua, timeout(30))
+    stop_for_status(r)
+    page <- fromJSON(content(r, as = "text", encoding = "UTF-8"), simplifyVector = FALSE)
+    evs <- c(evs, page)
+    if (length(page) < 50) break
+  }
+  out <- bind_rows(lapply(names(PM_EVENTS), function(k) {
+    hit <- Filter(function(e) grepl(PM_EVENTS[[k]], e$title), evs)
+    if (!length(hit)) return(NULL)
+    e <- hit[[order(sapply(hit, function(e) e$endDate))[1]]]   # soonest-ending open event = this season's
+    bind_rows(lapply(e$markets, function(m) {
+      tm <- names(MK_TEAMS)[sapply(names(MK_TEAMS), function(n) grepl(n, m$question, fixed = TRUE))]
+      if (length(tm) != 1) return(NULL)
+      tibble(source = "polymarket", market = k, team = tm, line = NA_real_,
+             price = 100 * mk_num(fromJSON(m$outcomePrices)[1]), liq = mk_num(m$liquidityNum), bid = NA_real_, ask = NA_real_)
+    }))
+  }))
+  if (nrow(out) == 0) stop("no Polymarket markets found")
+  out
+}, error = function(e) { message("Polymarket markets skipped: ", conditionMessage(e)); NULL })
+
+# --- Kalshi: open events of five series. Price = bid/ask midpoint (last trade when there is no ask): thin markets often have no recent trade ---
+kalshi_get <- function(series) {
+  for (i in 1:4) {
+    r <- GET("https://api.elections.kalshi.com/trade-api/v2/events", query = list(series_ticker = series, status = "open", with_nested_markets = "true", limit = 200), mk_ua, timeout(30))
+    if (status_code(r) == 429) { Sys.sleep(3 * i); next }
+    stop_for_status(r)
+    return(fromJSON(content(r, as = "text", encoding = "UTF-8"), simplifyVector = FALSE)$events)
+  }
+  stop("Kalshi rate limit")
+}
+kalshi_rows <- function(series, market, keep_event = NULL, line_from = NULL) {
+  evs <- kalshi_get(series)
+  Sys.sleep(0.5)
+  bind_rows(lapply(evs, function(e) {
+    if (!is.null(keep_event) && !grepl(keep_event, e$event_ticker)) return(NULL)
+    bind_rows(lapply(e$markets, function(m) {
+      ab <- sub(".*-([A-Z]+)(10)?$", "\\1", m$ticker)
+      if (series == "KXNBAWINS") ab <- sub("^.*-[0-9]+([A-Z]{3})$", "\\1", m$event_ticker)
+      if (series == "KXNBASEEDOU") ab <- sub("^.*-([A-Z]{3})10$", "\\1", m$ticker)
+      if (!ab %in% MK_TEAMS) return(NULL)
+      bid <- mk_num(m$yes_bid_dollars); ask <- mk_num(m$yes_ask_dollars); last <- mk_num(m$last_price_dollars)
+      p <- if (!is.na(ask) && ask > 0) (coalesce(bid, 0) + ask) / 2 else last
+      tibble(source = "kalshi", market = market, team = names(MK_TEAMS)[MK_TEAMS == ab],
+             line = if (is.null(line_from)) NA_real_ else mk_num(sub(line_from, "\\1", m$ticker)),
+             price = 100 * p, liq = mk_num(m$open_interest_fp), bid = 100 * bid, ask = 100 * ask)
+    }))
+  }))
+}
+kalshi_today <- tryCatch({
+  out <- bind_rows(
+    kalshi_rows("KXNBAPLAYOFF", "playoff"),
+    kalshi_rows("KXNBARECORD", "worst", keep_event = "WORST$"),
+    kalshi_rows("KXNBASEEDOU", "seed10"),
+    kalshi_rows("KXNBAWINS", "wins", line_from = "^.*-([0-9]+)$"))
+  if (nrow(out) == 0) stop("no Kalshi markets found")
+  out
+}, error = function(e) { message("Kalshi markets skipped: ", conditionMessage(e)); NULL })
+
+mk_hist <- if (file.exists(mk_file)) read.csv(mk_file, stringsAsFactors = FALSE) else
+  data.frame(date = character(), source = character(), market = character(), team = character(), line = numeric(),
+             price = numeric(), liq = numeric(), bid = numeric(), ask = numeric(), stringsAsFactors = FALSE)
+for (src in c("polymarket", "kalshi")) {
+  got <- if (src == "polymarket") pm_today else kalshi_today
+  if (is.null(got) || nrow(got) == 0) next   # a failed source keeps whatever it already saved today
+  got <- got %>% mutate(date = as.character(today), .before = 1) %>% select(all_of(mk_cols)) %>% mutate(across(c(line, price, liq, bid, ask), ~ round(.x, 3)))
+  mk_hist <- bind_rows(mk_hist %>% filter(!(date == as.character(today) & source == src)), got)
+}
+mk_hist <- mk_hist %>% arrange(date, source, market, team, line)
+if (nrow(mk_hist) > 0) write.csv(mk_hist, mk_file, row.names = FALSE, na = "")
+mk_json <- jsonlite::toJSON(list(teams = names(MK_TEAMS), rows = mk_hist), dataframe = "rows", na = "null", auto_unbox = TRUE, digits = 4)
+raw_html(
+  "<details class=\"sk-fold\"><summary>Bulls &amp; Mavs: prediction markets<small>Polymarket and Kalshi prices over time</small></summary><div class=\"sk-inner\">",
+  "<div class=\"sk-crow\"><div><div class=\"sk-cttl\" id=\"sk-pm-ttl\"></div><p class=\"sk-cdsc\" id=\"sk-pm-dsc\"></p></div>",
+  "<select id=\"sk-pm-sel\" aria-label=\"Market\"></select></div>",
+  "<div class=\"sk-tog sk-citog\" id=\"sk-pm-src-wrap\" hidden><span>Market</span><span class=\"sk-seg\" id=\"sk-pm-src\"></span></div>",
+  "<div class=\"sk-tog sk-citog\" id=\"sk-pm-wins-wrap\" hidden><span>View</span><span class=\"sk-seg\" id=\"sk-pm-view\"><button type=\"button\" data-v=\"time\" aria-pressed=\"true\">Over time</button><button type=\"button\" data-v=\"now\" aria-pressed=\"false\">Latest, all thresholds</button></span>",
+  "<select id=\"sk-pm-thr\" aria-label=\"Win threshold\"></select></div>",
+  "<div class=\"sk-cleg\" id=\"sk-pm-leg\"></div>",
+  "<div class=\"sk-plot\" id=\"sk-pm-plot\"><div class=\"sk-empty\">Charts need JavaScript.</div></div>",
+  "<p class=\"sk-note\" id=\"sk-pm-liq\"></p>",
+  "<details class=\"sk-more\"><summary>About these numbers</summary><p class=\"sk-note\">Prices are the market's chance of Yes, in percent. ",
+  "Polymarket (<a href=\"https://polymarket.com/sports/nba\">polymarket.com</a>) shows its price and the dollars of liquidity in its order book. ",
+  "Kalshi (<a href=\"https://kalshi.com/sports/basketball\">kalshi.com</a>) shows the midpoint of the best bid and ask, and its open interest in contracts (each pays $1 if Yes). ",
+  "Thin markets can sit a few points off where a real trade would happen, so read the liquidity line first. ",
+  "\"Seed #10 or better\" means a play-in spot or better. Neither site keeps history for us, so each chart starts the day it was first saved.</p></details>",
+  "</div></details>",
+  "<script type=\"application/json\" id=\"sk-pm-data\">", mk_json, "</script>"
+)
+```
+
 ```{=html}
 <script>
 // Interactive line charts for the League skins % outlook and the Bulls & Mavs BPI trends (same look as the season charts)
@@ -2451,6 +2558,95 @@ raw_html(
     }
     jobs.push(draw);
     sel.addEventListener("change", function () { key = sel.value; draw(); });
+  })();
+
+  // --- Bulls & Mavs prediction markets (Polymarket + Kalshi): pick a market; a source toggle appears when both list it ---
+  var pd = document.getElementById("sk-pm-data");
+  if (pd) (function () {
+    var D = JSON.parse(pd.textContent), rows = A(D.rows), COLS = ["#E26A54", "#4C9BE8"];
+    var P = function (v) { return v.toFixed(1) + "%"; };
+    var SRC = { polymarket: "Polymarket", kalshi: "Kalshi" };
+    var M = {
+      playoff: { l: "Make playoffs", d: "Chance to make the playoffs, including through the play-in (Polymarket: a playoff spot; Kalshi: playoff qualifier)." },
+      playin: { l: "Make play-in", d: "Chance to make the play-in tournament (seeds 7-10)." },
+      first: { l: "Win 1st pick in lottery", d: "Chance to win the top pick at the 2027 draft lottery." },
+      worst: { l: "Worst record in the NBA", d: "Chance to finish with the worst regular-season record." },
+      seed10: { l: "Playoff seed #10 or better", d: "Chance to finish as the No. 10 seed or better in the conference, which is a play-in spot or better." },
+      wins: { l: "Total wins threshold", d: "Chance to win at least this many regular-season games." }
+    };
+    var order = ["playoff", "playin", "first", "worst", "seed10", "wins"].filter(function (k) { return rows.some(function (r) { return r.market === k; }); });
+    var sel = document.getElementById("sk-pm-sel"), srcEl = document.getElementById("sk-pm-src"), srcWrap = document.getElementById("sk-pm-src-wrap");
+    var winWrap = document.getElementById("sk-pm-wins-wrap"), viewEl = document.getElementById("sk-pm-view"), thr = document.getElementById("sk-pm-thr");
+    var plot = document.getElementById("sk-pm-plot"), liqEl = document.getElementById("sk-pm-liq");
+    if (!order.length) { plot.innerHTML = '<div class="sk-empty">No market data saved yet. It appears after the next update.</div>'; return; }
+    var st = { m: order[0], src: null, view: "time", thr: null };
+    sel.innerHTML = order.map(function (k) { return '<option value="' + k + '">' + M[k].l + "</option>"; }).join("");
+    document.getElementById("sk-pm-leg").innerHTML = D.teams.map(function (t, i) { return '<span><i class="sk-dot" style="--c:' + COLS[i] + '"></i>' + t + "</span>"; }).join("");
+    var fold = plot.closest("details");
+    var money = function (v) { return v >= 1000 ? "$" + (v / 1000).toFixed(1) + "k" : "$" + Math.round(v); };
+    var cnt = function (v) { return v >= 1000 ? (v / 1000).toFixed(1) + "k" : String(Math.round(v)); };
+    var cents = function (v) { return v == null ? "?" : (Math.round(v * 10) / 10) + "&cent;"; };
+    function draw() {
+      if (fold && !fold.open) return;
+      var mine = rows.filter(function (r) { return r.market === st.m; });
+      var srcs = ["polymarket", "kalshi"].filter(function (s) { return mine.some(function (r) { return r.source === s; }); });
+      if (srcs.indexOf(st.src) < 0) st.src = srcs[0];
+      srcWrap.hidden = srcs.length < 2;
+      srcEl.innerHTML = srcs.map(function (s) { return '<button type="button" data-s="' + s + '" aria-pressed="' + (s === st.src) + '">' + SRC[s] + "</button>"; }).join("");
+      mine = mine.filter(function (r) { return r.source === st.src; });
+      var isW = st.m === "wins", ladder = isW && st.view === "now";
+      winWrap.hidden = !isW; thr.hidden = !isW || ladder;
+      if (isW) {
+        var ths = []; mine.forEach(function (r) { if (r.line != null && ths.indexOf(r.line) < 0) ths.push(r.line); });
+        ths.sort(function (a, b) { return a - b; });
+        if (ths.indexOf(st.thr) < 0) st.thr = ths.indexOf(30) >= 0 ? 30 : ths[0];
+        thr.innerHTML = ths.map(function (t) { return '<option value="' + t + '"' + (t === st.thr ? " selected" : "") + ">" + t + "+ wins</option>"; }).join("");
+        viewEl.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", b.getAttribute("data-v") === st.view); });
+      }
+      document.getElementById("sk-pm-ttl").textContent = M[st.m].l + (isW && !ladder ? " (" + st.thr + "+ wins)" : "") + (srcs.length < 2 ? " - " + SRC[st.src] + " only" : "");
+      document.getElementById("sk-pm-dsc").textContent = M[st.m].d;
+      var latest = mine.reduce(function (a, r) { return r.date > a ? r.date : a; }, "");
+      var ser, opts;
+      var tick = function (t) { return t + "%"; }, yfit = { floor: 1, min: 0, max: 100 };
+      if (ladder) {
+        ser = D.teams.map(function (t, i) {
+          return { n: t, c: COLS[i], w: 2.4, dots: true, pts: mine.filter(function (r) { return r.team === t && r.date === latest && r.price != null; })
+            .map(function (r) { return [r.line, r.price]; }).sort(function (a, b) { return a[0] - b[0]; }) };
+        });
+        var xs = []; ser.forEach(function (s) { s.pts.forEach(function (p) { if (xs.indexOf(p[0]) < 0) xs.push(p[0]); }); });
+        xs.sort(function (a, b) { return a - b; });
+        opts = { fmt: P, tick: tick, yfit: yfit, xt: xs.map(function (x) { return [x, x + "+"]; }), tipTitle: function (x) { return x + "+ wins, " + latest; } };
+      } else {
+        var sub = isW ? mine.filter(function (r) { return r.line === st.thr; }) : mine;
+        ser = D.teams.map(function (t, i) {
+          return { n: t, c: COLS[i], w: 2.4, dots: true, pts: sub.filter(function (r) { return r.team === t && r.price != null; }).map(function (r) { return [dayN(r.date), r.price]; }) };
+        });
+        var days = []; ser.forEach(function (s) { s.pts.forEach(function (p) { days.push(p[0]); }); });
+        var lo = Math.min.apply(null, days), hi = Math.max.apply(null, days), xt = [];
+        if (days.length) for (var k = 0; k <= 3; k++) { var d = Math.round(lo + (hi - lo) * k / 3); if (!xt.length || xt[xt.length - 1][0] !== d) xt.push([d, dayLbl(d)]); }
+        opts = { fmt: P, tick: tick, yfit: yfit, xt: xt, tipTitle: dayLbl };
+      }
+      line(plot, ser, opts);
+      // Liquidity for the latest day, per team
+      var cur = (isW && !ladder ? mine.filter(function (r) { return r.line === st.thr; }) : mine).filter(function (r) { return r.date === latest; });
+      var bits = D.teams.map(function (t) {
+        var r = cur.filter(function (x) { return x.team === t; })[0];
+        if (!r || r.liq == null) return null;
+        return t + ": " + (st.src === "polymarket" ? money(r.liq) + " liquidity" : cnt(r.liq) + " contracts open interest, bid " + cents(r.bid) + " / ask " + cents(r.ask));
+      }).filter(Boolean);
+      if (ladder) {
+        var ths2 = []; cur.forEach(function (r) { if (ths2.indexOf(r.line) < 0) ths2.push(r.line); });
+        ths2.sort(function (a, b) { return a - b; });
+        liqEl.innerHTML = "Open interest, contracts (" + D.teams.join(" / ") + "), latest " + latest + ": " + ths2.map(function (t) {
+          return t + "+: " + D.teams.map(function (tm) { var r = cur.filter(function (x) { return x.team === tm && x.line === t; })[0]; return r && r.liq != null ? cnt(r.liq) : "-"; }).join(" / ");
+        }).join(" &middot; ");
+      } else liqEl.innerHTML = bits.length ? "Latest (" + latest + ") &middot; " + bits.join(" &middot; ") : "";
+    }
+    jobs.push(draw);
+    sel.addEventListener("change", function () { st.m = sel.value; draw(); });
+    srcEl.addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) { st.src = b.getAttribute("data-s"); draw(); } });
+    viewEl.addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) { st.view = b.getAttribute("data-v"); draw(); } });
+    thr.addEventListener("change", function () { st.thr = +thr.value; draw(); });
   })();
   redraw();
 })();
