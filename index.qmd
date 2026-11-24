@@ -1592,6 +1592,7 @@ raw_html(
   "<div class=\"sk-crow\"><div><div class=\"sk-cttl\" id=\"sk-cttl\"></div><p class=\"sk-cdsc\" id=\"sk-cdsc\"></p></div>",
   "<select id=\"sk-copt\" aria-label=\"Chart series\" hidden></select></div>",
   "<div class=\"sk-tog sk-citog\" id=\"sk-citog\" hidden><span>Likely range</span><span class=\"sk-seg\" id=\"sk-ci\"><button type=\"button\" data-ci=\"0\" aria-pressed=\"true\">Off</button><button type=\"button\" data-ci=\"1\" aria-pressed=\"false\">On</button></span></div>",
+  "<div class=\"sk-tog sk-citog\" id=\"sk-pctv-wrap\" hidden><span>View</span><span class=\"sk-seg\" id=\"sk-pctv\"><button type=\"button\" data-v=\"abs\" aria-pressed=\"true\">Skins %</button><button type=\"button\" data-v=\"gap\">vs. league average</button></span></div>",
   "<div class=\"sk-tog sk-citog\" id=\"sk-hotc-wrap\" hidden><span>View</span><span class=\"sk-seg\" id=\"sk-hotc\"><button type=\"button\" data-v=\"now\" aria-pressed=\"true\">Cautious</button><button type=\"button\" data-v=\"best\" aria-pressed=\"false\">Best guess</button><button type=\"button\" data-v=\"pre\" aria-pressed=\"false\">Ignore hot start</button></span></div>",
   "<div class=\"sk-cleg\" id=\"sk-cleg\"></div>",
   "<div class=\"sk-plot\" id=\"sk-plot\"><div class=\"sk-empty\">Charts need JavaScript.</div></div>",
@@ -2064,29 +2065,16 @@ if (is.null(h) || nrow(h) == 0) {
                        miss[source == "baseline"] - miss[source == "weighted"])
       off_txt <- c(if (nrow(far) > 0) sprintf("%s %+.2f", ACC_SOURCES[far$source], far$gap),
                    if (length(base_gap) == 1) sprintf(".500 baseline %+.2f", base_gap))
-      print(
-        ggplot(trend, aes(date, gap, color = Source)) +
-          geom_hline(yintercept = 0, color = "#EEEEEE", linewidth = 0.5) +
-          geom_line(data = ~ filter(.x, source != "weighted"), linewidth = 0.9) +
-          geom_point(data = ~ filter(.x, source != "weighted", date == max(date)), size = 1.8) +
-          scale_color_manual(values = c("TeamRankings" = "#4C9BE8", "ESPN BPI" = "#E26A54", "CBS" = "#22A794",
-                                        "Vegas" = "#EE9944", "BB-Ref" = "#CC6FA8", "Opta" = "#B8C94A", "DARKO" = "#9C8AE0",
-                                        "Dunks & Threes" = "#E0B04A", "Crafted NBA" = "#5BC8D6"),
-                             breaks = setdiff(levels(pack$Source)[levels(pack$Source) %in% pack$Source], "Weighted Average")) +
-          scale_y_continuous(labels = function(v) sprintf("%+.2f", v)) +
-          coord_cartesian(ylim = ylim) +
-          labs(title = "30-day miss vs the Weighted Average",
-               subtitle = "Below the white line = more accurate than our blend",
-               caption = if (length(off_txt)) paste("Off the chart (latest):", paste(off_txt, collapse = "; ")) else NULL,
-               x = NULL, y = "Miss minus Weighted Average (wins per team)", color = NULL) +
-          guides(color = guide_legend(nrow = 3)) +
-          theme_minimal(base_size = 12) +
-          theme(legend.position = "bottom", plot.title = element_text(face = "bold"),
-                plot.caption = element_text(color = "#aaaaaa", size = 9, hjust = 0),
-                plot.background = element_rect(fill = "#2b2b2b", color = NA),
-                panel.grid.minor = element_blank(), panel.grid.major = element_line(color = "#3a3a3a"),
-                text = element_text(color = "#dddddd"), axis.text = element_text(color = "#aaaaaa"))
-      )
+      acc_cols <- c("TeamRankings" = "#4C9BE8", "ESPN BPI" = "#E26A54", "CBS" = "#22A794", "Vegas" = "#EE9944", "BB-Ref" = "#CC6FA8",
+                    "Opta" = "#B8C94A", "DARKO" = "#9C8AE0", "Dunks & Threes" = "#E0B04A", "Crafted NBA" = "#5BC8D6")
+      acc_ser <- pack %>% filter(source != "weighted") %>% arrange(date) %>% group_by(Source) %>%
+        group_map(~ list(n = as.character(.y$Source), c = unname(acc_cols[as.character(.y$Source)]), d = format(.x$date), v = round(.x$gap, 3)))
+      acc_json <- jsonlite::toJSON(list(ser = acc_ser), auto_unbox = TRUE, na = "null")
+      raw_html("<div id=\"sk-acc\"><div class=\"sk-cttl\">30-day miss vs the Weighted Average</div>",
+               "<p class=\"sk-cdsc\">Below the zero line = more accurate than our blend. Wins per team.</p>",
+               "<div class=\"sk-cleg\" id=\"sk-acc-leg\"></div><div class=\"sk-plot\" id=\"sk-acc-plot\"><div class=\"sk-empty\">Charts need JavaScript.</div></div>",
+               if (length(off_txt)) paste0("<p class=\"sk-note\">Off the chart (latest): ", paste(off_txt, collapse = "; "), "</p>"),
+               "</div><script type=\"application/json\" id=\"sk-acc-data\">", acc_json, "</script>")
       acc_p(paste0("Each point grades the projections saved 30 days earlier (or on opening night, before 30 days had passed) on the games played since, ",
                    "against the Weighted Average on the same games (a source added later starts from its first full-league projection). ",
                    "The lines are drawn relative to the Weighted Average because every source's raw miss rises and falls together with the schedule; ",
@@ -2408,6 +2396,26 @@ raw_html(
     });
   })();
 
+  // --- Projection accuracy: each source's 30-day miss minus the Weighted Average's, over time ---
+  var ac = document.getElementById("sk-acc-data");
+  if (ac) (function () {
+    var D = JSON.parse(ac.textContent), ser = A(D.ser).map(function (s) {
+      return { n: s.n, c: s.c, w: 2, pts: A(s.d).map(function (d, i) { return [dayN(d), A(s.v)[i]]; }) };
+    });
+    ser.forEach(function (s) { s.pts.sort(function (a, b) { return a[0] - b[0]; }); s.pts.length && (s.last = s.pts.length - 1); });
+    var plot = document.getElementById("sk-acc-plot");
+    document.getElementById("sk-acc-leg").innerHTML = ser.map(function (s) { return '<span><i class="sk-dot" style="--c:' + s.c + '"></i>' + s.n + "</span>"; }).join("");
+    var sg = function (v) { return (v > 0 ? "+" : "") + v.toFixed(2); };
+    var all = []; ser.forEach(function (s) { s.pts.forEach(function (p) { all.push(p[0]); }); });
+    var fold = plot.closest("details");
+    jobs.push(function () {
+      if (fold && !fold.open) return;
+      var lo = Math.min.apply(null, all), hi = Math.max.apply(null, all), xt = [];
+      for (var k = 0; k <= 3; k++) { var d = Math.round(lo + (hi - lo) * k / 3); if (!xt.length || xt[xt.length - 1][0] !== d) xt.push([d, dayLbl(d)]); }
+      line(plot, ser, { fmt: sg, tick: sg, zero: true, xt: xt, tipTitle: dayLbl });
+    });
+  })();
+
   // --- Bulls & Mavs odds trends (ESPN BPI + Basketball-Reference): pick a measure, both teams over time ---
   var bd = document.getElementById("sk-bpi-data");
   if (bd) (function () {
@@ -2555,14 +2563,16 @@ raw_html(
       get: function (r, o, row) { if (r.sk == null) return null; return o === "gap" ? r.sk - avgOf(row, "sk") : r.sk; },
       zero: function (o) { return o === "gap"; }, games: function () { return true; },
       fmt: function (v, o) { return (o === "gap" && v > 0 ? "+" : "") + v.toFixed(0); } },
-    pct: { ttl: "Skins %", dsc: function () { return "Share of games so far that earned a skin."; },
-      dom: [0.5, 0.8], ticks: [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8],
-      get: function (r) { return r.pct > 0 ? r.pct : null; }, games: function () { return true; },
-      fmt: function (v) { return (100 * v).toFixed(1) + "%"; } },
+    pct: { ttl: "Skins %", dsc: function () { return pctGap ? "Skins % minus the average of the players' skins %. Above zero means ahead of the average player." : "Share of games so far that earned a skin."; },
+      dom: function () { return pctGap ? null : [0.5, 0.8]; }, ticks: function () { return pctGap ? null : [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8]; },
+      get: function (r, o, row) { if (!(r.pct > 0)) return null; return pctGap ? r.pct - avgOf(row, "pct") : r.pct; }, games: function () { return true; },
+      zero: function () { return pctGap; },
+      fmt: function (v) { return pctGap ? (v > 0 ? "+" : "") + (100 * v).toFixed(1) + " pts" : (100 * v).toFixed(1) + "%"; } },
     win: { ttl: "Chance to win", dsc: function () { return "From " + D.sims.toLocaleString() + " simulated seasons each day. Checked against 24 past seasons; still a forecast." + (oddsView === "pre" ? " Hot start ignored: skins won still count, the rest of the season runs at preseason pace." : oddsView === "best" ? " Best guess: uncertainty set to what 24 past seasons showed, with no extra credit for the players behind." : " Cautious: gives the players behind extra credit."); },
       get: function (r) { return oddsView === "pre" && r.winh != null ? r.winh : oddsView === "best" && r.winb != null ? r.winb : r.win; }, dom: [0, 1], ticks: [0, .25, .5, .75, 1],
       fmt: function (v) { return Math.round(100 * v) + "%"; } }
   };
+  var pctGap = false;
   var state = { c: "proj", ci: false, o: { proj: "wa", race: "gap" } };   // likely range off until toggled
   var tabs = document.getElementById("sk-ctabs"), sel = document.getElementById("sk-copt"), plot = document.getElementById("sk-plot");
 
@@ -2585,6 +2595,8 @@ raw_html(
     var hasBand = !!(c.band && c.band(o)), ciTog = document.getElementById("sk-citog");
     ciTog.hidden = !hasBand;
     document.getElementById("sk-hotc-wrap").hidden = state.c !== "win";
+    document.getElementById("sk-pctv-wrap").hidden = state.c !== "pct";
+    document.querySelectorAll("#sk-pctv button").forEach(function (b) { b.setAttribute("aria-pressed", (b.getAttribute("data-v") === "gap") === pctGap); });
     ciTog.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", (b.getAttribute("data-ci") === "1") === state.ci); });
     document.getElementById("sk-cttl").textContent = c.ttl;
     document.getElementById("sk-cdsc").textContent = c.dsc(o);
@@ -2608,7 +2620,8 @@ raw_html(
 
     var W = Math.max(280, plot.clientWidth || 600), Hh = Math.round(Math.min(320, Math.max(220, W * 0.58)));
     var m = { l: 44, r: 76, t: 10, b: 24 };
-    var spec = c.domFn ? c.domFn(o) : null, fixed = c.dom || (spec && spec.d);
+    var cdom = typeof c.dom === "function" ? c.dom() : c.dom, cticks = typeof c.ticks === "function" ? c.ticks() : c.ticks;
+    var spec = c.domFn ? c.domFn(o) : null, fixed = cdom || (spec && spec.d);
     var y0 = fixed ? fixed[0] : Math.min.apply(null, vals), y1 = fixed ? fixed[1] : Math.max.apply(null, vals);
     if (spec) {
       var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
@@ -2616,7 +2629,7 @@ raw_html(
       while (spec.down && lo < y0) y0 -= spec.s;
     }
     if (c.zero && c.zero(o)) { y0 = Math.min(y0, 0); y1 = Math.max(y1, 0); }
-    var yt = c.ticks;
+    var yt = cticks;
     if (!yt && spec) { yt = []; for (var tv = y0; tv <= y1 + 1e-6; tv += spec.s) yt.push(tv); }
     if (!yt) yt = niceTicks(y0, y1);
     y0 = Math.min(y0, yt[0]); y1 = Math.max(y1, yt[yt.length - 1]);
@@ -2699,6 +2712,7 @@ raw_html(
   if (tabs) {
     tabs.addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) { state.c = b.getAttribute("data-c"); drawChart(); } });
     sel.addEventListener("change", function () { state.o[state.c] = sel.value; drawChart(); });
+    document.getElementById("sk-pctv").addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) { pctGap = b.getAttribute("data-v") === "gap"; drawChart(); } });
     document.getElementById("sk-ci").addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) { state.ci = b.getAttribute("data-ci") === "1"; drawChart(); } });
     var rz; window.addEventListener("resize", function () { clearTimeout(rz); rz = setTimeout(drawChart, 120); });
     drawChart();
