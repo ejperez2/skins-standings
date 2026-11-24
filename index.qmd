@@ -145,7 +145,9 @@ details[open] > .sk-rrow .sk-chev { transform: rotate(90deg); }
 .sk-chart select[hidden] { display: none; }
 .sk-citog { justify-content: flex-start; margin: 2px 0 6px 0; }
 .sk-citog[hidden] { display: none; }
-#sk-bpi-sel { font-size: 14px; color: inherit; background: var(--sk-surface); border: 1px solid var(--sk-line); border-radius: 6px; padding: 4px 8px; color-scheme: dark; }
+#sk-bpi-sel, #sk-pm-sel, #sk-pm-thr { font-size: 14px; color: inherit; background: var(--sk-surface); border: 1px solid var(--sk-line); border-radius: 6px; padding: 4px 8px; color-scheme: dark; }
+#sk-pm-thr[hidden] { display: none; }
+#sk-pm-thr { margin-left: 8px; }
 .sk-cleg { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; margin-bottom: 4px; }
 .sk-cleg span { display: inline-flex; align-items: center; gap: 6px; }
 .sk-plot { position: relative; touch-action: pan-y; }
