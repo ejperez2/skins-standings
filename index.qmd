@@ -1066,6 +1066,8 @@ TALENT_SD_HIST <- 7.2     # projection misjudging a team over a full season, 24-
 ROSTER_RHO_BEST <- 0.15   # centre of the real-roster evidence (0.08-0.18 on 2022-26 rosters); 0.25 is its cautious upper end
 REFIT_MAX_WEIGHT <- 0.25  # most weight this season's own misses can get: their size predicted later misses only weakly
                           # (correlation 0.3 at 13-30 games, none at 41), so the old climb to 100% by midseason added noise
+RHO_REFIT_MAX_WEIGHT <- 0.25  # same cap for this season's roster correlation: one season's estimate is noisy (2022-26 real
+                              # rosters 0.00 / 0.33 / 0.12 / 0.13; this season +/-0.13), so it used to reach full weight at 41 games
 # How the projection error fades with games left, as a share of the full-season value. History: it falls in proportion
 # to games left (a team's quality drifts with injuries, trades and tanking), not as (left/82)^1.5, which was right
 # early but too narrow from ~50 games (0.14 vs 0.21 of the full-season value with 22 games left).
@@ -1075,7 +1077,7 @@ talent_fade <- function(left) {
   left <- pmin(pmax(left, 0), 82)
   (left / 82) * approx(c(0, 10, 30, 40, 82), c(1, 0.92, 0.92, 0.80, 0.80), xout = 82 - left)$y
 }
-MODEL_VERSION <- "2026-11-25 best guess default (7.2, 0.15) + stage weights + schedule sim + history fade + refit cap 25% + split ties"   # bump when the simulation changes; saved with every forecast
+MODEL_VERSION <- "2026-11-25 best guess default (7.2, 0.15) + stage weights + schedule sim + history fade + refit caps 25% (talent, rho) + split ties"   # bump when the simulation changes; saved with every forecast
                                                                        # (" [league-total fallback]" is appended on days the schedule was unusable)
 LEAGUE_WINS <- 30 * 41    # every simulated season is conditioned to this league total (one win and one loss per game)
 N_SIMS <- 10000
@@ -1111,7 +1113,7 @@ if (!is.null(proj_history) && n_distinct(proj_history$date) > 1) {
 }
 
 # Re-fit the roster correlation from this season: skins misses since the first snapshot with 20+ games played,
-# from that snapshot's weighted average to today's record, reaching full weight after 41 games, but never below the floor.
+# from that snapshot's weighted average to today's record, weight games/41 capped at RHO_REFIT_MAX_WEIGHT, never below the floor.
 rho_now <- ROSTER_RHO_FLOOR
 rho_best <- ROSTER_RHO_BEST
 rho_note <- sprintf("%.2f (the centre of 2022-26 real rosters, and the floor)", ROSTER_RHO_BEST)
@@ -1135,7 +1137,7 @@ if (draft_complete && !is.null(proj_history) && n_distinct(proj_history$date) > 
       pairs <- rw %>% group_by(player) %>%
         summarise(num = (sum(zr)^2 - sum(zr^2)) / 2, n_pairs = n() * (n() - 1) / 2, .groups = "drop")
       rho_hat <- min(max((sum(pairs$num) / sum(pairs$n_pairs)) / mean(rw$zr^2), 0), 0.6)
-      blend_r <- min(1, mean(rw$played) / 41)
+      blend_r <- min(RHO_REFIT_MAX_WEIGHT, mean(rw$played) / 41)
       rho_now <- max(ROSTER_RHO_FLOOR, (1 - blend_r) * ROSTER_RHO_FLOOR + blend_r * rho_hat)
       rho_best <- max(ROSTER_RHO_BEST, (1 - blend_r) * ROSTER_RHO_BEST + blend_r * rho_hat)
       rho_note <- sprintf("%.2f: %.0f%% this season's (%.2f since %s), %.0f%% the starting %.2f, floor %.2f",

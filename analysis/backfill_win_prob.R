@@ -8,7 +8,7 @@ write_out <- "--write" %in% commandArgs(TRUE)
 L <- readLines("index.qmd")
 grab <- function(from, to) { a <- grep(from, L, fixed = TRUE)[1]; b <- grep(to, L, fixed = TRUE); b <- b[b > a][1]; L[a:(b - 1)] }
 eval(parse(text = grab("draft_data <- tribble(", "draft_complete <-")))
-eval(parse(text = L[grep("^(PLAYERS|TEAMS_PER_PLAYER|SEASON_START|TALENT_SD_2526|ROSTER_RHO_2526|ROSTER_RHO_FLOOR|TALENT_SD_HIST|ROSTER_RHO_BEST|REFIT_MAX_WEIGHT|MODEL_VERSION|LEAGUE_WINS|N_SIMS) <-", L)]))
+eval(parse(text = L[grep("^(PLAYERS|TEAMS_PER_PLAYER|SEASON_START|TALENT_SD_2526|ROSTER_RHO_2526|ROSTER_RHO_FLOOR|TALENT_SD_HIST|ROSTER_RHO_BEST|REFIT_MAX_WEIGHT|RHO_REFIT_MAX_WEIGHT|MODEL_VERSION|LEAGUE_WINS|N_SIMS) <-", L)]))
 eval(parse(text = grab("MODEL_VERSION <-", "LEAGUE_WINS <-")))   # MODEL_VERSION spans two lines (comment)
 draft_complete <- TRUE
 eval(parse(text = grab("talent_fade <- function(left) {", "MODEL_VERSION <-")))

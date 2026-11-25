@@ -1,6 +1,6 @@
 # Chance to Win: model specification
 
-Current as of `MODEL_VERSION` "2026-11-25 best guess default (7.2, 0.15) + stage weights + schedule sim + history fade + refit cap 25% + split ties".
+Current as of `MODEL_VERSION` "2026-11-25 best guess default (7.2, 0.15) + stage weights + schedule sim + history fade + refit caps 25% (talent, rho) + split ties".
 Code: Step 5.5 of `index.qmd`. Evidence for every choice: `analysis/win_prob_backtest_2026-11-07.md`,
 `analysis/scrutiny_2026-11-15.md` (24 seasons), `analysis/fpp_review_2026-11-25.md` (checked against a forecasting textbook) and the README section "Chance to Win and Likely Range".
 
@@ -46,7 +46,8 @@ around the weighted-average projection and turns it into skins outcomes for this
    - ρₛ (strength scale) is tuned so that teams on one roster finish with mean pairwise correlation ρ in final skins.
      ρ = 0.15 (`ROSTER_RHO_BEST`, centre of the 2022-26 real-roster evidence; the Cautious view uses 0.25,
      `ROSTER_RHO_FLOOR`). From the first snapshot with 20+ games, ρ can blend upward toward this season's estimate
-     (weight games played / 41, capped at 0.6) but never below its starting value. ρₛ is about 0.25 at ρ = 0.15.
+     (estimate capped at 0.6; weight min(0.25, games played / 41), `RHO_REFIT_MAX_WEIGHT`, the same cap as *T*; it used
+     to reach 1 at 41 games) but never below its starting value. ρₛ is about 0.25 at ρ = 0.15.
 6. **Simulation.** 10,000 seasons, seeded by the date. Each remaining game is a Bernoulli draw.
    - Final skins: wins for W picks, 82 − wins for L picks, summed over each player's 10 teams.
    - **Chance to Win** = share of seasons a player finishes first, with ties split evenly.
