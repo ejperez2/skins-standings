@@ -196,6 +196,9 @@ lean shown beside it. Best guess (7.2, 0.15) is now the default view and `win_pr
 saved as `win_prob_cautious`. The weighted average now takes its weights from `STAGE_WEIGHTS` (section 5 below).
 On 2026-11-25 inputs (`analysis/sim_harness.R`): Eristeo / Brian / Adam 74 / 19 / 7% (Cautious 67 / 23 / 10%).
 Every published forecast is also appended to `forecast_log.csv`, which is never rewritten.
+"Ignore hot start" now runs on the headline settings too (Eristeo 59% -> 66% on 2026-11-25, from the narrower
+uncertainty alone; projections unchanged). Its saved history was recomputed with those settings so the chart line is
+continuous; the numbers the page showed before are in `forecast_log.csv`.
 `MODEL_VERSION` "2026-11-25 best guess default (7.2, 0.15) + stage weights + schedule sim + history fade + refit caps 25% (talent, rho) + split ties".
 
 **Full specification:** `analysis/MODEL_SPEC.md` (model type, every step and setting, assumptions, limitations).

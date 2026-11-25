@@ -55,7 +55,8 @@ around the weighted-average projection and turns it into skins outcomes for this
 6b. **Headline = Best guess** (since 2026-11-25; `win_prob`, also copied to `win_prob_best`). **Cautious view** (toggle;
    the default until 2026-11-25; saved as `win_prob_cautious`): the same simulation with *T* = 8.6 and ρ = 0.25, which lean
    toward the players behind. Before 2026-11-25, `win_prob` holds the Cautious odds and `win_prob_best` the Best guess
-   (backfilled). The "Ignore hot start" view uses the headline settings from 2026-11-25.
+   (backfilled). The "Ignore hot start" view (`win_prob_ignore_hot`) uses the headline settings; its earlier days were
+   recomputed with them on 2026-11-25 (`analysis/backfill_ignore_hot.R`), so its chart line has no break.
 7. **Fallback** (schedule unreadable, or listed games don't fit the standings: any team with more listed than left, or
    more than 6 unscheduled).
    - Final wins ~ N(*Pᵢ*, *nᵢ rᵢ(1 − rᵢ)* + *τᵢ²*) with the same roster factor.
