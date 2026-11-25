@@ -1453,6 +1453,23 @@ if(needs_zero_start) {
 if(draft_complete) {
   write.csv(history, history_file, row.names = FALSE)
 }
+
+# Append-only record of every published forecast (forecast_log.csv). standings_history.csv keeps one row per day and
+# its past odds get re-fitted when the model changes; this file is never rewritten, so a season-end score uses the
+# numbers the page actually showed (FPP2 3.4: judge a model on genuine forecasts). CI runs only, so local renders
+# don't add forecasts nobody saw. Runs before 2026-11-25 were rebuilt from git history
+# (analysis/fpp_review/published_forecasts.py).
+forecast_log_file <- "forecast_log.csv"
+if (draft_complete && identical(Sys.getenv("GITHUB_ACTIONS"), "true") && any(!is.na(current_standings$win_prob))) {
+  log_cols <- c("published_at", "date", "player", "win_prob", "win_prob_best", "win_prob_ignore_hot", "range_lo",
+                "range_hi", "range_lo50", "range_hi50", "weighted_average", "actual_skins", "model_version", "source")
+  log_rows <- current_standings %>%
+    mutate(published_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"), date = format(date, "%Y-%m-%d"),
+           source = paste("live", Sys.getenv("GITHUB_RUN_ID")))
+  log_new <- !file.exists(forecast_log_file)
+  write.table(log_rows[, log_cols], forecast_log_file, sep = ",", row.names = FALSE, na = "",
+              col.names = log_new, append = !log_new)
+}
 ```
 
 ```{r display-helpers, echo=FALSE}

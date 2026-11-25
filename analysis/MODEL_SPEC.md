@@ -2,7 +2,7 @@
 
 Current as of `MODEL_VERSION` "2026-11-15 schedule sim + history fade + refit cap 25% + roster-corr 0.25 + split ties".
 Code: Step 5.5 of `index.qmd`. Evidence for every choice: `analysis/win_prob_backtest_2026-11-07.md`,
-`analysis/scrutiny_2026-11-15.md` (24 seasons) and the README section "Chance to Win and Likely Range".
+`analysis/scrutiny_2026-11-15.md` (24 seasons), `analysis/fpp_review_2026-11-25.md` (checked against a forecasting textbook) and the README section "Chance to Win and Likely Range".
 
 ## What kind of model
 
@@ -62,6 +62,9 @@ around the weighted-average projection and turns it into skins outcomes for this
 
 Saved each day in `standings_history.csv`: `win_prob`, `range_lo/hi` (80%), `range_lo50/hi50`, `model_version`,
 `model_talent_sd`, `model_rho`, `model_rho_in_use`.
+That file keeps one row per day and its past odds were re-fitted when the model changed. Every published run is also
+appended to `forecast_log.csv`, which is never rewritten (CI runs only; runs before 2026-11-25 rebuilt from git).
+Score the model on that file. See `analysis/fpp_review_2026-11-25.md`.
 
 ## Assumptions
 
