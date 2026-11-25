@@ -190,6 +190,14 @@ games won 78% of the time. Changes made:
 `MODEL_VERSION` "2026-11-15 schedule sim + history fade + refit cap 25% + roster-corr 0.25 + split ties". Earlier
 saved days keep their old default odds (re-running them with the new settings moves them by about a point or less).
 
+**2026-11-25: Best guess is the headline; source weights by fifth of the season.** Checked against *Forecasting:
+Principles and Practice* (`analysis/fpp_review_2026-11-25.md`): a forecast should be the best estimate, with a deliberate
+lean shown beside it. Best guess (7.2, 0.15) is now the default view and `win_prob`; Cautious (8.6, 0.25) is a toggle
+saved as `win_prob_cautious`. The weighted average now takes its weights from `STAGE_WEIGHTS` (section 5 below).
+On 2026-11-25 inputs (`analysis/sim_harness.R`): Eristeo / Brian / Adam 74 / 19 / 7% (Cautious 67 / 23 / 10%).
+Every published forecast is also appended to `forecast_log.csv`, which is never rewritten.
+`MODEL_VERSION` "2026-11-25 best guess default (7.2, 0.15) + stage weights + schedule sim + history fade + refit cap 25% + split ties".
+
 **Full specification:** `analysis/MODEL_SPEC.md` (model type, every step and setting, assumptions, limitations).
 
 **Improvements tested (2026-11-08).**
@@ -476,11 +484,24 @@ pct_projected = skins_pct × 82
 - **Player level**: Sum of all 5 team projections (not pace × 82)
 - Example: If a team is 10-2 (83.3%), % Projected = 68.3 skins
 
-### 5. Weighted Average ⭐ UPDATED (2026-27)
-`WEIGHTS` near the top of `index.qmd`: **Vegas 40%, TR 20%, ESPN 20%, CBS 20%**. Sources that are missing for a
-team are re-weighted away, so until CBS publishes (once the season starts) it is Vegas 50 / TR 25 / ESPN 25.
+### 5. Weighted Average ⭐ UPDATED (2026-11-25: weights by fifth of the season)
+`STAGE_WEIGHTS` near the top of `index.qmd` holds one row of Vegas / TR / ESPN / CBS weights per fifth of the season
+(16.4 games per team each); `WEIGHTS` is set from it every run by league-average games played, blending linearly
+between fifth midpoints. Sources missing for a team are re-weighted away.
 
-How it was chosen (2025-26 data, RMSE vs final results):
+| Fifth (games per team) | 0-16 | 16-33 | 33-49 | 49-66 | 66-82 |
+|---|---|---|---|---|---|
+| Vegas / TR / ESPN / CBS | 25/25/25/25 | 25/25/25/25 | 25/25/25/25 | 25/25/25/25 | 20/25/30/25 |
+
+Fit by `analysis/stage_weights/fit_stage_weights.py` (writes `stage_weights.csv`; re-run when a season is added): per
+fifth, weights that minimise the error of player projections against final skins in 2023-24, 2024-25 and 2025-26 (the
+seasons with all four sources), shrunk toward equal weights by an amount chosen on held-out seasons. Held-out RMSE (skins):
+free per-fifth fit 14.56, equal 12.96, old 40/20/20/20 13.11, shrunk fit 12.94. Free fits jump between seasons
+(e.g. fifth 1: TR/ESPN 50/50; fifth 3: Vegas/CBS 45/50), and Vegas alone was the weakest source in fifths 1-2, so the
+evidence does not support leaning on Vegas early. This season's first fifth agrees: no source beat the equal blend
+(`analysis/stage_weights/first_fifth_2026.py`). The weights will move away from equal only if more seasons show a stable edge.
+
+Until 2026-11-25 the blend was **Vegas 40%, TR 20%, ESPN 20%, CBS 20%**, chosen as below (2025-26 data, RMSE vs final results):
 
 | Blend | Oct, 30 teams (wins) | Nov, 6 players (skins) |
 |---|---|---|

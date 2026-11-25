@@ -1,6 +1,6 @@
 # Chance to Win: model specification
 
-Current as of `MODEL_VERSION` "2026-11-15 schedule sim + history fade + refit cap 25% + roster-corr 0.25 + split ties".
+Current as of `MODEL_VERSION` "2026-11-25 best guess default (7.2, 0.15) + stage weights + schedule sim + history fade + refit cap 25% + split ties".
 Code: Step 5.5 of `index.qmd`. Evidence for every choice: `analysis/win_prob_backtest_2026-11-07.md`,
 `analysis/scrutiny_2026-11-15.md` (24 seasons), `analysis/fpp_review_2026-11-25.md` (checked against a forecasting textbook) and the README section "Chance to Win and Likely Range".
 
@@ -17,7 +17,7 @@ around the weighted-average projection and turns it into skins outcomes for this
 |---|---|---|
 | *Wᵢ, Lᵢ* | team *i*'s current record | ESPN standings (JSON feed and HTML page; whichever has more games) |
 | *nᵢ* | games left, 82 − *Wᵢ* − *Lᵢ* | |
-| *Pᵢ* | projected final wins: weighted average of Vegas 40 / TeamRankings 20 / ESPN BPI 20 / CBS 20, re-normalised over available sources, clipped to [*Wᵢ*, *Wᵢ* + *nᵢ*]. Vegas is left out when no line has moved for 3 days; a missing line is carried at most 5 days | `WEIGHTS`, `VEGAS_FREEZE_DAYS`, `VEGAS_MAX_CARRY_DAYS` |
+| *Pᵢ* | projected final wins: weighted average of Vegas / TeamRankings / ESPN BPI / CBS with weights set per fifth of the season (`STAGE_WEIGHTS`; fit on 2023-26 accuracy in each fifth, shrunk toward equal by held-out seasons, so 25 each through game 57 and 20 / 25 / 30 / 25 by game 74; linear between fifth midpoints; Vegas 40 / 20 / 20 / 20 until 2026-11-25), re-normalised over available sources, clipped to [*Wᵢ*, *Wᵢ* + *nᵢ*]. Vegas is left out when no line has moved for 3 days; a missing line is carried at most 5 days | `WEIGHTS`, `VEGAS_FREEZE_DAYS`, `VEGAS_MAX_CARRY_DAYS` |
 | owner(*i*), side*ᵢ* | drafting player; +1 for a W pick, −1 for an L pick | `draft_data` |
 | games *g* = (home, away) | remaining regular-season schedule (NBA Cup final excluded) | ESPN scoreboard, one request per month |
 | *uᵢ* | team-games not yet scheduled (normally the 2 NBA Cup games per team until December) = *nᵢ* − listed games | |
@@ -33,7 +33,7 @@ around the weighted-average projection and turns it into skins outcomes for this
    - *τᵢ* = *T*·fade(*nᵢ*) is projection error. fade(*n*) = (*n*/82)·*c*(games played), with *c* = 1 at 0 games, 0.92 at
      10-30 games, 0.80 from 40 games, linear in between (`talent_fade`). Until 2026-11-15 it was (*n*/82)^1.5, which
      matched history early but was too narrow late (0.14 vs 0.21 of *T* with 22 games left).
-   - *T* = 8.6 (fit on 2025-26). Once teams have played 12+ games since opening night, *T* blends toward a method-of-moments
+   - *T* = 7.2 (`TALENT_SD_HIST`, 24 seasons; the Cautious view uses 8.6, fit on 2025-26). Once teams have played 12+ games since opening night, *T* blends toward a method-of-moments
      estimate from this season's misses (opening snapshot vs today, clamped 4-14), with weight
      min(0.25, games played / 41) (`REFIT_MAX_WEIGHT`; it used to reach 1 at 41 games).
 4. **Random effects (one draw per team per simulated season).** *zᵢ* = √(1 − ρₛ)·εᵢ + √ρₛ·sideᵢ·*v*_owner(*i*), with
@@ -44,15 +44,17 @@ around the weighted-average projection and turns it into skins outcomes for this
    - Re-centring: random shifts pull expected records toward .500 (the logistic flattens at the ends), so base strengths
      are re-centred until simulated mean wins match *Pᵢ* (within 0.03 wins on the calibration draws).
    - ρₛ (strength scale) is tuned so that teams on one roster finish with mean pairwise correlation ρ in final skins.
-     ρ = 0.25 (`ROSTER_RHO_FLOOR`). From the first snapshot with 20+ games, ρ can blend upward toward this season's
-     estimate (weight games played / 41, capped at 0.6) but never below 0.25. ρₛ is about 0.37 in November.
+     ρ = 0.15 (`ROSTER_RHO_BEST`, centre of the 2022-26 real-roster evidence; the Cautious view uses 0.25,
+     `ROSTER_RHO_FLOOR`). From the first snapshot with 20+ games, ρ can blend upward toward this season's estimate
+     (weight games played / 41, capped at 0.6) but never below its starting value. ρₛ is about 0.25 at ρ = 0.15.
 6. **Simulation.** 10,000 seasons, seeded by the date. Each remaining game is a Bernoulli draw.
    - Final skins: wins for W picks, 82 − wins for L picks, summed over each player's 10 teams.
    - **Chance to Win** = share of seasons a player finishes first, with ties split evenly.
    - **Likely ranges** = 10th–90th and 25th–75th percentiles of simulated totals.
-6b. **Best guess view** (toggle, not the default; saved as `win_prob_best`). The same simulation with *T* = 7.2
-   (`TALENT_SD_HIST`, the 24-season value, same capped refit) and ρ = 0.15 (`ROSTER_RHO_BEST`, same floor rule). The default
-   keeps 8.6 and 0.25, which lean toward the players behind by choice.
+6b. **Headline = Best guess** (since 2026-11-25; `win_prob`, also copied to `win_prob_best`). **Cautious view** (toggle;
+   the default until 2026-11-25; saved as `win_prob_cautious`): the same simulation with *T* = 8.6 and ρ = 0.25, which lean
+   toward the players behind. Before 2026-11-25, `win_prob` holds the Cautious odds and `win_prob_best` the Best guess
+   (backfilled). The "Ignore hot start" view uses the headline settings from 2026-11-25.
 7. **Fallback** (schedule unreadable, or listed games don't fit the standings: any team with more listed than left, or
    more than 6 unscheduled).
    - Final wins ~ N(*Pᵢ*, *nᵢ rᵢ(1 − rᵢ)* + *τᵢ²*) with the same roster factor.

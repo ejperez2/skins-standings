@@ -28,6 +28,9 @@ pub = pd.DataFrame(rows)
 for c in COLS:
     if c not in pub:
         pub[c] = pd.NA
+# Until 2026-11-25 the headline (win_prob) was the Cautious view; the log keeps a column for it from then on
+pub['win_prob_cautious'] = pub.win_prob.where(~pub.model_version.fillna('').str.contains('best guess default'))
+COLS.insert(2, 'win_prob_cautious')
 pub = pub[['published_at', 'date', 'player'] + COLS + ['source']]
 if len(sys.argv) > 1:
     pub.to_csv(sys.argv[1], index=False)

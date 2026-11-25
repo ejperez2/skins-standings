@@ -137,3 +137,22 @@ python3 analysis/fpp_review/equal_weights_today.py
 python3 analysis/fpp_review/published_forecasts.py /tmp/rebuilt_log.csv    # compare with forecast_log.csv
 python3 analysis/backtest_source_weights.py
 ```
+
+## Follow-up (same day): changes made
+
+- **Recommendation 1 done.** Best guess is the headline (`win_prob`, the table, the cards and the chart's default).
+  Cautious is a toggle saved as `win_prob_cautious`. On 2026-11-25 inputs: 74 / 19 / 7 (Cautious 67 / 23 / 10).
+- **Source weights by fifth of the season** (asked for; replaces recommendation 4). `analysis/stage_weights/fit_stage_weights.py`
+  fits Vegas / TR / ESPN / CBS weights for each fifth on 2023-26 and shrinks them toward equal by held-out seasons:
+
+  | Held-out RMSE, final player skins | Fifth 1 | 2 | 3 | 4 | 5 | All |
+  |---|---|---|---|---|---|---|
+  | Free fit per fifth | 20.24 | 18.84 | 15.67 | 10.31 | 3.14 | 14.56 |
+  | Equal weights | 19.27 | 16.15 | 13.56 | 8.64 | 4.12 | 12.96 |
+  | Old 40/20/20/20 | 19.58 | 16.30 | 13.51 | 8.69 | 4.82 | 13.11 |
+  | **Shrunk fit (live)** | 19.27 | 16.15 | 13.56 | 8.64 | 3.90 | **12.94** |
+
+  The free fits overfit (the best mix jumps between seasons), and Vegas alone was the weakest source in fifths 1 and 2.
+  So the live weights are equal through game 57 and lean slightly to ESPN in the last fifth (20 / 25 / 30 / 25).
+  This season's first fifth agrees: no single source beat the equal blend (`analysis/stage_weights/first_fifth_2026.py`).
+- Recommendation 2 (freeze) now starts from `MODEL_VERSION` "2026-11-25 best guess default ...".
