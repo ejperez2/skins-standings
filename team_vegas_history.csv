@@ -75,7 +75,7 @@
 "Boston Celtics",56.25,2026-11-22,TRUE
 "Boston Celtics",56,2026-11-23,TRUE
 "Boston Celtics",56,2026-11-24,TRUE
-"Boston Celtics",56.3125,2026-11-25,TRUE
+"Boston Celtics",56.5,2026-11-25,TRUE
 "Brooklyn Nets",24.5,2026-10-18,TRUE
 "Brooklyn Nets",23.9999996666667,2026-10-19,TRUE
 "Brooklyn Nets",24.375,2026-10-20,TRUE
@@ -266,7 +266,7 @@
 "Dallas Mavericks",39.5,2026-11-22,TRUE
 "Dallas Mavericks",39.625,2026-11-23,TRUE
 "Dallas Mavericks",39.625,2026-11-24,TRUE
-"Dallas Mavericks",39.8125,2026-11-25,TRUE
+"Dallas Mavericks",40,2026-11-25,TRUE
 "Denver Nuggets",49,2026-10-19,TRUE
 "Denver Nuggets",48.3333333333333,2026-10-20,TRUE
 "Denver Nuggets",48.375,2026-10-21,TRUE
@@ -304,7 +304,7 @@
 "Denver Nuggets",48.6875,2026-11-22,TRUE
 "Denver Nuggets",48.8125,2026-11-23,TRUE
 "Denver Nuggets",48.875,2026-11-24,TRUE
-"Denver Nuggets",48.75,2026-11-25,TRUE
+"Denver Nuggets",48.8125,2026-11-25,TRUE
 "Detroit Pistons",49,2026-10-19,TRUE
 "Detroit Pistons",49,2026-10-20,TRUE
 "Detroit Pistons",49.125,2026-10-21,TRUE
@@ -342,7 +342,7 @@
 "Detroit Pistons",52.75,2026-11-22,TRUE
 "Detroit Pistons",51.4375,2026-11-23,TRUE
 "Detroit Pistons",51.4375,2026-11-24,TRUE
-"Detroit Pistons",51.0833333333333,2026-11-25,TRUE
+"Detroit Pistons",51.5625,2026-11-25,TRUE
 "Golden State Warriors",39.500002,2026-10-19,TRUE
 "Golden State Warriors",36.1666666666667,2026-10-20,TRUE
 "Golden State Warriors",36.125,2026-10-21,TRUE
@@ -837,7 +837,7 @@
 "Orlando Magic",41.3125,2026-11-22,TRUE
 "Orlando Magic",40.875,2026-11-23,TRUE
 "Orlando Magic",41.0625,2026-11-24,TRUE
-"Orlando Magic",41.0625,2026-11-25,TRUE
+"Orlando Magic",41.1875,2026-11-25,TRUE
 "Philadelphia 76ers",50.500002,2026-10-19,TRUE
 "Philadelphia 76ers",50.1666666666667,2026-10-20,TRUE
 "Philadelphia 76ers",51.125,2026-10-21,TRUE
@@ -1142,4 +1142,4 @@
 "Washington Wizards",29.25,2026-11-22,TRUE
 "Washington Wizards",29.5625,2026-11-23,TRUE
 "Washington Wizards",29.75,2026-11-24,TRUE
-"Washington Wizards",28.8125,2026-11-25,TRUE
+"Washington Wizards",28.75,2026-11-25,TRUE
